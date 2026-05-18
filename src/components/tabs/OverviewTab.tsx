@@ -1,6 +1,6 @@
 import type { LanceData } from '@/lib/types';
 import { Icons } from '@/lib/icons';
-import { parseCoin } from '@/lib/utils';
+import { parseCoinToRings } from '@/lib/utils';
 
 interface Props {
   data: LanceData;
@@ -28,7 +28,7 @@ function resourceMetaFor(name: string) {
 
 export function OverviewTab({ data }: Props) {
   const totalMembers = data.members.filter(m => m.house_id).length;
-  const covenMembers = data.members.filter(m => m.coven_id).length;
+  const covenMembers = data.members.filter(m => m.coven).length;
   const nobles = data.members.filter(m => m.is_noble).length;
   const active = data.members.filter(m => m.status === 'active').length;
 
@@ -43,13 +43,14 @@ export function OverviewTab({ data }: Props) {
   const resourceList = [...resourceCounts.entries()].sort((a, b) => b[1] - a[1]);
 
   // Treasury
-  const rings = data.inventory['Ring']?.current_qty ?? 0;
-  const crowns = data.inventory['Crown']?.current_qty ?? 0;
-  const thrones = data.inventory['Throne']?.current_qty ?? 0;
+  const invMap = Object.fromEntries(data.inventory.map(i => [i.item, i]));
+  const rings = invMap['Ring']?.current_qty ?? 0;
+  const crowns = invMap['Crown']?.current_qty ?? 0;
+  const thrones = invMap['Throne']?.current_qty ?? 0;
   const totalRings = rings + crowns * 20 + thrones * 160;
 
   // Income per event
-  const incomeRings = data.members.reduce((sum, m) => sum + parseCoin(m.coin_per_event), 0);
+  const incomeRings = data.members.reduce((sum, m) => sum + parseCoinToRings(m.coin_per_event), 0);
   const stipendCount = data.members.filter(m => m.coin_per_event).length;
 
   const stats = [

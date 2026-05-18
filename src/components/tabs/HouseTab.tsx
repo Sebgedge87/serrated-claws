@@ -26,8 +26,6 @@ export function HouseTab({ house, members, searchQuery, canEditAll, myMemberId, 
   const nobles = filtered.filter(m => m.is_noble);
   const regulars = filtered.filter(m => !m.is_noble);
 
-  const canEditMember = (m: Member) => canEditAll || m.id === myMemberId;
-
   return (
     <div className="animate-fade-in">
       <div className="flex items-center gap-3.5 mb-2">

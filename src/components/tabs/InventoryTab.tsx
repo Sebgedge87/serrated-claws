@@ -1,5 +1,4 @@
 import { useState, useMemo } from 'react';
-import { useMemo } from 'react';
 import type { InventoryItem, LanceData } from '@/lib/types';
 import { EMPIRE_CATALOGUE, INVENTORY_TYPES, TYPE_COLORS } from '@/lib/catalogue';
 import { Icons } from '@/lib/icons';
