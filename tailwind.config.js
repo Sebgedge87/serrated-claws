@@ -43,6 +43,9 @@ export default {
         mystic: {
           400: '#b56eb5',
         },
+        sage: {
+          500: '#6dd47e',
+        },
       },
       backgroundImage: {
         'gold-gradient': 'linear-gradient(180deg, #d4b46d, #b8954c)',
