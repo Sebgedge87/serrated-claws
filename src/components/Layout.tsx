@@ -116,6 +116,20 @@ export function Layout() {
               <Icons.Plus size={16} />
               House
             </button>
+            {activeHouse && (
+              <button
+                onClick={async () => {
+                  if (confirm(`Delete ${activeHouse.name}? Members will be unassigned.`)) {
+                    await lance.deleteHouse(activeHouse.id);
+                    setActiveTab('overview');
+                  }
+                }}
+                className="btn btn-danger"
+              >
+                <Icons.Trash size={16} />
+                Delete House
+              </button>
+            )}
           </>
         )}
         <button onClick={exportCsv} className="btn btn-ghost">
