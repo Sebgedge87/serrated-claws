@@ -4,7 +4,7 @@ import { Button } from '@/components/ui/Button';
 import { Icons } from '@/lib/icons';
 
 export function LoginScreen() {
-  const { signInWithEmail, signUpWithEmail, signInWithGoogle } = useAuth();
+  const { signInWithPassword: signInWithEmail, signUpWithPassword: signUpWithEmail, signInWithGoogle } = useAuth();
   const [mode, setMode] = useState<'sign-in' | 'sign-up'>('sign-in');
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
@@ -17,7 +17,7 @@ export function LoginScreen() {
     setError(null);
     const fn = mode === 'sign-in' ? signInWithEmail : signUpWithEmail;
     const { error } = await fn(email, password);
-    if (error) setError(error.message);
+    if (error) setError(error);
     setBusy(false);
   };
 

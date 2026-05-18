@@ -1,6 +1,6 @@
 import type { House, Member } from '@/lib/types';
 import { Icons } from '@/lib/icons';
-import { MemberCard } from '@/components/cards/MemberCard';
+import { MemberCard } from '@/components/MemberCard';
 
 interface Props {
   house: House;
@@ -19,7 +19,7 @@ export function HouseTab({ house, members, searchQuery, canEditAll, myMemberId, 
     return (
       m.name.toLowerCase().includes(q) ||
       m.rank?.toLowerCase().includes(q) ||
-      m.function_id?.toLowerCase().includes(q) ||
+      m.function?.toLowerCase().includes(q) ||
       m.player_name?.toLowerCase().includes(q)
     );
   });

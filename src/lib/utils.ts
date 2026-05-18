@@ -35,3 +35,5 @@ export function houseIdFromName(name: string): string {
 export function cx(...classes: Array<string | false | null | undefined>): string {
   return classes.filter(Boolean).join(' ');
 }
+
+export const cn = cx;

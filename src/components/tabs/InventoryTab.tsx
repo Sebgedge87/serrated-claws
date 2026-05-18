@@ -1,12 +1,12 @@
 import { useState, useMemo } from 'react';
-import type { InventoryRow, LanceData } from '@/lib/types';
+import type { InventoryItem, LanceData } from '@/lib/types';
 import { EMPIRE_CATALOGUE, INVENTORY_TYPES, TYPE_COLORS } from '@/lib/catalogue';
 import { Icons } from '@/lib/icons';
 
 interface Props {
   data: LanceData;
   canEdit: boolean;
-  onUpdateInventory: (item: string, patch: Partial<InventoryRow>) => Promise<unknown>;
+  onUpdateInventory: (item: string, patch: Partial<InventoryItem>) => Promise<unknown>;
   onLogTransaction: (item: string, amount: number, direction: 'In' | 'Out') => Promise<unknown>;
 }
 
@@ -35,7 +35,7 @@ export function InventoryTab({ data, canEdit, onUpdateInventory, onLogTransactio
       if (typeFilter !== 'All' && i.type !== typeFilter) return false;
       if (search) {
         const q = search.toLowerCase();
-        if (!i.item.toLowerCase().includes(q) && !i.subType.toLowerCase().includes(q)) return false;
+        if (!i.item.toLowerCase().includes(q) && !(i.subType ?? '').toLowerCase().includes(q)) return false;
       }
       return true;
     });
@@ -87,7 +87,7 @@ export function InventoryTab({ data, canEdit, onUpdateInventory, onLogTransactio
           {(['All', ...INVENTORY_TYPES] as const).map(t => {
             const Icon = t !== 'All' ? typeIcon(t) : null;
             const isActive = typeFilter === t;
-            const c = TYPE_COLORS[t] ?? '#d4b46d';
+            const c = t !== 'All' ? (TYPE_COLORS[t] ?? '#d4b46d') : '#d4b46d';
             return (
               <button
                 key={t}
@@ -224,7 +224,7 @@ export function InventoryTab({ data, canEdit, onUpdateInventory, onLogTransactio
               <tbody>
                 {data.inventoryLog.slice(0, 15).map(e => (
                   <tr key={e.id} className="border-t border-gold-500/10">
-                    <td className="px-4 py-2.5 text-xs text-ink-300">{new Date(e.created_at).toLocaleString()}</td>
+                    <td className="px-4 py-2.5 text-xs text-ink-300">{new Date(e.ts).toLocaleString()}</td>
                     <td className="px-4 py-2.5 font-semibold">{e.item}</td>
                     <td className="px-4 py-2.5 text-center">
                       <span className={`px-2 py-0.5 rounded text-[11px] font-bold ${e.direction === 'In' ? 'bg-success-500/20 text-success-400' : 'bg-danger-500/20 text-danger-400'}`}>
