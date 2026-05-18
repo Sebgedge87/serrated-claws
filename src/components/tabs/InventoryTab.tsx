@@ -1,4 +1,5 @@
 import { useState, useMemo } from 'react';
+import { useMemo } from 'react';
 import type { InventoryItem, LanceData } from '@/lib/types';
 import { EMPIRE_CATALOGUE, INVENTORY_TYPES, TYPE_COLORS } from '@/lib/catalogue';
 import { Icons } from '@/lib/icons';
@@ -29,6 +30,8 @@ export function InventoryTab({ data, canEdit, onUpdateInventory, onLogTransactio
   const [search, setSearch] = useState('');
   const [showAll, setShowAll] = useState(true);
 
+  const invMap = useMemo(() => Object.fromEntries(data.inventory.map(i => [i.item, i])), [data.inventory]);
+
   const filtered = useMemo(() => {
     const items = showAll ? EMPIRE_CATALOGUE : EMPIRE_CATALOGUE.filter(i => i.track);
     return items.filter(i => {
@@ -50,8 +53,8 @@ export function InventoryTab({ data, canEdit, onUpdateInventory, onLogTransactio
   }, [filtered]);
 
   const totalTracked = EMPIRE_CATALOGUE.filter(i => i.track).length;
-  const withStock = Object.values(data.inventory).filter(v => v.current_qty > 0).length;
-  const shortfalls = Object.values(data.inventory).filter(v => v.required_qty > v.current_qty).length;
+  const withStock = data.inventory.filter(v => v.current_qty > 0).length;
+  const shortfalls = data.inventory.filter(v => v.required_qty > v.current_qty).length;
 
   return (
     <div className="animate-fade-in">
@@ -143,7 +146,7 @@ export function InventoryTab({ data, canEdit, onUpdateInventory, onLogTransactio
                 </thead>
                 <tbody>
                   {items.map((item, idx) => {
-                    const stock = data.inventory[item.item] ?? { item: item.item, current_qty: 0, required_qty: 0 };
+                    const stock = invMap[item.item] ?? { item: item.item, current_qty: 0, required_qty: 0 };
                     const shortfall = stock.required_qty - stock.current_qty;
                     const status = stock.required_qty === 0 ? null : (stock.current_qty >= stock.required_qty ? 'OK' : 'Short');
                     return (
@@ -248,10 +251,11 @@ function MoneyHelper({ data }: { data: LanceData }) {
   const [crowns, setCrowns] = useState(0);
   const [thrones, setThrones] = useState(0);
 
+  const invMap = useMemo(() => Object.fromEntries(data.inventory.map(i => [i.item, i])), [data.inventory]);
   const total = rings + crowns * 20 + thrones * 160;
-  const stockRings = data.inventory['Ring']?.current_qty ?? 0;
-  const stockCrowns = data.inventory['Crown']?.current_qty ?? 0;
-  const stockThrones = data.inventory['Throne']?.current_qty ?? 0;
+  const stockRings = invMap['Ring']?.current_qty ?? 0;
+  const stockCrowns = invMap['Crown']?.current_qty ?? 0;
+  const stockThrones = invMap['Throne']?.current_qty ?? 0;
 
   return (
     <div className="card p-4 min-w-[320px] border-l-[3px] border-l-[#e0c66d]">

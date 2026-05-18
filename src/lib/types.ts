@@ -84,7 +84,7 @@ export interface LanceData {
   covens: Coven[];
   functions: Func[];
   businesses: Business[];
-  inventory: Record<string, InventoryItem>;
+  inventory: InventoryItem[];
   inventoryLog: InventoryLogEntry[];
 }
 
