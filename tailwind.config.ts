@@ -9,12 +9,32 @@ export default {
         sans: ['Inter', 'system-ui', 'sans-serif']
       },
       colors: {
-        ink: { 950: '#0a0a0f', 900: '#14110e', 800: '#1a1612', 700: '#2a2318' },
-        gold: { 50: '#f0e0bc', 100: '#e8d5b7', 300: '#d4b46d', 500: '#c9a961', 700: '#b8954c', 900: '#6b5429' },
-        crimson: { 500: '#a8413f', 700: '#7a2a28' },
-        sage: { 500: '#6dd47e' },
-        sky: { 500: '#7eb0d4' },
-        amethyst: { 500: '#b56eb5' }
+        ink: {
+          950: 'rgb(10 10 15 / <alpha-value>)',
+          900: 'rgb(20 17 14 / <alpha-value>)',
+          800: 'rgb(26 22 18 / <alpha-value>)',
+          700: 'rgb(42 35 24 / <alpha-value>)',
+          300: 'rgb(180 170 156 / <alpha-value>)',
+          100: 'rgb(232 230 227 / <alpha-value>)',
+        },
+        gold: {
+          50:  'rgb(240 224 188 / <alpha-value>)',
+          100: 'rgb(232 213 183 / <alpha-value>)',
+          300: 'rgb(212 180 109 / <alpha-value>)',
+          400: 'rgb(212 180 109 / <alpha-value>)',
+          500: 'rgb(201 169 97 / <alpha-value>)',
+          700: 'rgb(184 149 76 / <alpha-value>)',
+          900: 'rgb(107 84 41 / <alpha-value>)',
+        },
+        crimson: {
+          500: 'rgb(168 65 63 / <alpha-value>)',
+          700: 'rgb(122 42 40 / <alpha-value>)',
+        },
+        sage:      { 500: 'rgb(109 212 126 / <alpha-value>)' },
+        sky:       { 500: 'rgb(126 176 212 / <alpha-value>)' },
+        amethyst:  { 500: 'rgb(181 110 181 / <alpha-value>)' },
+        success:   { 400: 'rgb(109 212 126 / <alpha-value>)', 500: 'rgb(109 212 126 / <alpha-value>)' },
+        danger:    { 400: 'rgb(255 122 122 / <alpha-value>)', 500: 'rgb(220 80 80 / <alpha-value>)' },
       },
       boxShadow: {
         glow: '0 0 24px rgba(212, 180, 109, 0.25)',
