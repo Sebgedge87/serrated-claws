@@ -1,0 +1,108 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  html, body, #root {
+    min-height: 100vh;
+  }
+
+  body {
+    background:
+      radial-gradient(ellipse at top left, rgba(201, 169, 97, 0.08), transparent 50%),
+      radial-gradient(ellipse at bottom right, rgba(139, 0, 0, 0.06), transparent 50%),
+      radial-gradient(ellipse at center, rgba(28, 22, 14, 0.4), transparent 60%),
+      #0a0a0f;
+    color: #e8e6e3;
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+    font-family: 'Inter', system-ui, sans-serif;
+  }
+
+  h1, h2, h3, h4 {
+    font-family: 'Cinzel', serif;
+    letter-spacing: 0.01em;
+  }
+}
+
+@layer components {
+  .glass {
+    @apply bg-gradient-to-b from-ink-800/85 to-ink-900/85 backdrop-blur-xl backdrop-saturate-150 border border-gold-500/15 shadow-card;
+  }
+
+  .card {
+    @apply bg-gradient-to-b from-ink-800/90 to-ink-900/85 border border-gold-500/15 rounded-2xl shadow-card transition-all duration-200;
+  }
+
+  .card-lift:hover {
+    @apply -translate-y-0.5 border-gold-500/40 shadow-lift;
+  }
+
+  .btn {
+    @apply inline-flex items-center gap-2 px-4 py-2.5 rounded-lg font-semibold text-sm cursor-pointer transition-all duration-150 whitespace-nowrap disabled:opacity-40 disabled:cursor-not-allowed;
+  }
+  .btn:not(:disabled):hover { @apply -translate-y-px brightness-110; }
+  .btn:active { @apply translate-y-0; }
+
+  .btn-primary {
+    background: linear-gradient(180deg, #d4b46d, #b8954c);
+    color: #1a1410;
+    box-shadow:
+      0 1px 0 rgba(255, 255, 255, 0.3) inset,
+      0 -1px 0 rgba(0, 0, 0, 0.2) inset,
+      0 8px 20px -8px rgba(201, 169, 97, 0.5);
+  }
+  .btn-secondary {
+    background: linear-gradient(180deg, rgba(60, 50, 40, 0.9), rgba(40, 32, 26, 0.9));
+    color: #e8e6e3;
+    border: 1px solid rgba(201, 169, 97, 0.2);
+    box-shadow: 0 1px 0 rgba(255, 255, 255, 0.05) inset;
+  }
+  .btn-danger {
+    background: linear-gradient(180deg, #a8413f, #7a2a28);
+    color: #fff;
+    box-shadow: 0 1px 0 rgba(255, 255, 255, 0.2) inset, 0 8px 20px -8px rgba(139, 0, 0, 0.5);
+  }
+  .btn-ghost {
+    background: transparent;
+    color: #b3a99a;
+    border: 1px solid rgba(201, 169, 97, 0.15);
+  }
+  .btn-ghost:hover { border-color: rgba(201, 169, 97, 0.4); color: #e8e6e3; }
+  .btn-sm { @apply px-3 py-1.5 text-xs; }
+
+  .input {
+    @apply w-full px-3.5 py-2.5 bg-black/40 border border-gold-500/15 rounded-lg text-ink-100 text-sm outline-none transition-colors;
+  }
+  .input:focus { @apply border-gold-300; }
+
+  .pill {
+    @apply inline-flex items-center gap-1 px-2.5 py-0.5 rounded-xl text-[11px] font-bold uppercase tracking-wider;
+  }
+  .pill-noble {
+    @apply text-gold-300 border border-gold-500/40;
+    background: linear-gradient(180deg, rgba(201, 169, 97, 0.25), rgba(201, 169, 97, 0.1));
+    box-shadow: 0 0 12px rgba(201, 169, 97, 0.2);
+  }
+  .pill-active { @apply bg-sage-500/15 text-sage-500 border border-sage-500/30; }
+  .pill-inactive { @apply bg-gray-500/15 text-gray-400 border border-gray-500/30; }
+  .pill-kia { @apply text-red-300 border border-red-500/40; background: rgba(180, 50, 50, 0.15); }
+
+  .tab-btn {
+    @apply inline-flex items-center gap-2 px-4 py-3.5 text-sm font-medium tracking-wide bg-transparent text-ink-100/50 border-b-2 border-transparent transition-colors hover:text-ink-100 cursor-pointer;
+  }
+  .tab-btn.active { @apply text-gold-300 border-b-gold-300 font-semibold; }
+}
+
+::-webkit-scrollbar { width: 10px; height: 10px; }
+::-webkit-scrollbar-track { background: rgba(0, 0, 0, 0.2); }
+::-webkit-scrollbar-thumb {
+  background: linear-gradient(180deg, rgba(201, 169, 97, 0.3), rgba(201, 169, 97, 0.15));
+  border-radius: 5px;
+  border: 2px solid rgba(0, 0, 0, 0.3);
+  background-clip: padding-box;
+}
+::-webkit-scrollbar-thumb:hover {
+  background: linear-gradient(180deg, rgba(201, 169, 97, 0.5), rgba(201, 169, 97, 0.25));
+  background-clip: padding-box;
+}
