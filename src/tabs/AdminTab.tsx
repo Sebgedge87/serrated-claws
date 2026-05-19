@@ -178,6 +178,7 @@ function SettingsSection({ settings, onSave }: { settings: LanceSettings | null;
 function RolesSection({ profiles, data, currentUserId, onUpdateProfile }: { profiles: Profile[]; data: LanceData; currentUserId: string; onUpdateProfile: Props['onUpdateProfile'] }) {
   const [busy, setBusy] = useState<string | null>(null);
   const adminCount = profiles.filter(p => p.role === 'admin').length;
+  const claimedMemberIds = new Set(profiles.filter(p => p.member_id).map(p => p.member_id!));
 
   async function setRole(id: string, role: UserRole) {
     setBusy(id);
@@ -191,13 +192,38 @@ function RolesSection({ profiles, data, currentUserId, onUpdateProfile }: { prof
   return (
     <section>
       <SectionHeading icon={<Icons.Users size={16} />} title={`Roles & Access · ${profiles.length} users`} />
-      <div className="flex gap-4 flex-wrap mb-4 text-sm text-ink-100/60">
-        {(['admin', 'member', 'viewer'] as UserRole[]).map(r => (
-          <span key={r} className="flex items-center gap-2">
-            <RolePill role={r} />
-            <span>— {r === 'admin' ? 'full access, edits all data' : r === 'member' ? 'can view all, edit own character' : 'read-only'}</span>
-          </span>
-        ))}
+      <div className="card overflow-hidden mb-4">
+        <table className="w-full text-sm">
+          <thead className="bg-gold-500/10">
+            <tr>
+              <th className="px-4 py-2.5 text-[11px] uppercase tracking-widest font-bold text-left text-ink-100">Permission</th>
+              {(['admin', 'member', 'viewer'] as UserRole[]).map(r => (
+                <th key={r} className="px-4 py-2.5 text-center"><RolePill role={r} /></th>
+              ))}
+            </tr>
+          </thead>
+          <tbody>
+            {[
+              ['View all data (members, houses, inventory…)', true, true, true],
+              ['Edit own linked character', true, true, false],
+              ['Add / edit / delete members', true, false, false],
+              ['Manage houses, covens, functions, businesses', true, false, false],
+              ['Edit inventory quantities & log transactions', true, false, false],
+              ['Access admin page (roles, danger zone)', true, false, false],
+            ].map(([label, admin, member, viewer], i) => (
+              <tr key={i} className={i > 0 ? 'border-t border-gold-500/10' : ''}>
+                <td className="px-4 py-2.5 text-ink-100/70">{label as string}</td>
+                {[admin, member, viewer].map((allowed, j) => (
+                  <td key={j} className="px-4 py-2.5 text-center">
+                    {allowed
+                      ? <span className="text-green-400 font-bold">✓</span>
+                      : <span className="text-ink-100/25">—</span>}
+                  </td>
+                ))}
+              </tr>
+            ))}
+          </tbody>
+        </table>
       </div>
       <div className="card overflow-hidden">
         <table className="w-full">
@@ -250,7 +276,9 @@ function RolesSection({ profiles, data, currentUserId, onUpdateProfile }: { prof
                       className="px-2.5 py-1.5 bg-black/40 border border-gold-500/15 rounded text-sm cursor-pointer disabled:opacity-50 max-w-[220px]"
                     >
                       <option value="">— Unlinked —</option>
-                      {data.members.map(m => <option key={m.id} value={m.id}>{m.name}{m.player_name ? ` (${m.player_name})` : ''}</option>)}
+                      {data.members
+                        .filter(m => !claimedMemberIds.has(m.id) || m.id === p.member_id)
+                        .map(m => <option key={m.id} value={m.id}>{m.name}{m.player_name ? ` (${m.player_name})` : ''}</option>)}
                     </select>
                     {linked && (
                       <div className="text-xs text-ink-100/50 mt-0.5">

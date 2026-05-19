@@ -272,8 +272,14 @@ function MoneyHelper({ inventory, onSetInventory }: { inventory: Record<string, 
   return (
     <div className="card p-4 min-w-[320px]" style={{ borderLeft: '3px solid #e0c66d' }}>
       <div className="flex justify-between items-center mb-3">
-        <h4 className="text-xs font-bold text-gold-300 uppercase tracking-widest m-0">Money Helper</h4>
-        <button onClick={useStockpile} className="btn btn-ghost btn-sm">Use Stockpile</button>
+        <div className="flex items-center gap-1.5">
+          <h4 className="text-xs font-bold text-gold-300 uppercase tracking-widest m-0">Money Helper</h4>
+          <span
+            title="Denomination calculator — converts between Rings, Crowns, and Thrones (20 rings = 1 crown, 8 crowns = 1 throne). Use 'Use Stockpile' to load current inventory quantities. Admins can 'Save to Stockpile' to write values back to the database."
+            className="inline-flex items-center justify-center w-4 h-4 rounded-full border border-gold-500/30 text-[9px] text-ink-100/50 cursor-help select-none"
+          >?</span>
+        </div>
+        <button onClick={useStockpile} className="btn btn-ghost btn-sm" title="Load current Ring/Crown/Throne quantities from inventory">Use Stockpile</button>
       </div>
       <div className="grid grid-cols-3 gap-2 mb-3">
         <NumberInput label="Rings" value={rings} onChange={setRings} />

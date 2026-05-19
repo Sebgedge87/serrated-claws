@@ -33,8 +33,8 @@ export function useLanceData() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
-  const reload = useCallback(async () => {
-    setLoading(true);
+  const reload = useCallback(async (silent = false) => {
+    if (!silent) setLoading(true);
     setError(null);
     try {
       const [houses, members, covens, fns, biz, bizOwners, inv, invLog, profs] = await Promise.all([
@@ -89,33 +89,33 @@ export function useLanceData() {
   const upsertHouse = useCallback(async (house: Partial<House> & { id: string; name: string }) => {
     const { error: err } = await supabase.from('houses').upsert(house);
     if (err) throw new Error(err.message);
-    await reload();
+    await reload(true);
   }, [reload]);
 
   const deleteHouse = useCallback(async (id: string) => {
     const { error: err } = await supabase.from('houses').delete().eq('id', id);
     if (err) throw new Error(err.message);
-    await reload();
+    await reload(true);
   }, [reload]);
 
   // ---- Members ----
   const upsertMember = useCallback(async (member: Partial<Member> & { name: string }) => {
     const { error: err } = await supabase.from('members').upsert(member);
     if (err) throw new Error(err.message);
-    await reload();
+    await reload(true);
   }, [reload]);
 
   /** Soft-remove: unassign from house rather than delete (admin-only delete is also available). */
   const unassignMember = useCallback(async (id: string) => {
     const { error: err } = await supabase.from('members').update({ house_id: null }).eq('id', id);
     if (err) throw new Error(err.message);
-    await reload();
+    await reload(true);
   }, [reload]);
 
   const deleteMember = useCallback(async (id: string) => {
     const { error: err } = await supabase.from('members').delete().eq('id', id);
     if (err) throw new Error(err.message);
-    await reload();
+    await reload(true);
   }, [reload]);
 
   // ---- Businesses ----
@@ -130,74 +130,74 @@ export function useLanceData() {
         await supabase.from('business_owners').insert(owners.map(member_id => ({ business_id: biz.id, member_id })));
       }
     }
-    await reload();
+    await reload(true);
   }, [reload]);
 
   // ---- Covens ----
   const upsertCoven = useCallback(async (coven: Partial<Coven> & { id: string; name: string }) => {
     const { error: err } = await supabase.from('covens').upsert(coven);
     if (err) throw new Error(err.message);
-    await reload();
+    await reload(true);
   }, [reload]);
 
   const deleteCoven = useCallback(async (id: string) => {
     const { error: err } = await supabase.from('covens').delete().eq('id', id);
     if (err) throw new Error(err.message);
-    await reload();
+    await reload(true);
   }, [reload]);
 
   // ---- Functions ----
   const upsertFunction = useCallback(async (fn: Partial<Func> & { id: string; name: string }) => {
     const { error: err } = await supabase.from('functions').upsert(fn);
     if (err) throw new Error(err.message);
-    await reload();
+    await reload(true);
   }, [reload]);
 
   const deleteFunction = useCallback(async (id: string) => {
     const { error: err } = await supabase.from('functions').delete().eq('id', id);
     if (err) throw new Error(err.message);
-    await reload();
+    await reload(true);
   }, [reload]);
 
   // ---- Business delete ----
   const deleteBusiness = useCallback(async (id: string) => {
     const { error: err } = await supabase.from('businesses').delete().eq('id', id);
     if (err) throw new Error(err.message);
-    await reload();
+    await reload(true);
   }, [reload]);
 
   // ---- Profiles ----
   const upsertProfile = useCallback(async (id: string, updates: { role?: UserRole; member_id?: string | null; display_name?: string | null }) => {
     const { error: err } = await supabase.from('profiles').update(updates).eq('id', id);
     if (err) throw new Error(err.message);
-    await reload();
+    await reload(true);
   }, [reload]);
 
   // ---- Lance Settings ----
   const upsertSettings = useCallback(async (updates: Partial<Omit<LanceSettings, 'id'>>) => {
     const { error: err } = await supabase.from('lance_settings').upsert({ id: 'default', ...updates });
     if (err) throw new Error(err.message);
-    await reload();
+    await reload(true);
   }, [reload]);
 
   // ---- Danger Zone ----
   const resetInventoryQty = useCallback(async () => {
     const { error: err } = await supabase.from('inventory').update({ current_qty: 0 }).not('item', 'is', null);
     if (err) throw new Error(err.message);
-    await reload();
+    await reload(true);
   }, [reload]);
 
   const clearInventoryLog = useCallback(async () => {
     const { error: err } = await supabase.from('inventory_log').delete().not('id', 'is', null);
     if (err) throw new Error(err.message);
-    await reload();
+    await reload(true);
   }, [reload]);
 
   // ---- Inventory ----
   const setInventory = useCallback(async (item: string, current_qty: number, required_qty: number) => {
     const { error: err } = await supabase.from('inventory').upsert({ item, current_qty, required_qty });
     if (err) throw new Error(err.message);
-    await reload();
+    await reload(true);
   }, [reload]);
 
   const logInventory = useCallback(async (item: string, amount: number, direction: 'In' | 'Out' | 'Adjustment', notes?: string) => {
@@ -206,7 +206,7 @@ export function useLanceData() {
     const nextQty = Math.max(0, (existing?.current_qty ?? 0) + delta);
     await supabase.from('inventory').upsert({ item, current_qty: nextQty, required_qty: existing?.required_qty ?? 0 });
     await supabase.from('inventory_log').insert({ item, amount, direction, notes: notes ?? null });
-    await reload();
+    await reload(true);
   }, [data.inventory, reload]);
 
   return {
