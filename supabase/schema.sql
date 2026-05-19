@@ -234,9 +234,11 @@ create table public.events (
   id uuid primary key default gen_random_uuid(),
   name text not null,
   date date not null,
+  end_date date,
   sort_order int not null default 0,
   cleared boolean not null default false
 );
+-- Migration for existing installs: ALTER TABLE public.events ADD COLUMN end_date date;
 alter table public.events enable row level security;
 create policy events_read on public.events for select using (auth.role() = 'authenticated');
 create policy events_admin_write on public.events for all using (public.is_admin()) with check (public.is_admin());

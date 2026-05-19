@@ -13,7 +13,7 @@ interface Props {
   onUpsertSettings: (updates: { name?: string; motto?: string | null; description?: string | null }) => Promise<void>;
   onResetInventoryQty: () => Promise<void>;
   onClearInventoryLog: () => Promise<void>;
-  onUpsertEvent: (ev: Partial<LanceEvent> & { name: string; date: string }) => Promise<void>;
+  onUpsertEvent: (ev: Partial<LanceEvent> & { name: string; date: string; end_date?: string | null }) => Promise<void>;
   onDeleteEvent: (id: string) => Promise<void>;
 }
 
@@ -161,21 +161,23 @@ function EventsSection({ events, data, onUpsert, onDelete }: { events: LanceEven
       </div>
       <div className="grid grid-cols-[repeat(auto-fill,minmax(280px,1fr))] gap-3">
         {events.map(ev => {
-          const d = new Date(ev.date); d.setHours(12);
-          const dayAfter = new Date(ev.date); dayAfter.setDate(dayAfter.getDate() + 1); dayAfter.setHours(0);
+          const startDate = new Date(ev.date); startDate.setHours(12);
+          const lastDay = new Date(ev.end_date ?? ev.date);
+          const dayAfter = new Date(lastDay); dayAfter.setDate(dayAfter.getDate() + 1); dayAfter.setHours(0, 0, 0, 0);
           const isPast = today >= dayAfter;
-          const isToday = !isPast && today >= d;
+          const isOngoing = !isPast && today >= startDate;
+          const fmt = (d: string) => new Date(d).toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: '2-digit' });
           return (
             <div key={ev.id} className="card p-4 flex items-center justify-between gap-3">
-              <div>
+              <div className="min-w-0">
                 <div className="font-semibold text-ink-100">{ev.name}</div>
                 <div className="text-xs text-ink-100/50 mt-0.5">
-                  {new Date(ev.date).toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: '2-digit' })}
-                  {isToday && <span className="ml-2 text-gold-300 font-semibold">Today</span>}
+                  {fmt(ev.date)}{ev.end_date && ev.end_date !== ev.date ? ` – ${fmt(ev.end_date)}` : ''}
+                  {isOngoing && <span className="ml-2 text-gold-300 font-semibold">Ongoing</span>}
                   {isPast && <span className="ml-2 text-ink-100/30">(past{ev.cleared ? ', cleared' : ''})</span>}
                 </div>
               </div>
-              <button onClick={() => setEditing(ev)} className="btn btn-ghost btn-sm"><Icons.Edit size={13} /></button>
+              <button onClick={() => setEditing(ev)} className="btn btn-ghost btn-sm flex-shrink-0"><Icons.Edit size={13} /></button>
             </div>
           );
         })}
@@ -193,29 +195,53 @@ function EventsSection({ events, data, onUpsert, onDelete }: { events: LanceEven
   );
 }
 
-function EventModal({ initial, onClose, onSave, onDelete }: { initial: Partial<LanceEvent>; onClose: () => void; onSave: (ev: Partial<LanceEvent> & { name: string; date: string }) => Promise<void>; onDelete?: () => Promise<void> }) {
+function EventModal({ initial, onClose, onSave, onDelete }: { initial: Partial<LanceEvent>; onClose: () => void; onSave: (ev: Partial<LanceEvent> & { name: string; date: string; end_date: string | null }) => Promise<void>; onDelete?: () => Promise<void> }) {
   const [name, setName] = useState(initial.name ?? '');
-  const [date, setDate] = useState(initial.date ? initial.date.slice(0, 10) : '');
+  const [startDate, setStartDate] = useState(initial.date ? initial.date.slice(0, 10) : '');
+  const [endDate, setEndDate] = useState(initial.end_date ? initial.end_date.slice(0, 10) : '');
   const [order, setOrder] = useState(initial.sort_order ?? 0);
   const [busy, setBusy] = useState(false);
+  const [err, setErr] = useState<string | null>(null);
 
   async function save() {
-    if (!name.trim() || !date || busy) return;
+    if (!name.trim() || !startDate || busy) return;
     setBusy(true);
-    try { await onSave({ ...initial, name: name.trim(), date, sort_order: order }); } finally { setBusy(false); }
+    setErr(null);
+    try {
+      await onSave({
+        ...initial,
+        name: name.trim(),
+        date: startDate,
+        end_date: endDate || null,
+        sort_order: order
+      });
+    } catch (e) {
+      setErr(e instanceof Error ? e.message : String(e));
+    } finally {
+      setBusy(false);
+    }
   }
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm" onClick={onClose}>
       <div className="card p-6 w-full max-w-sm space-y-4" onClick={e => e.stopPropagation()}>
         <h3 className="font-display font-bold text-lg text-gold-300">{initial.id ? 'Edit Event' : 'New Event'}</h3>
+
+        {err && <div className="text-xs text-red-300 bg-red-500/10 border border-red-500/20 rounded px-3 py-2">{err}</div>}
+
         <div>
           <label className="block text-xs text-ink-100/50 uppercase tracking-widest mb-1">Name</label>
           <input className="input w-full" value={name} onChange={e => setName(e.target.value)} placeholder="E1 — Spring Gathering" autoFocus />
         </div>
-        <div>
-          <label className="block text-xs text-ink-100/50 uppercase tracking-widest mb-1">Date</label>
-          <input type="date" className="input w-full" value={date} onChange={e => setDate(e.target.value)} />
+        <div className="grid grid-cols-2 gap-3">
+          <div>
+            <label className="block text-xs text-ink-100/50 uppercase tracking-widest mb-1">Start Date</label>
+            <input type="date" className="input w-full" value={startDate} onChange={e => setStartDate(e.target.value)} />
+          </div>
+          <div>
+            <label className="block text-xs text-ink-100/50 uppercase tracking-widest mb-1">End Date <span className="normal-case font-normal">(optional)</span></label>
+            <input type="date" className="input w-full" value={endDate} min={startDate || undefined} onChange={e => setEndDate(e.target.value)} />
+          </div>
         </div>
         <div>
           <label className="block text-xs text-ink-100/50 uppercase tracking-widest mb-1">Sort Order</label>
@@ -227,7 +253,7 @@ function EventModal({ initial, onClose, onSave, onDelete }: { initial: Partial<L
           ) : <div />}
           <div className="flex gap-2">
             <button onClick={onClose} className="btn btn-ghost">Cancel</button>
-            <button onClick={save} disabled={!name.trim() || !date || busy} className="btn btn-primary">{busy ? 'Saving…' : 'Save'}</button>
+            <button onClick={save} disabled={!name.trim() || !startDate || busy} className="btn btn-primary">{busy ? 'Saving…' : 'Save'}</button>
           </div>
         </div>
       </div>

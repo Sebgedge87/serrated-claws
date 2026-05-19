@@ -3,7 +3,8 @@ export type MemberStatus = 'active' | 'inactive' | 'KIA';
 export interface LanceEvent {
   id: string;
   name: string;
-  date: string; // ISO date
+  date: string; // ISO date — event start
+  end_date: string | null; // ISO date — event end (optional)
   sort_order: number;
   cleared: boolean;
 }
