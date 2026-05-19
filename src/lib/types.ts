@@ -69,6 +69,7 @@ export interface CovenRitual {
   magnitude: number;
   realm: string | null;
   notes: string | null;
+  wording: string | null;
 }
 
 export interface Func {
