@@ -2,7 +2,8 @@ import { useState } from 'react';
 import type { LanceData, LanceEvent, LanceSettings, Profile, UserRole } from '@/lib/types';
 import { useConfirm } from '@/components/ConfirmDialog';
 import { Icons } from '@/components/Icons';
-import { initials, memberIncomeRings, formatIncome } from '@/lib/utils';
+import { initials } from '@/lib/utils';
+import { exportRosterPdf, exportResourcesPdf } from '@/lib/parchmentPdf';
 
 interface Props {
   data: LanceData;
@@ -132,58 +133,8 @@ function EventsSection({ events, data, onUpsert, onDelete, onClearAttending }: {
     return new Date(d).toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: '2-digit' });
   }
 
-  function exportRoster() {
-    const eventName = nextEvent?.name ?? 'Event';
-    const lines: string[] = [`"Event Roster — ${eventName}"`, ''];
-    const sorted = [...attendingMembers].sort((a, b) => {
-      const fa = a.function ?? 'Unassigned'; const fb = b.function ?? 'Unassigned';
-      return fa !== fb ? fa.localeCompare(fb) : a.name.localeCompare(b.name);
-    });
-    const byFunction = sorted.reduce<Record<string, typeof sorted>>((acc, m) => {
-      const fn = m.function ?? 'Unassigned';
-      (acc[fn] ??= []).push(m);
-      return acc;
-    }, {});
-    const header = ['Character', 'Player', 'House', 'Rank', 'Resource', 'Income', 'Tithe (10%)'];
-    for (const [fn, members] of Object.entries(byFunction)) {
-      lines.push(`"${fn}"`);
-      lines.push(header.map(h => `"${h}"`).join(','));
-      for (const m of members) {
-        const house = data.houses.find(h => h.id === m.house_id)?.name ?? 'Unassigned';
-        const rings = memberIncomeRings(m.rings_per_event, m.crowns_per_event, m.thrones_per_event);
-        const tithe = rings > 0 ? `${Math.round(rings * 0.1)}r` : '';
-        lines.push([m.name, m.player_name ?? '', house, m.rank ?? '', m.resource ?? '', formatIncome(m.rings_per_event, m.crowns_per_event, m.thrones_per_event) ?? '', tithe].map(c => `"${c}"`).join(','));
-      }
-      lines.push('');
-    }
-    const blob = new Blob([lines.join('\n')], { type: 'text/csv' });
-    const a = document.createElement('a'); a.href = URL.createObjectURL(blob);
-    a.download = `roster-${eventName.toLowerCase().replace(/\s+/g, '-')}.csv`; a.click();
-  }
-
-  function exportResources() {
-    const lines: string[] = ['"Event Resources"', ''];
-    lines.push('"Inventory"');
-    lines.push(['"Item"', '"In Stock"', '"Required"', '"Shortfall"'].join(','));
-    for (const item of data.inventory.filter(i => i.current_qty > 0 || i.required_qty > 0)) {
-      const shortfall = Math.max(0, item.required_qty - item.current_qty);
-      lines.push([item.item, item.current_qty, item.required_qty, shortfall].map(v => `"${v}"`).join(','));
-    }
-    lines.push('');
-    lines.push('"Funds"');
-    lines.push(['"Denomination"', '"In Stock"'].join(','));
-    const invMap = Object.fromEntries(data.inventory.map(i => [i.item, i.current_qty]));
-    const r = invMap['Ring'] ?? 0;
-    const c = invMap['Crown'] ?? 0;
-    const t = invMap['Throne'] ?? 0;
-    lines.push(`"Rings","${r}"`);
-    lines.push(`"Crowns","${c}"`);
-    lines.push(`"Thrones","${t}"`);
-    lines.push(`"Total (in rings)","${r + c * 20 + t * 160}"`);
-    const blob = new Blob([lines.join('\n')], { type: 'text/csv' });
-    const a = document.createElement('a'); a.href = URL.createObjectURL(blob);
-    a.download = `resources-${new Date().toISOString().split('T')[0]}.csv`; a.click();
-  }
+  function exportRoster() { exportRosterPdf(data, nextEvent); }
+  function exportResources() { exportResourcesPdf(data); }
 
   return (
     <section>
