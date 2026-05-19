@@ -14,6 +14,7 @@ import { AdminTab } from '@/tabs/AdminTab';
 import { AddHouseModal } from '@/components/modals/AddHouseModal';
 import { AddPersonModal } from '@/components/modals/AddPersonModal';
 import { CharacterSheetPage } from '@/components/CharacterSheetPage';
+import { CreateCharacterScreen } from '@/components/CreateCharacterScreen';
 import { cx } from '@/lib/utils';
 import type { Member } from '@/lib/types';
 
@@ -29,6 +30,7 @@ export function Layout() {
   const [showAddHouse, setShowAddHouse] = useState(false);
   const [showAddPerson, setShowAddPerson] = useState(false);
   const [selectedMember, setSelectedMember] = useState<Member | null>(null);
+  const [showCreateCharacter, setShowCreateCharacter] = useState(false);
 
   const filteredMembers = useMemo(() => {
     const q = search.trim().toLowerCase();
@@ -117,7 +119,7 @@ export function Layout() {
                 <div className="text-[10px] uppercase tracking-widest text-gold-300/80">{profile.role}</div>
               </div>
             )}
-            {profile?.member_id && (
+            {profile?.member_id ? (
               <button
                 onClick={() => {
                   const me = lance.data.members.find(m => m.id === profile.member_id);
@@ -127,6 +129,14 @@ export function Layout() {
               >
                 <Icons.Users size={14} />
                 My Character
+              </button>
+            ) : (
+              <button
+                onClick={() => setShowCreateCharacter(true)}
+                className="btn btn-ghost btn-sm"
+              >
+                <Icons.Plus size={14} />
+                Add Character
               </button>
             )}
             <a href={WIKI_URL} target="_blank" rel="noopener noreferrer" className="btn btn-ghost btn-sm">
@@ -274,6 +284,15 @@ export function Layout() {
             setShowAddPerson(false);
           }}
         />
+      )}
+      {showCreateCharacter && user && (
+        <div className="fixed inset-0 z-50 bg-ink-950/90 backdrop-blur-sm overflow-y-auto">
+          <CreateCharacterScreen
+            userId={user.id}
+            onCreated={() => window.location.reload()}
+            onClose={() => setShowCreateCharacter(false)}
+          />
+        </div>
       )}
     </div>
   );

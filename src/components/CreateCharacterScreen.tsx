@@ -6,9 +6,10 @@ import type { House } from '@/lib/types';
 interface Props {
   userId: string;
   onCreated: () => void;
+  onClose?: () => void;
 }
 
-export function CreateCharacterScreen({ userId, onCreated }: Props) {
+export function CreateCharacterScreen({ userId, onCreated, onClose }: Props) {
   const [houses, setHouses] = useState<House[]>([]);
   const [form, setForm] = useState({
     name: '',
@@ -41,7 +42,6 @@ export function CreateCharacterScreen({ userId, onCreated }: Props) {
           rank: 'Member',
           is_noble: false,
           status: 'active',
-          attending_event: false,
         })
         .select()
         .single();
@@ -146,6 +146,16 @@ export function CreateCharacterScreen({ userId, onCreated }: Props) {
               <Icons.Plus size={16} />
               {busy ? 'Creating character…' : 'Create Character'}
             </button>
+
+            {onClose && (
+              <button
+                type="button"
+                onClick={onClose}
+                className="btn btn-ghost w-full justify-center text-ink-100/50"
+              >
+                Cancel
+              </button>
+            )}
           </form>
         </div>
       </div>

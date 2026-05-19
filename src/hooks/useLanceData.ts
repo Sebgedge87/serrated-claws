@@ -138,7 +138,10 @@ export function useLanceData() {
     const oldResource = oldMember?.resource ?? null;
     const newResource = member.resource ?? null;
 
-    const { error: err } = await supabase.from('members').upsert(member);
+    // Strip attending_event on new inserts — let the DB default handle it
+    // (avoids schema cache errors on fresh deployments where the column may not yet be cached)
+    const payload = member.id ? member : (({ attending_event: _ae, ...rest }) => rest)(member as Member);
+    const { error: err } = await supabase.from('members').upsert(payload);
     if (err) throw new Error(err.message);
 
     // Sync inventory when resource changes
@@ -164,6 +167,7 @@ export function useLanceData() {
   }, [reload]);
 
   const deleteMember = useCallback(async (id: string) => {
+    await supabase.from('profiles').update({ member_id: null }).eq('member_id', id);
     const { error: err } = await supabase.from('members').delete().eq('id', id);
     if (err) throw new Error(err.message);
     await reload(true);

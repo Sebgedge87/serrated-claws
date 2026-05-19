@@ -13,6 +13,7 @@ function Gate() {
     );
   }
   if (!session) return <SignIn />;
+  // Only block pure members — admins access via the header "Add Character" button
   if (profile && profile.member_id === null && profile.role === 'member') {
     return (
       <CreateCharacterScreen
