@@ -438,16 +438,25 @@ function RitualModal({ covenId, domain, onClose, onSave }: {
 
   const filtered = useMemo(() => {
     const q = search.trim().toLowerCase();
-    if (!q) return [];
+    if (!q) return allowed;
     return allowed.filter(r =>
       r.name.toLowerCase().includes(q) ||
-      r.realm.toLowerCase().includes(q)
-    ).slice(0, 12);
+      r.realm.toLowerCase().includes(q) ||
+      r.effect.toLowerCase().includes(q)
+    );
   }, [search, allowed]);
+
+  const grouped = useMemo(() => {
+    const groups: Record<string, typeof RITUALS_CATALOGUE> = {};
+    for (const r of filtered) {
+      if (!groups[r.realm]) groups[r.realm] = [];
+      groups[r.realm].push(r);
+    }
+    return groups;
+  }, [filtered]);
 
   function pick(entry: typeof RITUALS_CATALOGUE[number]) {
     setSelected(entry);
-    setSearch(entry.name);
   }
 
   function clear() {
@@ -479,50 +488,57 @@ function RitualModal({ covenId, domain, onClose, onSave }: {
     <Modal onClose={onClose} title="Add Ritual" icon={<Icons.Sparkles size={20} />} accent="#b56eb5"
       footer={<><button onClick={onClose} className="btn btn-ghost">Cancel</button><button onClick={save} disabled={busy || !selected} className="btn btn-primary">{busy ? 'Adding…' : 'Add Ritual'}</button></>}>
 
-      {domain && (
-        <div className="text-[11px] mb-3 px-1" style={{ color: REALM_COLORS[domain]?.text ?? A }}>
-          Showing {domain} + Special rituals ({allowed.length} available)
+      <Field label="Search">
+        <input
+          className="input"
+          autoFocus
+          placeholder="Filter by name, realm, or effect…"
+          value={search}
+          onChange={e => { setSearch(e.target.value); if (selected) setSelected(null); }}
+        />
+      </Field>
+
+      {selected ? (
+        <div className="rounded-lg px-4 py-3 flex items-start justify-between gap-3" style={{ background: `${realmColor}12`, border: `1px solid ${realmColor}30` }}>
+          <div>
+            <div className="font-semibold text-ink-100">{selected.name}</div>
+            <div className="text-xs mb-1" style={{ color: realmColor }}>{selected.realm}</div>
+            <div className="text-xs text-ink-100/60 leading-relaxed">{selected.effect}</div>
+          </div>
+          <button onClick={clear} className="text-ink-100/40 hover:text-ink-100 flex-shrink-0 mt-0.5">✕</button>
         </div>
-      )}
-      <Field label="Search Ritual">
-        <div className="relative">
-          <input
-            className="input pr-8"
-            autoFocus
-            placeholder="Type ritual name…"
-            value={search}
-            onChange={e => { setSearch(e.target.value); if (selected) setSelected(null); }}
-          />
-          {selected && (
-            <button onClick={clear} className="absolute right-2 top-1/2 -translate-y-1/2 text-ink-100/40 hover:text-ink-100">✕</button>
-          )}
-        </div>
-        {!selected && filtered.length > 0 && (
-          <div className="border border-gold-500/20 rounded-lg mt-1 max-h-52 overflow-y-auto bg-ink-900 shadow-xl">
-            {filtered.map(r => {
-              const c = REALM_COLORS[r.realm as RitualRealm];
+      ) : (
+        <div className="border border-gold-500/15 rounded-lg overflow-hidden">
+          <div className="max-h-64 overflow-y-auto">
+            {Object.keys(grouped).length === 0 ? (
+              <p className="text-center text-ink-100/40 text-sm py-6">No rituals match "{search}"</p>
+            ) : Object.entries(grouped).map(([realm, entries]) => {
+              const c = REALM_COLORS[realm as RitualRealm];
               return (
-                <button
-                  key={r.name}
-                  onClick={() => pick(r)}
-                  className="w-full text-left px-3 py-2.5 hover:bg-ink-800/60 flex items-center justify-between gap-3 border-b border-gold-500/10 last:border-0"
-                >
-                  <div className="min-w-0">
-                    <div className="text-sm font-medium text-ink-100 truncate">{r.name}</div>
-                    <div className="text-[11px] truncate" style={{ color: c?.text ?? A }}>{r.realm} · {r.effect}</div>
+                <div key={realm}>
+                  <div className="px-3 py-1.5 text-[10px] uppercase tracking-widest font-bold sticky top-0 z-10"
+                       style={{ background: `${c?.text ?? A}18`, color: c?.text ?? A }}>
+                    {realm} · {entries.length}
                   </div>
-                </button>
+                  {entries.map(r => (
+                    <button
+                      key={r.name}
+                      onClick={() => pick(r)}
+                      className="w-full text-left px-3 py-2.5 hover:bg-white/5 flex items-start gap-3 border-t border-gold-500/8 transition-colors"
+                    >
+                      <div className="min-w-0">
+                        <div className="text-sm font-medium text-ink-100 leading-snug">{r.name}</div>
+                        <div className="text-[11px] text-ink-100/50 leading-snug line-clamp-1">{r.effect}</div>
+                      </div>
+                    </button>
+                  ))}
+                </div>
               );
             })}
           </div>
-        )}
-      </Field>
-
-      {selected && (
-        <div className="rounded-lg px-4 py-3" style={{ background: `${realmColor}12`, border: `1px solid ${realmColor}30` }}>
-          <div className="font-semibold text-ink-100">{selected.name}</div>
-          <div className="text-xs mb-1" style={{ color: realmColor }}>{selected.realm}</div>
-          <div className="text-xs text-ink-100/60">{selected.effect}</div>
+          <div className="px-3 py-1.5 border-t border-gold-500/10 text-[11px] text-ink-100/30">
+            {filtered.length} ritual{filtered.length !== 1 ? 's' : ''} · click to select
+          </div>
         </div>
       )}
 
