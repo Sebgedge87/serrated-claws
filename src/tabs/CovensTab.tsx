@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import type { Coven, LanceData } from '@/lib/types';
+import type { Coven, CovenRitual, LanceData } from '@/lib/types';
 import { Icons } from '@/components/Icons';
 import { Modal, Field } from '@/components/Modal';
 import { initials } from '@/lib/utils';
@@ -9,75 +9,34 @@ interface Props {
   isAdmin: boolean;
   onUpsert: (c: Partial<Coven> & { id: string; name: string }) => Promise<void>;
   onDelete: (id: string) => Promise<void>;
+  onUpsertRitual: (r: Omit<CovenRitual, 'id'> & { id?: string }) => Promise<void>;
+  onDeleteRitual: (id: string) => Promise<void>;
+  onUpdateMana: (covenId: string, mana: number) => Promise<void>;
 }
 
 const A = '#b56eb5';
 
-export function CovensTab({ data, isAdmin, onUpsert, onDelete }: Props) {
+const REALMS = ['Autumn', 'Day', 'Night', 'Spring', 'Summer', 'Winter', 'Magnitude'];
+
+export function CovensTab({ data, isAdmin, onUpsert, onDelete, onUpsertRitual, onDeleteRitual, onUpdateMana }: Props) {
   const [selected, setSelected] = useState<string | null>(null);
   const [editing, setEditing] = useState<Partial<Coven> | null>(null);
 
   const coven = selected ? data.covens.find(c => c.id === selected) : null;
 
   if (coven) {
-    const members = data.members.filter(m => m.coven === coven.id);
     return (
-      <div className="animate-fade-in">
-        <div className="flex items-center justify-between mb-6">
-          <button onClick={() => setSelected(null)} className="btn btn-ghost btn-sm">← Back to Covens</button>
-          {isAdmin && (
-            <div className="flex gap-2">
-              <button onClick={() => setEditing(coven)} className="btn btn-secondary btn-sm"><Icons.Edit size={13} /> Edit</button>
-              <button onClick={async () => { if (confirm(`Delete ${coven.name}?`)) { await onDelete(coven.id); setSelected(null); } }} className="btn btn-danger btn-sm">
-                <Icons.Trash size={13} /> Delete
-              </button>
-            </div>
-          )}
-        </div>
-
-        <div className="flex items-center gap-4 mb-6">
-          <div className="w-14 h-14 rounded-xl grid place-items-center" style={{ background: `${A}20`, border: `1px solid ${A}40`, color: A }}>
-            <Icons.Sparkles size={26} />
-          </div>
-          <div>
-            <h2 className="font-display font-bold text-3xl text-ink-100 m-0">{coven.name}</h2>
-            {coven.leader && <p className="text-sm m-0 mt-0.5" style={{ color: A }}>Led by {coven.leader}</p>}
-          </div>
-        </div>
-
-        {coven.description && (
-          <div className="card p-5 mb-6">
-            <p className="text-ink-100/70 leading-relaxed m-0">{coven.description}</p>
-          </div>
-        )}
-
-        <div className="flex items-center gap-2.5 mb-4">
-          <Icons.Users size={15} style={{ color: A }} />
-          <h3 className="text-xs uppercase tracking-widest font-bold m-0" style={{ color: A }}>Members · {members.length}</h3>
-          <div className="flex-1 h-px" style={{ background: `linear-gradient(90deg, ${A}40, transparent)` }} />
-        </div>
-
-        <div className="grid grid-cols-[repeat(auto-fill,minmax(260px,1fr))] gap-3">
-          {members.map(m => {
-            const house = data.houses.find(h => h.id === m.house_id);
-            return (
-              <div key={m.id} className="card card-lift p-4 flex items-center gap-3">
-                <div className="w-10 h-10 rounded-full grid place-items-center font-display font-bold text-sm flex-shrink-0"
-                     style={{ background: `${A}20`, border: `1px solid ${A}40`, color: A }}>
-                  {initials(m.name)}
-                </div>
-                <div className="min-w-0">
-                  <div className="font-semibold text-ink-100 truncate">{m.name}</div>
-                  <div className="text-xs text-ink-100/50">{house?.name ?? 'Unassigned'}{m.rank ? ` · ${m.rank}` : ''}</div>
-                </div>
-              </div>
-            );
-          })}
-          {members.length === 0 && <p className="text-ink-100/40 text-sm py-8 col-span-full">No members assigned to this coven yet.</p>}
-        </div>
-
-        {editing && <CovenModal initial={editing} onClose={() => setEditing(null)} onSave={async f => { await onUpsert({ ...f, id: coven.id, name: f.name! }); setEditing(null); }} />}
-      </div>
+      <CovenDetail
+        coven={coven}
+        data={data}
+        isAdmin={isAdmin}
+        onBack={() => setSelected(null)}
+        onUpsert={onUpsert}
+        onDelete={async () => { if (confirm(`Delete ${coven.name}?`)) { await onDelete(coven.id); setSelected(null); } }}
+        onUpsertRitual={onUpsertRitual}
+        onDeleteRitual={onDeleteRitual}
+        onUpdateMana={onUpdateMana}
+      />
     );
   }
 
@@ -103,6 +62,8 @@ export function CovensTab({ data, isAdmin, onUpsert, onDelete }: Props) {
       <div className="grid grid-cols-[repeat(auto-fill,minmax(280px,1fr))] gap-4">
         {data.covens.map(c => {
           const members = data.members.filter(m => m.coven === c.id);
+          const rituals = data.covenRituals.filter(r => r.coven_id === c.id);
+          const totalMagnitude = rituals.reduce((s, r) => s + r.magnitude, 0);
           return (
             <button key={c.id} onClick={() => setSelected(c.id)} className="card card-lift p-5 text-left w-full">
               <div className="flex items-center gap-3 mb-3">
@@ -115,6 +76,7 @@ export function CovensTab({ data, isAdmin, onUpsert, onDelete }: Props) {
               {c.description && <p className="text-sm text-ink-100/60 mb-3 m-0" style={{ WebkitLineClamp: 2, display: '-webkit-box', WebkitBoxOrient: 'vertical', overflow: 'hidden' }}>{c.description}</p>}
               <div className="flex items-center justify-between pt-2 border-t border-gold-500/10">
                 <span className="text-xs text-ink-100/50">{members.length} member{members.length !== 1 ? 's' : ''}</span>
+                {rituals.length > 0 && <span className="text-xs" style={{ color: A }}>{rituals.length} ritual{rituals.length !== 1 ? 's' : ''} · {totalMagnitude} mag</span>}
                 <span className="text-xs" style={{ color: A }}>View →</span>
               </div>
             </button>
@@ -136,9 +98,248 @@ export function CovensTab({ data, isAdmin, onUpsert, onDelete }: Props) {
           }}
         />
       )}
+
     </div>
   );
 }
+
+// ── Coven Detail ──────────────────────────────────────────────────────────────
+
+function CovenDetail({
+  coven, data, isAdmin, onBack, onUpsert, onDelete, onUpsertRitual, onDeleteRitual, onUpdateMana
+}: {
+  coven: Coven;
+  data: LanceData;
+  isAdmin: boolean;
+  onBack: () => void;
+  onUpsert: (c: Partial<Coven> & { id: string; name: string }) => Promise<void>;
+  onDelete: () => void;
+  onUpsertRitual: (r: Omit<CovenRitual, 'id'> & { id?: string }) => Promise<void>;
+  onDeleteRitual: (id: string) => Promise<void>;
+  onUpdateMana: (covenId: string, mana: number) => Promise<void>;
+}) {
+  const [addingRitual, setAddingRitual] = useState(false);
+  const [editingCoven, setEditingCoven] = useState(false);
+  const [editingMana, setEditingMana] = useState(false);
+  const [manaInput, setManaInput] = useState(String(coven.mana_available));
+
+  const members = data.members.filter(m => m.coven === coven.id);
+  const rituals = data.covenRituals.filter(r => r.coven_id === coven.id);
+  const totalRequired = rituals.reduce((s, r) => s + r.magnitude, 0);
+  const manaHave = coven.mana_available;
+  const manaNeeded = Math.max(0, totalRequired - manaHave);
+  const surplus = manaHave - totalRequired;
+
+  async function saveMana() {
+    const val = parseInt(manaInput) || 0;
+    await onUpdateMana(coven.id, val);
+    setEditingMana(false);
+  }
+
+  return (
+    <div className="animate-fade-in">
+      <div className="flex items-center justify-between mb-6">
+        <button onClick={onBack} className="btn btn-ghost btn-sm">← Back to Covens</button>
+        {isAdmin && (
+          <div className="flex gap-2">
+            <button onClick={() => setEditingCoven(true)} className="btn btn-secondary btn-sm"><Icons.Edit size={13} /> Edit</button>
+            <button onClick={onDelete} className="btn btn-danger btn-sm"><Icons.Trash size={13} /> Delete</button>
+          </div>
+        )}
+      </div>
+
+      <div className="flex items-center gap-4 mb-6">
+        <div className="w-14 h-14 rounded-xl grid place-items-center" style={{ background: `${A}20`, border: `1px solid ${A}40`, color: A }}>
+          <Icons.Sparkles size={26} />
+        </div>
+        <div>
+          <h2 className="font-display font-bold text-3xl text-ink-100 m-0">{coven.name}</h2>
+          {coven.leader && <p className="text-sm m-0 mt-0.5" style={{ color: A }}>Led by {coven.leader}</p>}
+        </div>
+      </div>
+
+      {coven.description && (
+        <div className="card p-5 mb-6">
+          <p className="text-ink-100/70 leading-relaxed m-0">{coven.description}</p>
+        </div>
+      )}
+
+      {/* Mana Dashboard */}
+      <div className="card p-5 mb-6">
+        <div className="flex items-center gap-2 mb-4">
+          <Icons.Zap size={15} style={{ color: A }} />
+          <h3 className="text-xs uppercase tracking-widest font-bold m-0" style={{ color: A }}>Mana</h3>
+        </div>
+        <div className="grid grid-cols-4 gap-3 mb-4">
+          <ManaStatBox label="Required" value={totalRequired} color="#e8a870" />
+          <ManaStatBox
+            label="Have"
+            value={manaHave}
+            color={A}
+            editable={isAdmin}
+            editing={editingMana}
+            inputValue={manaInput}
+            onStartEdit={() => { setManaInput(String(manaHave)); setEditingMana(true); }}
+            onInput={setManaInput}
+            onSave={saveMana}
+            onCancel={() => setEditingMana(false)}
+          />
+          <ManaStatBox label="Needed" value={manaNeeded} color={manaNeeded > 0 ? '#e87070' : '#6ad47e'} />
+          <ManaStatBox label="Surplus" value={surplus} color={surplus >= 0 ? '#6ad47e' : '#e87070'} />
+        </div>
+        {totalRequired > 0 && (
+          <div className="h-2 bg-black/30 rounded-full overflow-hidden">
+            <div
+              className="h-full rounded-full transition-all duration-500"
+              style={{
+                width: `${Math.min(100, (manaHave / totalRequired) * 100)}%`,
+                background: manaHave >= totalRequired
+                  ? 'linear-gradient(90deg, #6ad47e, #4ab85e)'
+                  : `linear-gradient(90deg, ${A}, ${A}80)`
+              }}
+            />
+          </div>
+        )}
+      </div>
+
+      {/* Rituals */}
+      <div className="mb-6">
+        <div className="flex items-center gap-2.5 mb-4">
+          <Icons.Sparkles size={15} style={{ color: A }} />
+          <h3 className="text-xs uppercase tracking-widest font-bold m-0" style={{ color: A }}>Rituals · {rituals.length}</h3>
+          <div className="flex-1 h-px" style={{ background: `linear-gradient(90deg, ${A}40, transparent)` }} />
+          {isAdmin && (
+            <button onClick={() => setAddingRitual(true)} className="btn btn-ghost btn-sm text-xs" style={{ color: A }}>
+              <Icons.Plus size={12} /> Add Ritual
+            </button>
+          )}
+        </div>
+
+        <div className="space-y-2">
+          {rituals.map(r => (
+            <div key={r.id} className="card px-4 py-3 flex items-center justify-between gap-3">
+              <div className="flex items-center gap-3 min-w-0">
+                <div className="w-8 h-8 rounded-lg grid place-items-center flex-shrink-0 text-sm font-mono font-bold"
+                     style={{ background: `${A}20`, color: A }}>
+                  {r.magnitude}
+                </div>
+                <div className="min-w-0">
+                  <div className="font-semibold text-ink-100 text-sm">{r.ritual_name}</div>
+                  <div className="text-xs text-ink-100/50">
+                    {r.realm && <span className="mr-2">{r.realm}</span>}
+                    {r.notes && <span className="italic">{r.notes}</span>}
+                  </div>
+                </div>
+              </div>
+              {isAdmin && (
+                <button onClick={() => { if (confirm(`Remove ${r.ritual_name}?`)) onDeleteRitual(r.id); }} className="btn btn-ghost btn-sm text-red-400/60 hover:text-red-400 flex-shrink-0">
+                  <Icons.Trash size={13} />
+                </button>
+              )}
+            </div>
+          ))}
+          {rituals.length === 0 && (
+            <p className="text-ink-100/40 text-sm py-6 text-center">No rituals added yet.{isAdmin ? ' Click "Add Ritual" to start.' : ''}</p>
+          )}
+        </div>
+      </div>
+
+      {/* Members */}
+      <div>
+        <div className="flex items-center gap-2.5 mb-4">
+          <Icons.Users size={15} style={{ color: A }} />
+          <h3 className="text-xs uppercase tracking-widest font-bold m-0" style={{ color: A }}>Members · {members.length}</h3>
+          <div className="flex-1 h-px" style={{ background: `linear-gradient(90deg, ${A}40, transparent)` }} />
+        </div>
+
+        <div className="grid grid-cols-[repeat(auto-fill,minmax(260px,1fr))] gap-3">
+          {members.map(m => {
+            const house = data.houses.find(h => h.id === m.house_id);
+            return (
+              <div key={m.id} className="card card-lift p-4 flex items-center gap-3">
+                <div className="w-10 h-10 rounded-full grid place-items-center font-display font-bold text-sm flex-shrink-0"
+                     style={{ background: `${A}20`, border: `1px solid ${A}40`, color: A }}>
+                  {initials(m.name)}
+                </div>
+                <div className="min-w-0">
+                  <div className="font-semibold text-ink-100 truncate">{m.name}</div>
+                  <div className="text-xs text-ink-100/50">{house?.name ?? 'Unassigned'}{m.rank ? ` · ${m.rank}` : ''}</div>
+                  {m.mp != null && <div className="text-xs" style={{ color: A }}>{m.mp} MP</div>}
+                </div>
+              </div>
+            );
+          })}
+          {members.length === 0 && <p className="text-ink-100/40 text-sm py-8 col-span-full">No members assigned to this coven yet.</p>}
+        </div>
+      </div>
+
+      {addingRitual && (
+        <RitualModal
+          covenId={coven.id}
+          onClose={() => setAddingRitual(false)}
+          onSave={async r => { await onUpsertRitual(r); setAddingRitual(false); }}
+        />
+      )}
+      {editingCoven && (
+        <CovenModal
+          initial={coven}
+          onClose={() => setEditingCoven(false)}
+          onSave={async f => { await onUpsert({ ...f, id: coven.id, name: f.name! }); setEditingCoven(false); }}
+        />
+      )}
+    </div>
+  );
+}
+
+function ManaStatBox({
+  label, value, color, editable, editing, inputValue, onStartEdit, onInput, onSave, onCancel
+}: {
+  label: string;
+  value: number;
+  color: string;
+  editable?: boolean;
+  editing?: boolean;
+  inputValue?: string;
+  onStartEdit?: () => void;
+  onInput?: (v: string) => void;
+  onSave?: () => void;
+  onCancel?: () => void;
+}) {
+  return (
+    <div className="rounded-xl p-3 text-center" style={{ background: `${color}12`, border: `1px solid ${color}30` }}>
+      <div className="text-[10px] uppercase tracking-widest font-semibold mb-1" style={{ color: `${color}99` }}>{label}</div>
+      {editing ? (
+        <div className="flex flex-col items-center gap-1">
+          <input
+            autoFocus
+            type="number"
+            min={0}
+            className="input text-sm py-0.5 text-center w-16"
+            value={inputValue}
+            onChange={e => onInput?.(e.target.value)}
+            onKeyDown={e => { if (e.key === 'Enter') onSave?.(); if (e.key === 'Escape') onCancel?.(); }}
+          />
+          <div className="flex gap-1">
+            <button onClick={onSave} className="text-[10px] px-1.5 py-0.5 rounded" style={{ background: `${color}30`, color }}>✓</button>
+            <button onClick={onCancel} className="text-[10px] px-1.5 py-0.5 rounded text-ink-100/40 hover:text-ink-100">✕</button>
+          </div>
+        </div>
+      ) : (
+        <div
+          className="text-2xl font-display font-bold cursor-default"
+          style={{ color }}
+          onClick={editable ? onStartEdit : undefined}
+          title={editable ? 'Click to edit' : undefined}
+        >
+          {value}
+          {editable && <span className="text-[10px] ml-1 opacity-40">✎</span>}
+        </div>
+      )}
+    </div>
+  );
+}
+
+// ── Modals ────────────────────────────────────────────────────────────────────
 
 function CovenModal({ initial, onClose, onSave }: { initial: Partial<Coven>; onClose: () => void; onSave: (c: Partial<Coven>) => Promise<void> }) {
   const [form, setForm] = useState(initial);
@@ -156,6 +357,48 @@ function CovenModal({ initial, onClose, onSave }: { initial: Partial<Coven>; onC
       <Field label="Name"><input className="input" value={form.name ?? ''} onChange={e => setForm({ ...form, name: e.target.value })} autoFocus /></Field>
       <Field label="Leader" optional><input className="input" value={form.leader ?? ''} onChange={e => setForm({ ...form, leader: e.target.value || null })} /></Field>
       <Field label="Description" optional><textarea rows={3} className="input resize-y" value={form.description ?? ''} onChange={e => setForm({ ...form, description: e.target.value || null })} /></Field>
+    </Modal>
+  );
+}
+
+function RitualModal({ covenId, onClose, onSave }: {
+  covenId: string;
+  onClose: () => void;
+  onSave: (r: Omit<CovenRitual, 'id'>) => Promise<void>;
+}) {
+  const [form, setForm] = useState<Omit<CovenRitual, 'id'>>({
+    coven_id: covenId,
+    ritual_name: '',
+    magnitude: 2,
+    realm: null,
+    notes: null
+  });
+  const [busy, setBusy] = useState(false);
+
+  async function save() {
+    if (!form.ritual_name.trim() || busy) return;
+    setBusy(true);
+    try { await onSave({ ...form, ritual_name: form.ritual_name.trim() }); } finally { setBusy(false); }
+  }
+
+  return (
+    <Modal onClose={onClose} title="Add Ritual" icon={<Icons.Sparkles size={20} />} accent="#b56eb5"
+      footer={<><button onClick={onClose} className="btn btn-ghost">Cancel</button><button onClick={save} disabled={busy || !form.ritual_name.trim()} className="btn btn-primary">{busy ? 'Adding…' : 'Add Ritual'}</button></>}>
+      <Field label="Ritual Name">
+        <input className="input" autoFocus value={form.ritual_name} onChange={e => setForm(f => ({ ...f, ritual_name: e.target.value }))} placeholder="e.g. Twist of Morvalt" />
+      </Field>
+      <Field label="Magnitude">
+        <input type="number" min={1} className="input" value={form.magnitude} onChange={e => setForm(f => ({ ...f, magnitude: parseInt(e.target.value) || 1 }))} />
+      </Field>
+      <Field label="Realm" optional>
+        <select className="input" value={form.realm ?? ''} onChange={e => setForm(f => ({ ...f, realm: e.target.value || null }))}>
+          <option value="">Unknown</option>
+          {REALMS.map(r => <option key={r} value={r}>{r}</option>)}
+        </select>
+      </Field>
+      <Field label="Notes" optional>
+        <input className="input" value={form.notes ?? ''} onChange={e => setForm(f => ({ ...f, notes: e.target.value || null }))} placeholder="Any notes…" />
+      </Field>
     </Modal>
   );
 }

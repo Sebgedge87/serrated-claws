@@ -137,25 +137,31 @@ function HeroSection({
   const [editing, setEditing] = useState(false);
   const [form, setForm] = useState<Partial<Member>>({ ...member });
   const [busy, setBusy] = useState(false);
+  const [saveError, setSaveError] = useState<string | null>(null);
 
   const accent = member.is_noble ? '#d4b46d' : member.status === 'active' ? '#6dd47e' : member.status === 'KIA' ? '#ff7a7a' : '#999';
 
   function startEdit() {
     setForm({ ...member });
+    setSaveError(null);
     setEditing(true);
   }
 
   function cancelEdit() {
     setEditing(false);
     setForm({ ...member });
+    setSaveError(null);
   }
 
   async function saveEdit() {
     if (!form.name?.trim() || busy) return;
     setBusy(true);
+    setSaveError(null);
     try {
       await onUpsertMember({ ...member, ...form, name: form.name.trim() } as Partial<Member> & { name: string });
       setEditing(false);
+    } catch (err) {
+      setSaveError(err instanceof Error ? err.message : 'Save failed');
     } finally {
       setBusy(false);
     }
@@ -187,6 +193,36 @@ function HeroSection({
               <label className="text-[10px] uppercase tracking-widest text-ink-100/50 font-semibold block mb-1">Rank</label>
               <input className="input" value={form.rank ?? ''} onChange={e => set('rank', e.target.value || null)} />
             </div>
+            <div>
+              <label className="text-[10px] uppercase tracking-widest text-ink-100/50 font-semibold block mb-1">Claw</label>
+              <select className="input" value={form.function ?? ''} onChange={e => set('function', e.target.value || null)}>
+                <option value="">None</option>
+                {data.functions.map(f => <option key={f.id} value={f.id}>{f.name}</option>)}
+              </select>
+            </div>
+            <div>
+              <label className="text-[10px] uppercase tracking-widest text-ink-100/50 font-semibold block mb-1">Military Role</label>
+              <input className="input" placeholder="Shield Wall, Battle Mage…" value={form.military_function ?? ''} onChange={e => set('military_function', e.target.value || null)} />
+            </div>
+            <div>
+              <label className="text-[10px] uppercase tracking-widest text-ink-100/50 font-semibold block mb-1">HP</label>
+              <input type="number" min={0} className="input" value={form.hp ?? ''} onChange={e => set('hp', e.target.value !== '' ? Number(e.target.value) : null)} />
+            </div>
+            <div>
+              <label className="text-[10px] uppercase tracking-widest text-ink-100/50 font-semibold block mb-1">MP</label>
+              <input type="number" min={0} className="input" value={form.mp ?? ''} onChange={e => set('mp', e.target.value !== '' ? Number(e.target.value) : null)} />
+            </div>
+            <div>
+              <label className="text-[10px] uppercase tracking-widest text-ink-100/50 font-semibold block mb-1">Coin / Event</label>
+              <input className="input" placeholder="e.g. 18 rings" value={form.coin_per_event ?? ''} onChange={e => set('coin_per_event', e.target.value || null)} />
+            </div>
+            <div>
+              <label className="text-[10px] uppercase tracking-widest text-ink-100/50 font-semibold block mb-1">Coven</label>
+              <select className="input" value={form.coven ?? ''} onChange={e => set('coven', e.target.value || null)}>
+                <option value="">None</option>
+                {data.covens.map(c => <option key={c.id} value={c.id}>{c.name}</option>)}
+              </select>
+            </div>
             {isAdmin && (
               <>
                 <div>
@@ -217,6 +253,11 @@ function HeroSection({
               </label>
             </div>
           </div>
+          {saveError && (
+            <div className="text-red-300 text-sm bg-red-500/10 border border-red-500/30 rounded-lg px-3 py-2 mb-3">
+              {saveError}
+            </div>
+          )}
           <div className="flex gap-2 justify-end">
             <button onClick={cancelEdit} className="btn btn-ghost btn-sm">Cancel</button>
             <button onClick={saveEdit} disabled={!form.name?.trim() || busy} className="btn btn-primary btn-sm">
@@ -279,6 +320,7 @@ function StatsCard({
 }) {
   const [editingXp, setEditingXp] = useState(false);
   const [xpInput, setXpInput] = useState(String(member.total_xp ?? 8));
+  const [xpError, setXpError] = useState<string | null>(null);
   const [editingStats, setEditingStats] = useState(false);
   const [statsForm, setStatsForm] = useState({ hp: member.hp ?? '', mp: member.mp ?? '', coin_per_event: member.coin_per_event ?? '' });
   const [statsBusy, setStatsBusy] = useState(false);
@@ -293,8 +335,13 @@ function StatsCard({
 
   async function saveXp() {
     const val = parseInt(xpInput) || 8;
-    await onUpsertMember({ ...member, total_xp: val, name: member.name });
-    setEditingXp(false);
+    setXpError(null);
+    try {
+      await onUpsertMember({ ...member, total_xp: val, name: member.name });
+      setEditingXp(false);
+    } catch (err) {
+      setXpError(err instanceof Error ? err.message : 'Save failed');
+    }
   }
 
   async function saveStats() {
@@ -326,18 +373,21 @@ function StatsCard({
           )}
         </div>
         {editingXp ? (
-          <div className="flex items-center gap-2 mt-1">
-            <input
-              autoFocus
-              type="number"
-              min={xpSpent}
-              className="input text-sm w-20 py-1"
-              value={xpInput}
-              onChange={e => setXpInput(e.target.value)}
-              onKeyDown={e => { if (e.key === 'Enter') saveXp(); if (e.key === 'Escape') setEditingXp(false); }}
-            />
-            <button onClick={saveXp} className="btn btn-primary btn-sm text-xs py-1">Save</button>
-            <button onClick={() => setEditingXp(false)} className="btn btn-ghost btn-sm text-xs py-1">✕</button>
+          <div className="mt-1">
+            <div className="flex items-center gap-2">
+              <input
+                autoFocus
+                type="number"
+                min={xpSpent}
+                className="input text-sm w-20 py-1"
+                value={xpInput}
+                onChange={e => setXpInput(e.target.value)}
+                onKeyDown={e => { if (e.key === 'Enter') saveXp(); if (e.key === 'Escape') { setEditingXp(false); setXpError(null); } }}
+              />
+              <button onClick={saveXp} className="btn btn-primary btn-sm text-xs py-1">Save</button>
+              <button onClick={() => { setEditingXp(false); setXpError(null); }} className="btn btn-ghost btn-sm text-xs py-1">✕</button>
+            </div>
+            {xpError && <p className="text-red-400 text-[11px] mt-1">{xpError}</p>}
           </div>
         ) : (
           <>
