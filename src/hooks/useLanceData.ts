@@ -6,7 +6,9 @@ import type {
   Func,
   House,
   LanceData,
-  Member
+  Member,
+  Profile,
+  UserRole
 } from '@/lib/types';
 
 /**
@@ -25,6 +27,7 @@ export function useLanceData() {
     inventory: [],
     inventoryLog: []
   });
+  const [profiles, setProfiles] = useState<Profile[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
@@ -32,7 +35,7 @@ export function useLanceData() {
     setLoading(true);
     setError(null);
     try {
-      const [houses, members, covens, fns, biz, bizOwners, inv, invLog] = await Promise.all([
+      const [houses, members, covens, fns, biz, bizOwners, inv, invLog, profs] = await Promise.all([
         supabase.from('houses').select('*').order('sort_order'),
         supabase.from('members').select('*').order('is_noble', { ascending: false }).order('name'),
         supabase.from('covens').select('*'),
@@ -40,7 +43,8 @@ export function useLanceData() {
         supabase.from('businesses').select('*'),
         supabase.from('business_owners').select('*'),
         supabase.from('inventory').select('*'),
-        supabase.from('inventory_log').select('*').order('ts', { ascending: false }).limit(50)
+        supabase.from('inventory_log').select('*').order('ts', { ascending: false }).limit(50),
+        supabase.from('profiles').select('*').order('email')
       ]);
 
       const businesses: Business[] = (biz.data ?? []).map(b => ({
@@ -59,6 +63,7 @@ export function useLanceData() {
         inventory: (inv.data ?? []),
         inventoryLog: (invLog.data ?? [])
       });
+      setProfiles((profs.data ?? []) as Profile[]);
     } catch (err) {
       setError(err instanceof Error ? err.message : String(err));
     } finally {
@@ -151,6 +156,13 @@ export function useLanceData() {
     await reload();
   }, [reload]);
 
+  // ---- Profiles ----
+  const upsertProfile = useCallback(async (id: string, updates: { role?: UserRole; member_id?: string | null; display_name?: string | null }) => {
+    const { error: err } = await supabase.from('profiles').update(updates).eq('id', id);
+    if (err) throw new Error(err.message);
+    await reload();
+  }, [reload]);
+
   // ---- Inventory ----
   const setInventory = useCallback(async (item: string, current_qty: number, required_qty: number) => {
     const { error: err } = await supabase.from('inventory').upsert({ item, current_qty, required_qty });
@@ -169,6 +181,7 @@ export function useLanceData() {
 
   return {
     data,
+    profiles,
     loading,
     error,
     reload,
@@ -184,6 +197,7 @@ export function useLanceData() {
     upsertFunction,
     deleteFunction,
     setInventory,
-    logInventory
+    logInventory,
+    upsertProfile
   };
 }
