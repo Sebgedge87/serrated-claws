@@ -6,6 +6,7 @@ interface Props {
   data: LanceData;
   filteredMembers: Member[];
   isAdmin: boolean;
+  onNavigate?: (tab: string) => void;
 }
 
 const HOUSE_COLORS = ['#d4b46d', '#a8413f', '#7eb0d4', '#9c7eb0', '#7ea88e'];
@@ -31,7 +32,7 @@ function getResourceMeta(name: string) {
   return { color: '#d4b46d', Icon: Icons.Gem };
 }
 
-export function OverviewTab({ data, filteredMembers, isAdmin }: Props) {
+export function OverviewTab({ data, filteredMembers, isAdmin, onNavigate }: Props) {
   const totalMembers = data.members.length;
   const coven = data.members.filter(m => m.coven).length;
   const nobles = filteredMembers.filter(m => m.is_noble);
@@ -60,11 +61,11 @@ export function OverviewTab({ data, filteredMembers, isAdmin }: Props) {
   const incomeMembers = data.members.filter(m => m.coin_per_event).length;
 
   const stats = [
-    { label: 'Total Members', value: totalMembers, Icon: Icons.Users, color: '#d4b46d' },
-    { label: 'Coven Members', value: coven, Icon: Icons.Sparkles, color: '#b56eb5' },
-    { label: 'Nobles', value: nobles.length, Icon: Icons.Crown, color: '#e0c66d' },
-    { label: 'Active', value: active.length, Icon: Icons.Heart, color: '#6dd47e' },
-    { label: 'Businesses', value: data.businesses.length, Icon: Icons.Briefcase, color: '#7eb0d4' }
+    { label: 'Total Members', value: totalMembers, Icon: Icons.Users, color: '#d4b46d', tab: null as string | null },
+    { label: 'Coven Members', value: coven, Icon: Icons.Sparkles, color: '#b56eb5', tab: 'covens' as string | null },
+    { label: 'Nobles', value: nobles.length, Icon: Icons.Crown, color: '#e0c66d', tab: null as string | null },
+    { label: 'Active', value: active.length, Icon: Icons.Heart, color: '#6dd47e', tab: null as string | null },
+    { label: 'Businesses', value: data.businesses.length, Icon: Icons.Briefcase, color: '#7eb0d4', tab: 'businesses' as string | null }
   ];
 
   return (
@@ -75,7 +76,11 @@ export function OverviewTab({ data, filteredMembers, isAdmin }: Props) {
       {/* Stats */}
       <div className="grid grid-cols-[repeat(auto-fit,minmax(200px,1fr))] gap-4 mb-10">
         {stats.map(s => (
-          <div key={s.label} className="card card-lift p-6 relative overflow-hidden">
+          <div
+            key={s.label}
+            onClick={() => s.tab && onNavigate?.(s.tab)}
+            className={`card card-lift p-6 relative overflow-hidden${s.tab ? ' cursor-pointer hover:ring-1 hover:ring-gold-500/30 transition-shadow' : ''}`}
+          >
             <div className="absolute -top-8 -right-8 w-32 h-32 rounded-full pointer-events-none" style={{ background: `radial-gradient(circle, ${s.color}20, transparent 70%)` }} />
             <div className="w-10 h-10 rounded-xl grid place-items-center mb-3.5 border" style={{ color: s.color, background: `linear-gradient(180deg, ${s.color}30, ${s.color}15)`, borderColor: `${s.color}40` }}>
               <s.Icon size={20} />
@@ -147,7 +152,11 @@ export function OverviewTab({ data, filteredMembers, isAdmin }: Props) {
             {resourceList.map(([name, count]) => {
               const meta = getResourceMeta(name);
               return (
-                <div key={name} className="card card-lift p-4 flex items-center gap-3.5">
+                <div
+                  key={name}
+                  onClick={() => onNavigate?.('inventory')}
+                  className="card card-lift p-4 flex items-center gap-3.5 cursor-pointer hover:ring-1 hover:ring-gold-500/30 transition-shadow"
+                >
                   <div className="w-11 h-11 rounded-xl grid place-items-center border flex-shrink-0" style={{ color: meta.color, background: `linear-gradient(180deg, ${meta.color}30, ${meta.color}15)`, borderColor: `${meta.color}40` }}>
                     <meta.Icon size={22} />
                   </div>
@@ -169,7 +178,11 @@ export function OverviewTab({ data, filteredMembers, isAdmin }: Props) {
           const c = house.primary_color ?? HOUSE_COLORS[idx % HOUSE_COLORS.length];
           const members = data.members.filter(m => m.house_id === house.id);
           return (
-            <div key={house.id} className="card card-lift p-6 relative overflow-hidden">
+            <div
+              key={house.id}
+              onClick={() => onNavigate?.(house.id)}
+              className="card card-lift p-6 relative overflow-hidden cursor-pointer hover:ring-1 hover:ring-gold-500/30 transition-shadow"
+            >
               <div className="absolute top-0 left-0 right-0 h-[3px]" style={{ background: `linear-gradient(90deg, ${c}, transparent)` }} />
               <div className="flex items-center gap-3 mb-3.5">
                 <div className="w-11 h-11 rounded-xl grid place-items-center border" style={{ color: c, background: `linear-gradient(180deg, ${c}30, ${c}15)`, borderColor: `${c}40` }}>

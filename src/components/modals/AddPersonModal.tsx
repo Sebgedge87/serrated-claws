@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import type { Member, LanceData } from '@/lib/types';
+import type { CharInventoryItem, Member, LanceData } from '@/lib/types';
 import { Icons } from '@/components/Icons';
 import { Modal, Field } from '@/components/Modal';
 
@@ -8,9 +8,11 @@ interface Props {
   initial?: Partial<Member>;
   onClose: () => void;
   onSave: (member: Partial<Member> & { name: string }) => Promise<void>;
+  onUpsertCharInventory?: (item: Omit<CharInventoryItem, 'id'> & { id?: string }) => Promise<void>;
+  onDeleteCharInventory?: (id: string) => Promise<void>;
 }
 
-export function AddPersonModal({ data, initial, onClose, onSave }: Props) {
+export function AddPersonModal({ data, initial, onClose, onSave, onUpsertCharInventory, onDeleteCharInventory }: Props) {
   const [form, setForm] = useState<Partial<Member>>({
     name: '',
     player_name: null,
@@ -132,6 +134,144 @@ export function AddPersonModal({ data, initial, onClose, onSave }: Props) {
           <textarea className="input resize-y" rows={3} value={form.notes ?? ''} onChange={e => set('notes', e.target.value || null)} />
         </Field>
       </div>
+
+      {initial?.id && onUpsertCharInventory && onDeleteCharInventory && (
+        <CharInventorySection
+          memberId={initial.id}
+          items={data.characterInventory.filter(ci => ci.member_id === initial.id)}
+          onUpsert={onUpsertCharInventory}
+          onDelete={onDeleteCharInventory}
+        />
+      )}
     </Modal>
+  );
+}
+
+function CharInventorySection({
+  memberId,
+  items,
+  onUpsert,
+  onDelete,
+}: {
+  memberId: string;
+  items: CharInventoryItem[];
+  onUpsert: (item: Omit<CharInventoryItem, 'id'> & { id?: string }) => Promise<void>;
+  onDelete: (id: string) => Promise<void>;
+}) {
+  const [adding, setAdding] = useState(false);
+  const [newItem, setNewItem] = useState({ item: '', qty: 1, category: '', notes: '', include_in_lance: false });
+  const [busy, setBusy] = useState(false);
+
+  async function addItem() {
+    if (!newItem.item.trim() || busy) return;
+    setBusy(true);
+    try {
+      await onUpsert({
+        member_id: memberId,
+        item: newItem.item.trim(),
+        qty: newItem.qty,
+        category: newItem.category.trim() || null,
+        notes: newItem.notes.trim() || null,
+        include_in_lance: newItem.include_in_lance,
+      });
+      setNewItem({ item: '', qty: 1, category: '', notes: '', include_in_lance: false });
+      setAdding(false);
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  return (
+    <div className="mt-5 pt-5 border-t border-gold-500/15">
+      <div className="flex items-center justify-between mb-3">
+        <span className="text-xs uppercase tracking-widest font-bold text-gold-300">Character Inventory</span>
+        <button onClick={() => setAdding(a => !a)} className="btn btn-ghost btn-sm text-xs">
+          <Icons.Plus size={13} />
+          Add Item
+        </button>
+      </div>
+
+      {items.length > 0 && (
+        <div className="space-y-1.5 mb-3">
+          {items.map(ci => (
+            <div key={ci.id} className="flex items-center gap-2 px-3 py-2 bg-ink-800/40 rounded-lg">
+              <div className="flex-1 min-w-0">
+                <span className="text-sm text-ink-100">{ci.item}</span>
+                {ci.category && <span className="text-xs text-ink-100/50 ml-2">[{ci.category}]</span>}
+                {ci.notes && <span className="text-xs text-ink-100/40 ml-2 italic">{ci.notes}</span>}
+              </div>
+              <span className="text-sm font-mono text-gold-300 flex-shrink-0">×{ci.qty}</span>
+              <label className="flex items-center gap-1.5 text-xs text-ink-100/60 cursor-pointer flex-shrink-0 select-none" title="Include in lance inventory roll-up">
+                <input
+                  type="checkbox"
+                  checked={ci.include_in_lance}
+                  onChange={e => onUpsert({ ...ci, include_in_lance: e.target.checked })}
+                  className="w-3.5 h-3.5 accent-gold-300"
+                />
+                Lance
+              </label>
+              <button onClick={() => onDelete(ci.id)} className="btn btn-ghost btn-sm text-red-400/60 hover:text-red-400 flex-shrink-0 px-1.5">
+                <Icons.Trash size={13} />
+              </button>
+            </div>
+          ))}
+        </div>
+      )}
+
+      {adding && (
+        <div className="bg-ink-800/30 rounded-lg p-3 space-y-2 mb-2 border border-gold-500/10">
+          <div className="grid grid-cols-[1fr_5rem] gap-2">
+            <input
+              autoFocus
+              className="input text-sm"
+              placeholder="Item name"
+              value={newItem.item}
+              onChange={e => setNewItem(n => ({ ...n, item: e.target.value }))}
+              onKeyDown={e => e.key === 'Enter' && addItem()}
+            />
+            <input
+              type="number"
+              className="input text-sm"
+              min={1}
+              value={newItem.qty}
+              onChange={e => setNewItem(n => ({ ...n, qty: parseInt(e.target.value) || 1 }))}
+            />
+          </div>
+          <input
+            className="input text-sm w-full"
+            placeholder="Category (optional)"
+            value={newItem.category}
+            onChange={e => setNewItem(n => ({ ...n, category: e.target.value }))}
+          />
+          <input
+            className="input text-sm w-full"
+            placeholder="Notes (optional)"
+            value={newItem.notes}
+            onChange={e => setNewItem(n => ({ ...n, notes: e.target.value }))}
+          />
+          <div className="flex items-center justify-between">
+            <label className="flex items-center gap-2 text-xs text-ink-100/60 cursor-pointer select-none">
+              <input
+                type="checkbox"
+                checked={newItem.include_in_lance}
+                onChange={e => setNewItem(n => ({ ...n, include_in_lance: e.target.checked }))}
+                className="w-4 h-4 accent-gold-300"
+              />
+              Include in lance inventory
+            </label>
+            <div className="flex gap-2">
+              <button onClick={() => setAdding(false)} className="btn btn-ghost btn-sm text-xs">Cancel</button>
+              <button onClick={addItem} disabled={!newItem.item.trim() || busy} className="btn btn-primary btn-sm text-xs">
+                {busy ? 'Adding…' : 'Add'}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {items.length === 0 && !adding && (
+        <p className="text-xs text-ink-100/40 text-center py-2">No items · click Add Item to begin</p>
+      )}
+    </div>
   );
 }

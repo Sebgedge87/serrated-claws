@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import type { House, LanceData, Member } from '@/lib/types';
+import type { CharInventoryItem, House, LanceData, Member } from '@/lib/types';
 import { Icons } from '@/components/Icons';
 import { MemberCard } from '@/components/MemberCard';
 import { AddPersonModal } from '@/components/modals/AddPersonModal';
@@ -13,9 +13,11 @@ interface Props {
   onUpsert: (m: Partial<Member> & { name: string }) => Promise<void>;
   onUnassign: (id: string) => Promise<void>;
   onDelete: (id: string) => Promise<void>;
+  onUpsertCharInventory?: (item: Omit<CharInventoryItem, 'id'> & { id?: string }) => Promise<void>;
+  onDeleteCharInventory?: (id: string) => Promise<void>;
 }
 
-export function HouseTab({ house, data, search, isAdmin, onUpsert, onUnassign, onDelete }: Props) {
+export function HouseTab({ house, data, search, isAdmin, onUpsert, onUnassign, onDelete, onUpsertCharInventory, onDeleteCharInventory }: Props) {
   const [editing, setEditing] = useState<Member | null>(null);
   const c = house.primary_color ?? '#d4b46d';
 
@@ -79,6 +81,8 @@ export function HouseTab({ house, data, search, isAdmin, onUpsert, onUnassign, o
             await onUpsert({ ...editing, ...m });
             setEditing(null);
           }}
+          onUpsertCharInventory={onUpsertCharInventory}
+          onDeleteCharInventory={onDeleteCharInventory}
         />
       )}
     </div>

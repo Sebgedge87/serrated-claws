@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import type { LanceData, Member } from '@/lib/types';
+import type { CharInventoryItem, LanceData, Member } from '@/lib/types';
 import { Icons } from '@/components/Icons';
 import { MemberCard } from '@/components/MemberCard';
 import { AddPersonModal } from '@/components/modals/AddPersonModal';
@@ -9,9 +9,11 @@ interface Props {
   isAdmin: boolean;
   onUpsert: (m: Partial<Member> & { name: string }) => Promise<void>;
   onDelete: (id: string) => Promise<void>;
+  onUpsertCharInventory?: (item: Omit<CharInventoryItem, 'id'> & { id?: string }) => Promise<void>;
+  onDeleteCharInventory?: (id: string) => Promise<void>;
 }
 
-export function UnassignedTab({ data, isAdmin, onUpsert, onDelete }: Props) {
+export function UnassignedTab({ data, isAdmin, onUpsert, onDelete, onUpsertCharInventory, onDeleteCharInventory }: Props) {
   const [editing, setEditing] = useState<Member | null>(null);
   const unassigned = data.members.filter(m => !m.house_id);
 
@@ -43,6 +45,8 @@ export function UnassignedTab({ data, isAdmin, onUpsert, onDelete }: Props) {
             await onUpsert({ ...editing, ...m });
             setEditing(null);
           }}
+          onUpsertCharInventory={onUpsertCharInventory}
+          onDeleteCharInventory={onDeleteCharInventory}
         />
       )}
     </div>
