@@ -6,6 +6,7 @@ import type {
   Func,
   House,
   LanceData,
+  LanceSettings,
   Member,
   Profile,
   UserRole
@@ -28,6 +29,7 @@ export function useLanceData() {
     inventoryLog: []
   });
   const [profiles, setProfiles] = useState<Profile[]>([]);
+  const [settings, setSettings] = useState<LanceSettings | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
@@ -64,6 +66,14 @@ export function useLanceData() {
         inventoryLog: (invLog.data ?? [])
       });
       setProfiles((profs.data ?? []) as Profile[]);
+
+      // lance_settings may not exist yet on existing installs — degrade gracefully
+      try {
+        const { data: settingsData } = await supabase.from('lance_settings').select('*').eq('id', 'default').single();
+        setSettings((settingsData as LanceSettings) ?? null);
+      } catch {
+        setSettings(null);
+      }
     } catch (err) {
       setError(err instanceof Error ? err.message : String(err));
     } finally {
@@ -163,6 +173,26 @@ export function useLanceData() {
     await reload();
   }, [reload]);
 
+  // ---- Lance Settings ----
+  const upsertSettings = useCallback(async (updates: Partial<Omit<LanceSettings, 'id'>>) => {
+    const { error: err } = await supabase.from('lance_settings').upsert({ id: 'default', ...updates });
+    if (err) throw new Error(err.message);
+    await reload();
+  }, [reload]);
+
+  // ---- Danger Zone ----
+  const resetInventoryQty = useCallback(async () => {
+    const { error: err } = await supabase.from('inventory').update({ current_qty: 0 }).not('item', 'is', null);
+    if (err) throw new Error(err.message);
+    await reload();
+  }, [reload]);
+
+  const clearInventoryLog = useCallback(async () => {
+    const { error: err } = await supabase.from('inventory_log').delete().not('id', 'is', null);
+    if (err) throw new Error(err.message);
+    await reload();
+  }, [reload]);
+
   // ---- Inventory ----
   const setInventory = useCallback(async (item: string, current_qty: number, required_qty: number) => {
     const { error: err } = await supabase.from('inventory').upsert({ item, current_qty, required_qty });
@@ -182,6 +212,7 @@ export function useLanceData() {
   return {
     data,
     profiles,
+    settings,
     loading,
     error,
     reload,
@@ -198,6 +229,9 @@ export function useLanceData() {
     deleteFunction,
     setInventory,
     logInventory,
-    upsertProfile
+    upsertProfile,
+    upsertSettings,
+    resetInventoryQty,
+    clearInventoryLog
   };
 }

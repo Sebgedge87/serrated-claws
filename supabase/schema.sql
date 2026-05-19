@@ -226,6 +226,18 @@ create policy inv_log_read on public.inventory_log for select using (auth.role()
 create policy inv_log_insert on public.inventory_log for insert with check (auth.role() = 'authenticated');
 create policy inv_log_admin_delete on public.inventory_log for delete using (public.is_admin());
 
+-- Lance-level settings (single row, id='default')
+create table public.lance_settings (
+  id text primary key default 'default',
+  name text not null default 'The Serrated Claws',
+  motto text,
+  description text
+);
+insert into public.lance_settings (id) values ('default') on conflict do nothing;
+alter table public.lance_settings enable row level security;
+create policy settings_read on public.lance_settings for select using (auth.role() = 'authenticated');
+create policy settings_admin_write on public.lance_settings for all using (public.is_admin()) with check (public.is_admin());
+
 -- ============================================================================
 -- Bootstrap: promote your first user to admin manually after sign-up:
 --   update public.profiles set role = 'admin' where email = '[email protected]';

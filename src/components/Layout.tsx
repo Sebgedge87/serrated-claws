@@ -9,12 +9,12 @@ import { CovensTab } from '@/tabs/CovensTab';
 import { FunctionsTab } from '@/tabs/FunctionsTab';
 import { BusinessesTab } from '@/tabs/BusinessesTab';
 import { InventoryTab } from '@/tabs/InventoryTab';
-import { RolesTab } from '@/tabs/RolesTab';
+import { AdminTab } from '@/tabs/AdminTab';
 import { AddHouseModal } from '@/components/modals/AddHouseModal';
 import { AddPersonModal } from '@/components/modals/AddPersonModal';
 import { cx } from '@/lib/utils';
 
-type TabId = 'overview' | 'unassigned' | 'covens' | 'functions' | 'businesses' | 'inventory' | 'roles' | string;
+type TabId = 'overview' | 'unassigned' | 'covens' | 'functions' | 'businesses' | 'inventory' | 'admin' | string;
 
 export function Layout() {
   const { user, profile, isAdmin, signOut } = useAuth();
@@ -42,7 +42,7 @@ export function Layout() {
     { id: 'functions', label: 'Functions', Icon: Icons.Swords },
     { id: 'businesses', label: 'Businesses', Icon: Icons.Briefcase },
     { id: 'inventory', label: 'Inventory', Icon: Icons.Package },
-    ...(isAdmin ? [{ id: 'roles', label: 'Roles', Icon: Icons.Shield }] : [])
+    ...(isAdmin ? [{ id: 'admin', label: 'Admin', Icon: Icons.Shield }] : [])
   ];
 
   function exportCsv() {
@@ -77,7 +77,7 @@ export function Layout() {
             </div>
             <div>
               <h1 className="text-4xl font-display font-bold m-0 bg-gradient-to-b from-gold-50 to-gold-500 text-transparent bg-clip-text">
-                The Serrated Claws
+                {lance.settings?.name ?? 'The Serrated Claws'}
               </h1>
               <p className="text-xs uppercase tracking-[0.15em] text-ink-100/50 mt-1">Lance Management System</p>
             </div>
@@ -164,7 +164,18 @@ export function Layout() {
             {activeTab === 'functions' && <FunctionsTab data={lance.data} isAdmin={isAdmin} onUpsert={lance.upsertFunction} onDelete={lance.deleteFunction} />}
             {activeTab === 'businesses' && <BusinessesTab data={lance.data} isAdmin={isAdmin} onUpsert={lance.upsertBusiness} onDelete={lance.deleteBusiness} />}
             {activeTab === 'inventory' && <InventoryTab data={lance.data} isAdmin={isAdmin} onSetInventory={lance.setInventory} onLogInventory={lance.logInventory} />}
-            {activeTab === 'roles' && isAdmin && <RolesTab profiles={lance.profiles} data={lance.data} currentUserId={user!.id} onUpdateProfile={lance.upsertProfile} />}
+            {activeTab === 'admin' && isAdmin && (
+              <AdminTab
+                data={lance.data}
+                profiles={lance.profiles}
+                settings={lance.settings}
+                currentUserId={user!.id}
+                onUpdateProfile={lance.upsertProfile}
+                onUpsertSettings={lance.upsertSettings}
+                onResetInventoryQty={lance.resetInventoryQty}
+                onClearInventoryLog={lance.clearInventoryLog}
+              />
+            )}
           </>
         )}
       </main>

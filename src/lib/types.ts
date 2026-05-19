@@ -1,4 +1,11 @@
 export type MemberStatus = 'active' | 'inactive' | 'KIA';
+
+export interface LanceSettings {
+  id: string;
+  name: string;
+  motto: string | null;
+  description: string | null;
+}
 export type UserRole = 'admin' | 'member' | 'viewer';
 
 export interface Profile {
