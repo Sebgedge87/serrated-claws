@@ -24,6 +24,7 @@ export function AddPersonModal({ data, initial, onClose, onSave }: Props) {
     mp: null,
     resource: null,
     coin_per_event: null,
+    attending_event: false,
     coven: null,
     notes: null,
     house_id: data.houses[0]?.id ?? null,
@@ -119,6 +120,12 @@ export function AddPersonModal({ data, initial, onClose, onSave }: Props) {
           <label className="flex items-center gap-2.5 mt-2.5 cursor-pointer">
             <input type="checkbox" checked={!!form.is_noble} onChange={e => set('is_noble', e.target.checked)} className="w-5 h-5 accent-gold-300" />
             <span className="text-sm">Member of the nobility</span>
+          </label>
+        </Field>
+        <Field label="Attending Next Event">
+          <label className="flex items-center gap-2.5 mt-2.5 cursor-pointer">
+            <input type="checkbox" checked={!!form.attending_event} onChange={e => set('attending_event', e.target.checked)} className="w-5 h-5 accent-gold-300" />
+            <span className="text-sm">Will be at the next event</span>
           </label>
         </Field>
         <Field label="Notes" optional span="full">

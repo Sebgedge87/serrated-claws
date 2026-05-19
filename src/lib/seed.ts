@@ -4,7 +4,7 @@
  */
 import type { Member } from './types';
 
-type SeedMember = Omit<Member, 'id' | 'claimed_by'>;
+type SeedMember = Omit<Member, 'id' | 'claimed_by' | 'attending_event'>;
 
 export const SEED_MEMBERS: SeedMember[] = [
   // House Du Hyre

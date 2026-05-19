@@ -1,7 +1,8 @@
 import { useState } from 'react';
-import type { LanceData, LanceSettings, Profile, UserRole } from '@/lib/types';
+import type { LanceData, LanceEvent, LanceSettings, Profile, UserRole } from '@/lib/types';
 import { Icons } from '@/components/Icons';
 import { initials } from '@/lib/utils';
+import { parseCoinToRings } from '@/lib/utils';
 
 interface Props {
   data: LanceData;
@@ -12,12 +13,14 @@ interface Props {
   onUpsertSettings: (updates: { name?: string; motto?: string | null; description?: string | null }) => Promise<void>;
   onResetInventoryQty: () => Promise<void>;
   onClearInventoryLog: () => Promise<void>;
+  onUpsertEvent: (ev: Partial<LanceEvent> & { name: string; date: string }) => Promise<void>;
+  onDeleteEvent: (id: string) => Promise<void>;
 }
 
 const A = '#d4b46d';
 const ROLE_COLORS: Record<UserRole, string> = { super_admin: '#f0a040', admin: '#d4b46d', member: '#7eb0d4', viewer: '#9ca3af' };
 
-export function AdminTab({ data, profiles, settings, currentUserId, onUpdateProfile, onUpsertSettings, onResetInventoryQty, onClearInventoryLog }: Props) {
+export function AdminTab({ data, profiles, settings, currentUserId, onUpdateProfile, onUpsertSettings, onResetInventoryQty, onClearInventoryLog, onUpsertEvent, onDeleteEvent }: Props) {
   const currentRole = profiles.find(p => p.id === currentUserId)?.role ?? 'admin';
   const isSuperAdmin = currentRole === 'super_admin';
 
@@ -37,6 +40,7 @@ export function AdminTab({ data, profiles, settings, currentUserId, onUpdateProf
       </div>
 
       <StatsSection data={data} profiles={profiles} />
+      <EventsSection events={data.events} data={data} onUpsert={onUpsertEvent} onDelete={onDeleteEvent} />
       <SettingsSection settings={settings} onSave={onUpsertSettings} />
       <RolesSection profiles={profiles} data={data} currentUserId={currentUserId} currentRole={currentRole} onUpdateProfile={onUpdateProfile} />
       {isSuperAdmin && <DangerZone onResetInventoryQty={onResetInventoryQty} onClearInventoryLog={onClearInventoryLog} logCount={data.inventoryLog.length} />}
@@ -113,6 +117,123 @@ function StatCard({ label, value, sub, color }: { label: string; value: string |
 }
 
 // ── Settings ──────────────────────────────────────────────────────────────────
+
+// ── Events ────────────────────────────────────────────────────────────────────
+
+function EventsSection({ events, data, onUpsert, onDelete }: { events: LanceEvent[]; data: LanceData; onUpsert: Props['onUpsertEvent']; onDelete: Props['onDeleteEvent'] }) {
+  const [editing, setEditing] = useState<Partial<LanceEvent> | null>(null);
+  const today = new Date(); today.setHours(0, 0, 0, 0);
+  const attending = data.members.filter(m => m.attending_event).length;
+
+  function exportAttending() {
+    const rows: string[][] = [['Character', 'Player', 'House', 'Function', 'Coven', 'Rank', 'Resource', 'Coin/Event', 'Tithe (10%)']];
+    const attending = data.members.filter(m => m.attending_event);
+    attending.sort((a, b) => {
+      const fa = a.function ?? ''; const fb = b.function ?? '';
+      if (fa !== fb) return fa.localeCompare(fb);
+      return a.name.localeCompare(b.name);
+    });
+    attending.forEach(m => {
+      const house = data.houses.find(h => h.id === m.house_id)?.name ?? 'Unassigned';
+      const rings = parseCoinToRings(m.coin_per_event);
+      const tithe = rings > 0 ? `${Math.round(rings * 0.1)} r` : '';
+      rows.push([m.name, m.player_name ?? '', house, m.function ?? '', m.coven ?? '', m.rank ?? '', m.resource ?? '', m.coin_per_event ?? '', tithe]);
+    });
+    const csv = rows.map(r => r.map(c => `"${c.replace(/"/g, '""')}"`).join(',')).join('\n');
+    const blob = new Blob([csv], { type: 'text/csv' });
+    const a = document.createElement('a'); a.href = URL.createObjectURL(blob);
+    a.download = `attending-${new Date().toISOString().split('T')[0]}.csv`; a.click();
+  }
+
+  return (
+    <section>
+      <SectionHeading icon={<Icons.Package size={16} />} title="Events" />
+      <div className="flex items-center gap-3 mb-4 flex-wrap">
+        <span className="text-sm text-ink-100/60">{attending} member{attending !== 1 ? 's' : ''} attending next event</span>
+        {attending > 0 && (
+          <button onClick={exportAttending} className="btn btn-secondary btn-sm">
+            <Icons.Download size={14} /> Export Attending CSV
+          </button>
+        )}
+        <button onClick={() => setEditing({ name: '', date: '', sort_order: events.length })} className="btn btn-secondary btn-sm">
+          <Icons.Plus size={14} /> Add Event
+        </button>
+      </div>
+      <div className="grid grid-cols-[repeat(auto-fill,minmax(280px,1fr))] gap-3">
+        {events.map(ev => {
+          const d = new Date(ev.date); d.setHours(12);
+          const dayAfter = new Date(ev.date); dayAfter.setDate(dayAfter.getDate() + 1); dayAfter.setHours(0);
+          const isPast = today >= dayAfter;
+          const isToday = !isPast && today >= d;
+          return (
+            <div key={ev.id} className="card p-4 flex items-center justify-between gap-3">
+              <div>
+                <div className="font-semibold text-ink-100">{ev.name}</div>
+                <div className="text-xs text-ink-100/50 mt-0.5">
+                  {new Date(ev.date).toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: '2-digit' })}
+                  {isToday && <span className="ml-2 text-gold-300 font-semibold">Today</span>}
+                  {isPast && <span className="ml-2 text-ink-100/30">(past{ev.cleared ? ', cleared' : ''})</span>}
+                </div>
+              </div>
+              <button onClick={() => setEditing(ev)} className="btn btn-ghost btn-sm"><Icons.Edit size={13} /></button>
+            </div>
+          );
+        })}
+        {events.length === 0 && <p className="text-sm text-ink-100/40 col-span-full">No events yet. Add up to 4 per year.</p>}
+      </div>
+      {editing !== null && (
+        <EventModal
+          initial={editing}
+          onClose={() => setEditing(null)}
+          onSave={async ev => { await onUpsert(ev); setEditing(null); }}
+          onDelete={editing.id ? async () => { await onDelete(editing.id!); setEditing(null); } : undefined}
+        />
+      )}
+    </section>
+  );
+}
+
+function EventModal({ initial, onClose, onSave, onDelete }: { initial: Partial<LanceEvent>; onClose: () => void; onSave: (ev: Partial<LanceEvent> & { name: string; date: string }) => Promise<void>; onDelete?: () => Promise<void> }) {
+  const [name, setName] = useState(initial.name ?? '');
+  const [date, setDate] = useState(initial.date ? initial.date.slice(0, 10) : '');
+  const [order, setOrder] = useState(initial.sort_order ?? 0);
+  const [busy, setBusy] = useState(false);
+
+  async function save() {
+    if (!name.trim() || !date || busy) return;
+    setBusy(true);
+    try { await onSave({ ...initial, name: name.trim(), date, sort_order: order }); } finally { setBusy(false); }
+  }
+
+  return (
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm" onClick={onClose}>
+      <div className="card p-6 w-full max-w-sm space-y-4" onClick={e => e.stopPropagation()}>
+        <h3 className="font-display font-bold text-lg text-gold-300">{initial.id ? 'Edit Event' : 'New Event'}</h3>
+        <div>
+          <label className="block text-xs text-ink-100/50 uppercase tracking-widest mb-1">Name</label>
+          <input className="input w-full" value={name} onChange={e => setName(e.target.value)} placeholder="E1 — Spring Gathering" autoFocus />
+        </div>
+        <div>
+          <label className="block text-xs text-ink-100/50 uppercase tracking-widest mb-1">Date</label>
+          <input type="date" className="input w-full" value={date} onChange={e => setDate(e.target.value)} />
+        </div>
+        <div>
+          <label className="block text-xs text-ink-100/50 uppercase tracking-widest mb-1">Sort Order</label>
+          <input type="number" className="input w-full" value={order} onChange={e => setOrder(parseInt(e.target.value, 10) || 0)} />
+        </div>
+        <div className="flex justify-between pt-2">
+          {onDelete ? (
+            <button onClick={async () => { if (confirm('Delete this event?')) await onDelete(); }} className="btn btn-danger btn-sm">Delete</button>
+          ) : <div />}
+          <div className="flex gap-2">
+            <button onClick={onClose} className="btn btn-ghost">Cancel</button>
+            <button onClick={save} disabled={!name.trim() || !date || busy} className="btn btn-primary">{busy ? 'Saving…' : 'Save'}</button>
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+}
 
 const SETTINGS_SQL = `-- Run this once in your Supabase SQL editor:
 create table public.lance_settings (

@@ -2,10 +2,12 @@ import { useCallback, useEffect, useState } from 'react';
 import { supabase } from '@/lib/supabase';
 import type {
   Business,
+  CharInventoryItem,
   Coven,
   Func,
   House,
   LanceData,
+  LanceEvent,
   LanceSettings,
   Member,
   Profile,
@@ -26,7 +28,9 @@ export function useLanceData() {
     functions: [],
     businesses: [],
     inventory: [],
-    inventoryLog: []
+    inventoryLog: [],
+    events: [],
+    characterInventory: []
   });
   const [profiles, setProfiles] = useState<Profile[]>([]);
   const [settings, setSettings] = useState<LanceSettings | null>(null);
@@ -37,7 +41,7 @@ export function useLanceData() {
     if (!silent) setLoading(true);
     setError(null);
     try {
-      const [houses, members, covens, fns, biz, bizOwners, inv, invLog, profs] = await Promise.all([
+      const [houses, members, covens, fns, biz, bizOwners, inv, invLog, profs, evts, charInv] = await Promise.all([
         supabase.from('houses').select('*').order('sort_order'),
         supabase.from('members').select('*').order('is_noble', { ascending: false }).order('name'),
         supabase.from('covens').select('*'),
@@ -46,7 +50,9 @@ export function useLanceData() {
         supabase.from('business_owners').select('*'),
         supabase.from('inventory').select('*'),
         supabase.from('inventory_log').select('*').order('ts', { ascending: false }).limit(50),
-        supabase.from('profiles').select('*').order('email')
+        supabase.from('profiles').select('*').order('email'),
+        supabase.from('events').select('*').order('sort_order'),
+        supabase.from('character_inventory').select('*')
       ]);
 
       const businesses: Business[] = (biz.data ?? []).map(b => ({
@@ -63,9 +69,25 @@ export function useLanceData() {
         functions: (fns.data ?? []),
         businesses,
         inventory: (inv.data ?? []),
-        inventoryLog: (invLog.data ?? [])
+        inventoryLog: (invLog.data ?? []),
+        events: (evts.data ?? []) as LanceEvent[],
+        characterInventory: (charInv.data ?? []) as CharInventoryItem[]
       });
       setProfiles((profs.data ?? []) as Profile[]);
+
+
+      // Auto-clear attending_event flags the day after each event
+      const today = new Date(); today.setHours(0, 0, 0, 0);
+      for (const ev of (evts.data ?? []) as LanceEvent[]) {
+        if (!ev.cleared) {
+          const dayAfter = new Date(ev.date);
+          dayAfter.setDate(dayAfter.getDate() + 1);
+          if (today >= dayAfter) {
+            await supabase.from('members').update({ attending_event: false }).eq('attending_event', true);
+            await supabase.from('events').update({ cleared: true }).eq('id', ev.id);
+          }
+        }
+      }
 
       // lance_settings may not exist yet on existing installs — degrade gracefully
       try {
@@ -190,6 +212,32 @@ export function useLanceData() {
     await reload(true);
   }, [reload]);
 
+  // ---- Events ----
+  const upsertEvent = useCallback(async (ev: Partial<LanceEvent> & { name: string; date: string }) => {
+    const { error: err } = await supabase.from('events').upsert({ ...ev, cleared: ev.cleared ?? false });
+    if (err) throw new Error(err.message);
+    await reload(true);
+  }, [reload]);
+
+  const deleteEvent = useCallback(async (id: string) => {
+    const { error: err } = await supabase.from('events').delete().eq('id', id);
+    if (err) throw new Error(err.message);
+    await reload(true);
+  }, [reload]);
+
+  // ---- Character Inventory ----
+  const upsertCharInventory = useCallback(async (item: Omit<CharInventoryItem, 'id'> & { id?: string }) => {
+    const { error: err } = await supabase.from('character_inventory').upsert(item);
+    if (err) throw new Error(err.message);
+    await reload(true);
+  }, [reload]);
+
+  const deleteCharInventory = useCallback(async (id: string) => {
+    const { error: err } = await supabase.from('character_inventory').delete().eq('id', id);
+    if (err) throw new Error(err.message);
+    await reload(true);
+  }, [reload]);
+
   // ---- Lance Settings ----
   const upsertSettings = useCallback(async (updates: Partial<Omit<LanceSettings, 'id'>>) => {
     const { error: err } = await supabase.from('lance_settings').upsert({ id: 'default', ...updates });
@@ -249,6 +297,10 @@ export function useLanceData() {
     upsertProfile,
     upsertSettings,
     resetInventoryQty,
-    clearInventoryLog
+    clearInventoryLog,
+    upsertEvent,
+    deleteEvent,
+    upsertCharInventory,
+    deleteCharInventory
   };
 }

@@ -1,5 +1,23 @@
 export type MemberStatus = 'active' | 'inactive' | 'KIA';
 
+export interface LanceEvent {
+  id: string;
+  name: string;
+  date: string; // ISO date
+  sort_order: number;
+  cleared: boolean;
+}
+
+export interface CharInventoryItem {
+  id: string;
+  member_id: string;
+  item: string;
+  qty: number;
+  category: string | null;
+  notes: string | null;
+  include_in_lance: boolean;
+}
+
 export interface LanceSettings {
   id: string;
   name: string;
@@ -57,6 +75,7 @@ export interface Member {
   coven: string | null;
   notes: string | null;
   claimed_by: string | null;
+  attending_event: boolean;
 }
 
 export interface Business {
@@ -93,6 +112,8 @@ export interface LanceData {
   businesses: Business[];
   inventory: InventoryItem[];
   inventoryLog: InventoryLogEntry[];
+  events: LanceEvent[];
+  characterInventory: CharInventoryItem[];
 }
 
 /** Empire LARP catalogue reference data — used for inventory dropdowns. */

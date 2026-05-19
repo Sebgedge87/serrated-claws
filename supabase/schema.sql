@@ -92,6 +92,7 @@ create table public.members (
   coven text references public.covens(id) on delete set null,
   notes text,
   claimed_by uuid references public.profiles(id) on delete set null,
+  attending_event boolean not null default false,
   created_at timestamptz not null default now(),
   updated_at timestamptz not null default now()
 );
@@ -225,6 +226,39 @@ create policy inv_admin_write on public.inventory for all using (public.is_admin
 create policy inv_log_read on public.inventory_log for select using (auth.role() = 'authenticated');
 create policy inv_log_insert on public.inventory_log for insert with check (auth.role() = 'authenticated');
 create policy inv_log_admin_delete on public.inventory_log for delete using (public.is_admin());
+
+-- ============================================================================
+-- Events (up to 4/year; admin-managed)
+-- ============================================================================
+create table public.events (
+  id uuid primary key default gen_random_uuid(),
+  name text not null,
+  date date not null,
+  sort_order int not null default 0,
+  cleared boolean not null default false
+);
+alter table public.events enable row level security;
+create policy events_read on public.events for select using (auth.role() = 'authenticated');
+create policy events_admin_write on public.events for all using (public.is_admin()) with check (public.is_admin());
+
+-- ============================================================================
+-- Character personal inventory
+-- ============================================================================
+create table public.character_inventory (
+  id uuid primary key default gen_random_uuid(),
+  member_id uuid not null references public.members(id) on delete cascade,
+  item text not null,
+  qty int not null default 1,
+  category text,
+  notes text,
+  include_in_lance boolean not null default false,
+  created_at timestamptz not null default now()
+);
+alter table public.character_inventory enable row level security;
+create policy char_inv_read on public.character_inventory for select using (auth.role() = 'authenticated');
+create policy char_inv_admin_write on public.character_inventory for all using (public.is_admin()) with check (public.is_admin());
+create policy char_inv_self_write on public.character_inventory for all
+  using (public.owns_member(member_id)) with check (public.owns_member(member_id));
 
 -- Lance-level settings (single row, id='default')
 create table public.lance_settings (

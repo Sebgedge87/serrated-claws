@@ -46,16 +46,37 @@ export function Layout() {
   ];
 
   function exportCsv() {
-    const rows = [['House', 'Name', 'Player', 'Rank', 'Function', 'Military Role', 'Noble', 'Status', 'HP', 'MP', 'Resource', 'Coin/Event', 'Coven', 'Notes']];
+    const q = (v: unknown) => `"${String(v ?? '').replace(/"/g, '""')}"`;
+    const lines: string[] = [];
+
+    // Members
+    lines.push(['House', 'Name', 'Player', 'Rank', 'Function', 'Military Role', 'Noble', 'Status', 'Attending', 'HP', 'MP', 'Resource', 'Coin/Event', 'Coven', 'Notes'].map(q).join(','));
     lance.data.members.forEach(m => {
       const house = lance.data.houses.find(h => h.id === m.house_id)?.name ?? 'Unassigned';
-      rows.push([house, m.name, m.player_name ?? '', m.rank ?? '', m.function ?? '', m.military_function ?? '', m.is_noble ? 'Y' : 'N', m.status, m.hp?.toString() ?? '', m.mp?.toString() ?? '', m.resource ?? '', m.coin_per_event ?? '', m.coven ?? '', m.notes ?? '']);
+      lines.push([house, m.name, m.player_name ?? '', m.rank ?? '', m.function ?? '', m.military_function ?? '', m.is_noble ? 'Y' : 'N', m.status, m.attending_event ? 'Y' : 'N', m.hp ?? '', m.mp ?? '', m.resource ?? '', m.coin_per_event ?? '', m.coven ?? '', m.notes ?? ''].map(q).join(','));
     });
-    const csv = rows.map(r => r.map(c => `"${(c ?? '').toString().replace(/"/g, '""')}"`).join(',')).join('\n');
-    const blob = new Blob([csv], { type: 'text/csv' });
-    const url = URL.createObjectURL(blob);
+
+    // Blank row + inventory header
+    lines.push('');
+    lines.push(['INVENTORY', 'Current Qty', 'Required Qty', 'Status'].map(q).join(','));
+    lance.data.inventory.forEach(i => {
+      const status = i.required_qty === 0 ? '' : i.current_qty >= i.required_qty ? 'OK' : `Short ${i.required_qty - i.current_qty}`;
+      lines.push([i.item, i.current_qty, i.required_qty, status].map(q).join(','));
+    });
+
+    // Blank row + money summary
+    const inv = Object.fromEntries(lance.data.inventory.map(i => [i.item, i]));
+    const rings = inv['Ring']?.current_qty ?? 0;
+    const crowns = inv['Crown']?.current_qty ?? 0;
+    const thrones = inv['Throne']?.current_qty ?? 0;
+    const totalRings = rings + crowns * 20 + thrones * 160;
+    lines.push('');
+    lines.push(['TREASURY', 'Rings', 'Crowns', 'Thrones', 'Total (rings)'].map(q).join(','));
+    lines.push(['' , rings, crowns, thrones, totalRings].map(q).join(','));
+
+    const blob = new Blob([lines.join('\n')], { type: 'text/csv' });
     const a = document.createElement('a');
-    a.href = url;
+    a.href = URL.createObjectURL(blob);
     a.download = `serrated-claws-${new Date().toISOString().split('T')[0]}.csv`;
     a.click();
   }
@@ -174,6 +195,8 @@ export function Layout() {
                 onUpsertSettings={lance.upsertSettings}
                 onResetInventoryQty={lance.resetInventoryQty}
                 onClearInventoryLog={lance.clearInventoryLog}
+                onUpsertEvent={lance.upsertEvent}
+                onDeleteEvent={lance.deleteEvent}
               />
             )}
           </>
