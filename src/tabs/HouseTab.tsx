@@ -52,7 +52,7 @@ export function HouseTab({ house, data, search, isAdmin, onUpsert, onUnassign, o
       {nobles.length > 0 && (
         <>
           <SectionHeader icon={<Icons.Crown size={16} />} title="Nobility" count={nobles.length} />
-          <div className="grid gap-3.5 mb-8">
+          <div className="grid sm:grid-cols-2 gap-3.5 mb-8">
             {nobles.map(m => (
               <MemberCard key={m.id} member={m} isAdmin={isAdmin} onEdit={setEditing} onUnassign={onUnassign} onDelete={onDelete} onViewSheet={onViewMember} />
             ))}
@@ -63,7 +63,7 @@ export function HouseTab({ house, data, search, isAdmin, onUpsert, onUnassign, o
       {regulars.length > 0 && (
         <>
           <SectionHeader icon={<Icons.Users size={16} />} title="Members" count={regulars.length} />
-          <div className="grid gap-3.5">
+          <div className="grid sm:grid-cols-2 gap-3.5">
             {regulars.map(m => (
               <MemberCard key={m.id} member={m} isAdmin={isAdmin} onEdit={setEditing} onUnassign={onUnassign} onDelete={onDelete} onViewSheet={onViewMember} />
             ))}

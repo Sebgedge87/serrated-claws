@@ -100,6 +100,11 @@
     @apply inline-flex items-center gap-2 px-4 py-3.5 text-sm font-medium tracking-wide bg-transparent text-ink-100/50 border-b-2 border-transparent transition-colors hover:text-ink-100 cursor-pointer;
   }
   .tab-btn.active { @apply text-gold-300 border-b-gold-300 font-semibold; }
+
+  /* Full-bleed sections use this to constrain their inner content */
+  .page-wrap {
+    @apply max-w-[1440px] mx-auto w-full px-4 sm:px-8 lg:px-12;
+  }
 }
 
 ::-webkit-scrollbar { width: 10px; height: 10px; }
