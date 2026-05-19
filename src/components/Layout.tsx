@@ -2,6 +2,7 @@ import { useMemo, useState } from 'react';
 import { useAuth } from '@/hooks/useAuth';
 import { useLanceData } from '@/hooks/useLanceData';
 import { Icons } from '@/components/Icons';
+import { useConfirm } from '@/components/ConfirmDialog';
 import { OverviewTab } from '@/tabs/OverviewTab';
 import { HouseTab } from '@/tabs/HouseTab';
 import { UnassignedTab } from '@/tabs/UnassignedTab';
@@ -31,6 +32,7 @@ export function Layout() {
   const [showAddPerson, setShowAddPerson] = useState(false);
   const [selectedMember, setSelectedMember] = useState<Member | null>(null);
   const [showCreateCharacter, setShowCreateCharacter] = useState(false);
+  const { confirm, Dialog: ConfirmDialog } = useConfirm();
 
   const filteredMembers = useMemo(() => {
     const q = search.trim().toLowerCase();
@@ -176,7 +178,7 @@ export function Layout() {
             {activeHouse && (
               <button
                 onClick={async () => {
-                  if (confirm(`Delete ${activeHouse.name}? Members will be unassigned.`)) {
+                  if (await confirm({ title: `Delete ${activeHouse.name}?`, body: 'Members will be unassigned.', danger: true })) {
                     await lance.deleteHouse(activeHouse.id);
                     setActiveTab('overview');
                   }
@@ -297,6 +299,7 @@ export function Layout() {
           />
         </div>
       )}
+      {ConfirmDialog}
     </div>
   );
 }
