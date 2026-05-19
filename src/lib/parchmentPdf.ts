@@ -146,18 +146,19 @@ function tableHeader(doc: jsPDF, cols: Col[], y: number): number {
 
 function tableRow(
   doc: jsPDF,
-  cols: { value: string; x: number; w: number; align?: 'left' | 'right' }[],
+  cols: { value: string; x: number; w: number; align?: 'left' | 'right'; color?: [number, number, number] }[],
   y: number,
   style: 'normal' | 'italic' | 'bold' = 'normal'
 ): number {
   doc.setLineDashPattern([], 0);
   doc.setFont('times', style);
   doc.setFontSize(9);
-  doc.setTextColor(...INK);
   for (const col of cols) {
+    doc.setTextColor(...(col.color ?? INK));
     const text = doc.splitTextToSize(col.value, col.w - 1)[0] ?? '';
     doc.text(text, col.align === 'right' ? col.x + col.w : col.x, y, { align: col.align ?? 'left' });
   }
+  doc.setTextColor(...INK);
   return y + 5.5;
 }
 
@@ -205,14 +206,14 @@ export async function exportRosterPdf(data: LanceData, nextEvent?: LanceEvent) {
   const groups: Record<string, typeof sorted> = {};
   for (const m of sorted) { const k = m.function ?? 'Unassigned'; (groups[k] ??= []).push(m); }
 
-  // No Tithe column per user request
+  // Columns fit within CONTENT_W (174mm): last col right-edge = INNER+174 = PAGE_W-INNER
   const COLS: Col[] = [
-    { label: 'Character', x: INNER,       w: 42 },
-    { label: 'Player',    x: INNER + 43,  w: 35 },
-    { label: 'House',     x: INNER + 79,  w: 35 },
-    { label: 'Rank',      x: INNER + 115, w: 30 },
-    { label: 'Resource',  x: INNER + 146, w: 35 },
-    { label: 'Income',    x: INNER + 168, w: 18, align: 'right' },
+    { label: 'Character', x: INNER,       w: 37 },
+    { label: 'Player',    x: INNER + 38,  w: 32 },
+    { label: 'House',     x: INNER + 71,  w: 32 },
+    { label: 'Rank',      x: INNER + 104, w: 25 },
+    { label: 'Resource',  x: INNER + 130, w: 26 },
+    { label: 'Income',    x: INNER + 157, w: 17, align: 'right' },
   ];
 
   for (const [fn, members] of Object.entries(groups)) {
@@ -302,14 +303,12 @@ export async function exportResourcesPdf(data: LanceData) {
     for (const item of invItems) {
       y = checkPage(doc, y);
       const shortfall = Math.max(0, item.required_qty - item.current_qty);
-      if (shortfall > 0) doc.setTextColor(...SHORTFALL);
       y = tableRow(doc, [
         { value: item.item,                 ...INV_COLS[0] },
         { value: String(item.current_qty),  ...INV_COLS[1] },
         { value: String(item.required_qty), ...INV_COLS[2] },
-        { value: shortfall > 0 ? String(shortfall) : '—', ...INV_COLS[3] },
+        { value: shortfall > 0 ? String(shortfall) : '—', ...INV_COLS[3], color: shortfall > 0 ? SHORTFALL : undefined },
       ], y);
-      doc.setTextColor(...INK);
     }
   }
 

@@ -480,26 +480,31 @@ function RitualModal({ covenId, domain, initial, onClose, onSave }: {
   function pick(entry: typeof RITUALS_CATALOGUE[number]) { setSelected(entry); }
   function clear() { setSelected(null); setSearch(''); }
 
+  // In edit mode we already have the ritual data from `initial`, no re-selection needed
+  const canSave = isEdit ? !busy : (!busy && !!selected);
+  const ritualName = selected?.name ?? initial?.ritual_name ?? '';
+  const ritualRealm = selected?.realm ?? initial?.realm ?? null;
+
   async function save() {
-    if (!selected || busy) return;
+    if (!canSave || !ritualName) return;
     setBusy(true);
     try {
       await onSave({
         coven_id: covenId,
-        ritual_name: selected.name,
+        ritual_name: ritualName,
         magnitude,
-        realm: selected.realm,
+        realm: ritualRealm,
         notes: notes.trim() || null,
         wording: wording.trim() || null,
       });
     } finally { setBusy(false); }
   }
 
-  const realmColor = selected ? REALM_COLORS[selected.realm as RitualRealm]?.text : A;
+  const realmColor = ritualRealm ? REALM_COLORS[ritualRealm as RitualRealm]?.text : A;
 
   return (
     <Modal onClose={onClose} title={isEdit ? 'Edit Ritual' : 'Add Ritual'} icon={<Icons.Sparkles size={20} />} accent="#b56eb5" width="lg"
-      footer={<><button onClick={onClose} className="btn btn-ghost">Cancel</button><button onClick={save} disabled={busy || !selected} className="btn btn-primary">{busy ? 'Saving…' : isEdit ? 'Save' : 'Add Ritual'}</button></>}>
+      footer={<><button onClick={onClose} className="btn btn-ghost">Cancel</button><button onClick={save} disabled={!canSave} className="btn btn-primary">{busy ? 'Saving…' : isEdit ? 'Save' : 'Add Ritual'}</button></>}>
 
       {!isEdit && (
         <Field label="Search">
@@ -513,12 +518,12 @@ function RitualModal({ covenId, domain, initial, onClose, onSave }: {
         </Field>
       )}
 
-      {selected ? (
+      {(isEdit || selected) ? (
         <div className="rounded-lg px-4 py-3 flex items-start justify-between gap-3" style={{ background: `${realmColor}12`, border: `1px solid ${realmColor}30` }}>
           <div>
-            <div className="font-semibold text-ink-100">{selected.name}</div>
-            <div className="text-xs mb-1" style={{ color: realmColor }}>{selected.realm}</div>
-            <div className="text-xs text-ink-100/60 leading-relaxed">{selected.effect}</div>
+            <div className="font-semibold text-ink-100">{ritualName}</div>
+            {ritualRealm && <div className="text-xs mb-1" style={{ color: realmColor }}>{ritualRealm}</div>}
+            {selected?.effect && <div className="text-xs text-ink-100/60 leading-relaxed">{selected.effect}</div>}
           </div>
           {!isEdit && <button onClick={clear} className="text-ink-100/40 hover:text-ink-100 flex-shrink-0 mt-0.5">✕</button>}
         </div>
@@ -551,12 +556,12 @@ function RitualModal({ covenId, domain, initial, onClose, onSave }: {
       <Field label="Casting Wording" optional>
         <textarea rows={4} className="input resize-y font-mono text-sm"
           placeholder="Record the exact wording used when casting this ritual…"
-          value={wording} onChange={e => setWording(e.target.value)} disabled={!selected} />
+          value={wording} onChange={e => setWording(e.target.value)} disabled={!isEdit && !selected} />
       </Field>
 
       <Field label="Notes" optional>
         <input className="input" value={notes} onChange={e => setNotes(e.target.value)}
-          placeholder="Any coven notes…" disabled={!selected} />
+          placeholder="Any coven notes…" disabled={!isEdit && !selected} />
       </Field>
     </Modal>
   );
