@@ -9,6 +9,7 @@ import { CovensTab } from '@/tabs/CovensTab';
 import { FunctionsTab } from '@/tabs/FunctionsTab';
 import { BusinessesTab } from '@/tabs/BusinessesTab';
 import { InventoryTab } from '@/tabs/InventoryTab';
+import { MagicItemsTab } from '@/tabs/MagicItemsTab';
 import { AdminTab } from '@/tabs/AdminTab';
 import { AddHouseModal } from '@/components/modals/AddHouseModal';
 import { AddPersonModal } from '@/components/modals/AddPersonModal';
@@ -42,6 +43,7 @@ export function Layout() {
     { id: 'functions', label: 'Functions', Icon: Icons.Swords },
     { id: 'businesses', label: 'Businesses', Icon: Icons.Briefcase },
     { id: 'inventory', label: 'Inventory', Icon: Icons.Package },
+    { id: 'magic-items', label: 'Magic Items', Icon: Icons.Wand },
     ...(isAdmin ? [{ id: 'admin', label: 'Admin', Icon: Icons.Shield }] : [])
   ];
 
@@ -185,6 +187,16 @@ export function Layout() {
             {activeTab === 'functions' && <FunctionsTab data={lance.data} isAdmin={isAdmin} onUpsert={lance.upsertFunction} onDelete={lance.deleteFunction} />}
             {activeTab === 'businesses' && <BusinessesTab data={lance.data} isAdmin={isAdmin} onUpsert={lance.upsertBusiness} onDelete={lance.deleteBusiness} />}
             {activeTab === 'inventory' && <InventoryTab data={lance.data} isAdmin={isAdmin} onSetInventory={lance.setInventory} onLogInventory={lance.logInventory} />}
+            {activeTab === 'magic-items' && (
+              <MagicItemsTab
+                data={lance.data}
+                isAdmin={isAdmin}
+                onUpsertStock={lance.upsertMagicItemStock}
+                onDeleteStock={lance.deleteMagicItemStock}
+                onUpsertQueue={lance.upsertCraftingQueueItem}
+                onDeleteQueue={lance.deleteCraftingQueueItem}
+              />
+            )}
             {activeTab === 'admin' && isAdmin && (
               <AdminTab
                 data={lance.data}
