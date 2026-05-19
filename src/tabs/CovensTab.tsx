@@ -5,6 +5,7 @@ import type { RitualRealm } from '@/lib/ritualsCatalogue';
 import { Icons } from '@/components/Icons';
 import { Modal, Field } from '@/components/Modal';
 import { useConfirm } from '@/components/ConfirmDialog';
+import { exportRitualsPdf } from '@/lib/parchmentPdf';
 import { initials } from '@/lib/utils';
 
 interface Props {
@@ -235,6 +236,11 @@ function CovenDetail({
           <Icons.Sparkles size={15} style={{ color: A }} />
           <h3 className="text-xs uppercase tracking-widest font-bold m-0" style={{ color: A }}>Rituals · {rituals.length}</h3>
           <div className="flex-1 h-px" style={{ background: `linear-gradient(90deg, ${A}40, transparent)` }} />
+          {rituals.length > 0 && (
+            <button onClick={() => exportRitualsPdf(coven.name, coven.domain, rituals, coven.mana_available)} className="btn btn-ghost btn-sm text-xs" style={{ color: A }}>
+              <Icons.Download size={12} /> Export PDF
+            </button>
+          )}
           {isAdmin && (
             <button onClick={() => setAddingRitual(true)} className="btn btn-ghost btn-sm text-xs" style={{ color: A }}>
               <Icons.Plus size={12} /> Add Ritual
