@@ -86,6 +86,7 @@ export interface Member {
   claimed_by: string | null;
   attending_event: boolean;
   territory: string | null;
+  total_xp: number | null;
 }
 
 export interface Business {

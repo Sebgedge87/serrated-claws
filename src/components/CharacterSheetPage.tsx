@@ -1,10 +1,11 @@
 import { useMemo, useState } from 'react';
 import type { CharInventoryItem, CharacterSkill, CraftingQueueItem, LanceData, Member } from '@/lib/types';
 import { Icons } from '@/components/Icons';
-import { SKILLS_CATALOGUE, SKILL_CATEGORY_COLORS, SKILL_CATEGORY_ORDER } from '@/lib/skillsCatalogue';
+import { SKILLS_CATALOGUE, SKILL_CATEGORY_COLORS, SKILL_CATEGORY_ORDER, skillXpCost } from '@/lib/skillsCatalogue';
 import type { SkillCategory } from '@/lib/skillsCatalogue';
 import { TERRITORIES, RESOURCE_TYPES, resourceSubOptions, buildResourceString, parseResourceString } from '@/lib/personalResource';
 import type { ResourceType } from '@/lib/personalResource';
+import { EMPIRE_CATALOGUE } from '@/lib/catalogue';
 import { cx } from '@/lib/utils';
 
 interface Props {
@@ -69,7 +70,12 @@ export function CharacterSheetPage({
       <div className="mt-6 grid lg:grid-cols-[280px_1fr] gap-6">
         {/* Left column */}
         <div className="space-y-4">
-          <StatsCard member={member} />
+          <StatsCard
+          member={member}
+          skills={data.characterSkills.filter(s => s.member_id === member.id)}
+          canEdit={canEdit}
+          onUpsertMember={onUpsertMember}
+        />
           <PersonalResourceCard
             member={member}
             canEdit={canEdit}
@@ -88,6 +94,7 @@ export function CharacterSheetPage({
           <SkillsSection
             memberId={member.id}
             skills={data.characterSkills.filter(s => s.member_id === member.id)}
+            totalXp={member.total_xp ?? 8}
             canEdit={canEdit}
             onUpsert={onUpsertSkill}
             onDelete={onDeleteSkill}
@@ -259,9 +266,85 @@ function HeroSection({
 
 // ── Stats Card ────────────────────────────────────────────────────────────────
 
-function StatsCard({ member }: { member: Member }) {
+function StatsCard({
+  member,
+  skills,
+  canEdit,
+  onUpsertMember,
+}: {
+  member: Member;
+  skills: CharacterSkill[];
+  canEdit: boolean;
+  onUpsertMember: (m: Partial<Member> & { name: string }) => Promise<void>;
+}) {
+  const [editingXp, setEditingXp] = useState(false);
+  const [xpInput, setXpInput] = useState(String(member.total_xp ?? 8));
+
+  const totalXp = member.total_xp ?? 8;
+  const xpSpent = skills.reduce((sum, sk) => {
+    const cat = SKILLS_CATALOGUE.find(c => c.name === sk.skill_name);
+    return sum + (cat ? skillXpCost(cat, sk.rank) : sk.rank);
+  }, 0);
+  const xpRemaining = totalXp - xpSpent;
+  const xpPct = totalXp > 0 ? Math.min(100, (xpSpent / totalXp) * 100) : 0;
+
+  async function saveXp() {
+    const val = parseInt(xpInput) || 8;
+    await onUpsertMember({ ...member, total_xp: val, name: member.name });
+    setEditingXp(false);
+  }
+
   return (
     <div className="card px-4 py-4">
+      {/* XP / Level block */}
+      <div className="mb-4 pb-4 border-b border-gold-500/10">
+        <div className="flex items-center justify-between mb-1">
+          <span className="text-[10px] uppercase tracking-widest text-ink-100/50 font-semibold">XP</span>
+          {canEdit && !editingXp && (
+            <button onClick={() => { setXpInput(String(totalXp)); setEditingXp(true); }} className="text-[10px] text-ink-100/40 hover:text-gold-300 transition-colors">
+              edit
+            </button>
+          )}
+        </div>
+        {editingXp ? (
+          <div className="flex items-center gap-2 mt-1">
+            <input
+              autoFocus
+              type="number"
+              min={xpSpent}
+              className="input text-sm w-20 py-1"
+              value={xpInput}
+              onChange={e => setXpInput(e.target.value)}
+              onKeyDown={e => { if (e.key === 'Enter') saveXp(); if (e.key === 'Escape') setEditingXp(false); }}
+            />
+            <button onClick={saveXp} className="btn btn-primary btn-sm text-xs py-1">Save</button>
+            <button onClick={() => setEditingXp(false)} className="btn btn-ghost btn-sm text-xs py-1">✕</button>
+          </div>
+        ) : (
+          <>
+            <div className="flex items-end justify-between mb-1.5">
+              <span className="text-2xl font-display font-bold text-gold-300">{totalXp}</span>
+              <span className={cx('text-sm font-mono font-semibold', xpRemaining < 0 ? 'text-red-400' : xpRemaining === 0 ? 'text-ink-100/60' : 'text-sage-500')}>
+                {xpRemaining >= 0 ? `${xpRemaining} remaining` : `${Math.abs(xpRemaining)} over`}
+              </span>
+            </div>
+            <div className="h-1.5 bg-black/30 rounded-full overflow-hidden">
+              <div
+                className="h-full rounded-full transition-all duration-500"
+                style={{
+                  width: `${xpPct}%`,
+                  background: xpRemaining < 0 ? '#e87070' : 'linear-gradient(90deg, #d4b46d, #6ad47e)',
+                }}
+              />
+            </div>
+            <div className="flex justify-between mt-1 text-[10px] text-ink-100/40">
+              <span>{xpSpent} spent</span>
+              <span>{totalXp} total</span>
+            </div>
+          </>
+        )}
+      </div>
+
       <div className="text-[10px] uppercase tracking-widest text-ink-100/50 font-semibold mb-3">Stats</div>
       <div className="space-y-2">
         {member.hp != null && (
@@ -428,24 +511,37 @@ function PersonalResourceCard({
 
 type CategoryFilter = SkillCategory | 'All';
 
+type PendingSkill = { skill_name: string; category: SkillCategory; rank: number; xpCost: number };
+
 function SkillsSection({
   memberId,
   skills,
+  totalXp,
   canEdit,
   onUpsert,
   onDelete,
 }: {
   memberId: string;
   skills: CharacterSkill[];
+  totalXp: number;
   canEdit: boolean;
   onUpsert: (s: Omit<CharacterSkill, 'id'> & { id?: string }) => Promise<void>;
   onDelete: (id: string) => Promise<void>;
 }) {
   const [activeCategory, setActiveCategory] = useState<CategoryFilter>('All');
   const [adding, setAdding] = useState(false);
-  const [search, setSearch] = useState('');
-  const [newSkill, setNewSkill] = useState({ skill_name: '', category: 'Combat' as SkillCategory, rank: 1, notes: '' });
+  const [pending, setPending] = useState<PendingSkill[]>([]);
   const [busy, setBusy] = useState(false);
+
+  const xpSpent = useMemo(() =>
+    skills.reduce((sum, sk) => {
+      const cat = SKILLS_CATALOGUE.find(c => c.name === sk.skill_name);
+      return sum + (cat ? skillXpCost(cat, sk.rank) : sk.rank);
+    }, 0),
+  [skills]);
+
+  const pendingXp = pending.reduce((s, p) => s + p.xpCost, 0);
+  const xpRemaining = totalXp - xpSpent - pendingXp;
 
   const categoriesWithSkills = useMemo(() => {
     const cats = new Set<SkillCategory>();
@@ -454,7 +550,6 @@ function SkillsSection({
   }, [skills]);
 
   const visibleTabs: CategoryFilter[] = ['All', ...SKILL_CATEGORY_ORDER.filter(c => categoriesWithSkills.has(c) || adding)];
-
   const filteredSkills = activeCategory === 'All' ? skills : skills.filter(s => s.category === activeCategory);
 
   const grouped = useMemo(() => {
@@ -472,46 +567,37 @@ function SkillsSection({
     ...[...grouped.keys()].filter(c => !(SKILL_CATEGORY_ORDER as string[]).includes(c)),
   ];
 
-  const suggestions = useMemo(() => {
-    if (!search) return [];
-    const q = search.toLowerCase();
-    return SKILLS_CATALOGUE
-      .filter(s => s.name.toLowerCase().includes(q) && (activeCategory === 'All' || s.category === activeCategory))
-      .slice(0, 6);
-  }, [search, activeCategory]);
-
-  function pickSuggestion(s: typeof SKILLS_CATALOGUE[number]) {
-    setNewSkill({ skill_name: s.name, category: s.category, rank: 1, notes: '' });
-    setSearch(s.name);
+  function queueSkill(skill: PendingSkill) {
+    setPending(p => [...p, skill]);
   }
 
-  async function addSkill() {
-    if (!newSkill.skill_name.trim() || busy) return;
+  async function saveAll() {
+    if (!pending.length || busy) return;
     setBusy(true);
     try {
-      await onUpsert({
-        member_id: memberId,
-        skill_name: newSkill.skill_name.trim(),
-        category: newSkill.category,
-        rank: newSkill.rank,
-        notes: newSkill.notes.trim() || null,
-      });
-      setSearch('');
-      setNewSkill({ skill_name: '', category: 'Combat', rank: 1, notes: '' });
+      for (const p of pending) {
+        await onUpsert({ member_id: memberId, skill_name: p.skill_name, category: p.category, rank: p.rank, notes: null });
+      }
+      setPending([]);
       setAdding(false);
     } finally {
       setBusy(false);
     }
   }
 
+  function cancelAdding() {
+    setPending([]);
+    setAdding(false);
+  }
+
   return (
     <div className="card px-5 py-5">
       <div className="flex items-center justify-between mb-3">
         <span className="text-xs uppercase tracking-widest font-bold text-gold-300">Character Skills</span>
-        {canEdit && (
-          <button onClick={() => setAdding(a => !a)} className="btn btn-ghost btn-sm text-xs">
+        {canEdit && !adding && (
+          <button onClick={() => setAdding(true)} className="btn btn-ghost btn-sm text-xs">
             <Icons.Plus size={13} />
-            Add Skill
+            Add Skills
           </button>
         )}
       </div>
@@ -539,7 +625,7 @@ function SkillsSection({
         })}
       </div>
 
-      {/* Skills list */}
+      {/* Existing skills */}
       {orderedCategories.map(cat => {
         const catSkills = grouped.get(cat)!;
         const colors = SKILL_CATEGORY_COLORS[(cat as SkillCategory)] ?? SKILL_CATEGORY_COLORS.Other;
@@ -549,102 +635,263 @@ function SkillsSection({
               <div className="text-[10px] uppercase tracking-widest text-ink-100/40 mb-1.5">{cat}</div>
             )}
             <div className="flex flex-wrap gap-1.5">
-              {catSkills.map(sk => (
-                <div
-                  key={sk.id}
-                  className="flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-medium border"
-                  style={{ background: colors.bg, color: colors.text, borderColor: colors.border }}
-                >
-                  <span>{sk.skill_name}</span>
-                  {sk.rank > 1 && (
-                    <span className="px-1 py-0.5 rounded text-[10px] font-bold" style={{ background: colors.border, color: colors.text }}>
-                      ×{sk.rank}
-                    </span>
-                  )}
-                  {canEdit && (
-                    <button
-                      onClick={() => onDelete(sk.id)}
-                      className="ml-0.5 opacity-50 hover:opacity-100 transition-opacity"
-                      title="Remove skill"
-                    >
-                      <Icons.X size={11} />
-                    </button>
-                  )}
-                </div>
-              ))}
+              {catSkills.map(sk => {
+                const catalogueEntry = SKILLS_CATALOGUE.find(c => c.name === sk.skill_name);
+                const xpCostTotal = catalogueEntry ? skillXpCost(catalogueEntry, sk.rank) : sk.rank;
+                return (
+                  <div
+                    key={sk.id}
+                    className="flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-medium border"
+                    style={{ background: colors.bg, color: colors.text, borderColor: colors.border }}
+                  >
+                    <span>{sk.skill_name}</span>
+                    {sk.rank > 1 && (
+                      <span className="px-1 py-0.5 rounded text-[10px] font-bold" style={{ background: colors.border, color: colors.text }}>
+                        ×{sk.rank}
+                      </span>
+                    )}
+                    <span className="opacity-60 text-[10px]">{xpCostTotal}xp</span>
+                    {canEdit && (
+                      <button onClick={() => onDelete(sk.id)} className="ml-0.5 opacity-50 hover:opacity-100 transition-opacity" title="Remove skill">
+                        <Icons.X size={11} />
+                      </button>
+                    )}
+                  </div>
+                );
+              })}
             </div>
           </div>
         );
       })}
 
       {skills.length === 0 && !adding && (
-        <p className="text-xs text-ink-100/40 text-center py-4">No skills recorded{canEdit ? ' · click Add Skill to begin' : ''}</p>
+        <p className="text-xs text-ink-100/40 text-center py-4">No skills recorded{canEdit ? ' · click Add Skills to begin' : ''}</p>
       )}
 
+      {/* Add skills panel */}
       {adding && (
-        <div className="bg-ink-800/30 rounded-lg p-3 space-y-2 mt-2 border border-gold-500/10">
-          <div className="relative">
-            <input
-              autoFocus
-              className="input text-sm w-full"
-              placeholder="Skill name (e.g. Magician, Endurance…)"
-              value={search}
-              onChange={e => {
-                setSearch(e.target.value);
-                setNewSkill(n => ({ ...n, skill_name: e.target.value }));
-              }}
-              onKeyDown={e => e.key === 'Enter' && !suggestions.length && addSkill()}
-            />
-            {suggestions.length > 0 && (
-              <div className="absolute top-full left-0 right-0 z-10 mt-1 bg-ink-800 border border-gold-500/20 rounded-lg shadow-lift overflow-hidden">
-                {suggestions.map(s => {
-                  const colors = SKILL_CATEGORY_COLORS[s.category];
-                  return (
-                    <button
-                      key={s.name}
-                      className="w-full text-left px-3 py-2 text-sm hover:bg-gold-500/10 flex items-center justify-between gap-2"
-                      onClick={() => pickSuggestion(s)}
-                    >
-                      <span>{s.name}</span>
-                      <span className="text-[10px] px-1.5 py-0.5 rounded-full border" style={{ background: colors.bg, color: colors.text, borderColor: colors.border }}>
-                        {s.category}
-                      </span>
+        <div className="mt-3 border-t border-gold-500/10 pt-3 space-y-3">
+          {/* Pending queue */}
+          {pending.length > 0 && (
+            <div className="space-y-1">
+              <div className="text-[10px] uppercase tracking-widest text-ink-100/40 mb-1">Queued</div>
+              {pending.map((p, i) => {
+                const colors = SKILL_CATEGORY_COLORS[p.category];
+                return (
+                  <div key={i} className="flex items-center gap-2 px-2.5 py-1.5 rounded-lg text-xs" style={{ background: colors.bg, color: colors.text }}>
+                    <span className="flex-1">{p.skill_name}{p.rank > 1 ? ` ×${p.rank}` : ''}</span>
+                    <span className="opacity-60">{p.xpCost}xp</span>
+                    <button onClick={() => setPending(q => q.filter((_, j) => j !== i))} className="opacity-50 hover:opacity-100">
+                      <Icons.X size={11} />
                     </button>
-                  );
-                })}
-              </div>
-            )}
-          </div>
-
-          <div className="grid grid-cols-2 gap-2">
-            <select
-              className="input text-sm"
-              value={newSkill.category}
-              onChange={e => setNewSkill(n => ({ ...n, category: e.target.value as SkillCategory }))}
-            >
-              {SKILL_CATEGORY_ORDER.map(c => <option key={c} value={c}>{c}</option>)}
-            </select>
-            <div className="flex items-center gap-2">
-              <label className="text-xs text-ink-100/50 whitespace-nowrap">Rank</label>
-              <input
-                type="number"
-                min={1}
-                max={10}
-                className="input text-sm flex-1"
-                value={newSkill.rank}
-                onChange={e => setNewSkill(n => ({ ...n, rank: Math.max(1, parseInt(e.target.value) || 1) }))}
-              />
+                  </div>
+                );
+              })}
             </div>
+          )}
+
+          {/* XP bar */}
+          <div className="text-[11px] flex items-center gap-2">
+            <span className={cx('font-semibold', xpRemaining < 0 ? 'text-red-400' : 'text-gold-300')}>
+              {xpRemaining}xp remaining
+            </span>
+            <span className="text-ink-100/30">({xpSpent + pendingXp} / {totalXp} used)</span>
           </div>
 
-          <div className="flex justify-end gap-2">
-            <button onClick={() => { setAdding(false); setSearch(''); }} className="btn btn-ghost btn-sm text-xs">Cancel</button>
-            <button onClick={addSkill} disabled={!newSkill.skill_name.trim() || busy} className="btn btn-primary btn-sm text-xs">
-              {busy ? 'Adding…' : 'Add Skill'}
+          <SkillPicker
+            activeCategory={activeCategory}
+            xpRemaining={xpRemaining}
+            onQueue={queueSkill}
+          />
+
+          <div className="flex items-center justify-between">
+            <button onClick={cancelAdding} className="btn btn-ghost btn-sm text-xs">Cancel</button>
+            <button
+              onClick={saveAll}
+              disabled={!pending.length || busy || xpRemaining < 0}
+              className="btn btn-primary btn-sm text-xs"
+            >
+              {busy ? 'Saving…' : pending.length > 1 ? `Save ${pending.length} Skills` : 'Save Skill'}
             </button>
           </div>
         </div>
       )}
+    </div>
+  );
+}
+
+// ── Skill Picker ─────────────────────────────────────────────────────────────
+
+function SkillPicker({
+  activeCategory,
+  xpRemaining,
+  onQueue,
+}: {
+  activeCategory: CategoryFilter;
+  xpRemaining: number;
+  onQueue: (skill: PendingSkill) => void;
+}) {
+  const [draft, setDraft] = useState({ skill_name: '', category: 'Combat' as SkillCategory, rank: 1 });
+  const [query, setQuery] = useState('');
+  const [open, setOpen] = useState(false);
+
+  const filtered = useMemo(() => {
+    const base = activeCategory === 'All' ? SKILLS_CATALOGUE : SKILLS_CATALOGUE.filter(s => s.category === activeCategory);
+    if (!query.trim()) return base;
+    const q = query.toLowerCase();
+    return base.filter(s => s.name.toLowerCase().includes(q));
+  }, [activeCategory, query]);
+
+  const selectedEntry = SKILLS_CATALOGUE.find(s => s.name === draft.skill_name);
+  const colors = selectedEntry ? SKILL_CATEGORY_COLORS[selectedEntry.category] : null;
+  const thisCost = selectedEntry ? skillXpCost(selectedEntry, draft.rank) : 0;
+  const canAfford = xpRemaining >= thisCost;
+
+  function pick(s: typeof SKILLS_CATALOGUE[number]) {
+    setDraft(d => ({ ...d, skill_name: s.name, category: s.category, rank: 1 }));
+    setQuery('');
+    setOpen(false);
+  }
+
+  function queue() {
+    if (!draft.skill_name || !canAfford) return;
+    onQueue({ skill_name: draft.skill_name, category: draft.category, rank: draft.rank, xpCost: thisCost });
+    setDraft({ skill_name: '', category: 'Combat', rank: 1 });
+  }
+
+  return (
+    <div className="bg-ink-800/30 rounded-lg p-3 space-y-2 border border-gold-500/10">
+      <div className="grid grid-cols-[1fr_auto] gap-2 items-end">
+        <div>
+          <label className="text-[10px] uppercase tracking-widest text-ink-100/40 block mb-1">Skill</label>
+          <div className="relative">
+            <button
+              type="button"
+              className={cx('input text-sm w-full text-left flex items-center justify-between gap-2', open && 'border-gold-300')}
+              onClick={() => setOpen(o => !o)}
+            >
+              {draft.skill_name
+                ? <span className="flex items-center gap-2">
+                    {colors && <span className="w-2 h-2 rounded-full flex-shrink-0" style={{ background: colors.text }} />}
+                    {draft.skill_name}
+                    {selectedEntry?.maxRank && <span className="text-[10px] text-ink-100/40">max {selectedEntry.maxRank}</span>}
+                  </span>
+                : <span className="text-ink-100/40">— choose skill —</span>
+              }
+              <Icons.ChevronDown size={14} className="text-ink-100/40 flex-shrink-0" />
+            </button>
+
+            {open && (
+              <div className="absolute top-full left-0 right-0 z-20 mt-1 bg-ink-800 border border-gold-500/25 rounded-lg shadow-lift overflow-hidden">
+                <div className="p-2 border-b border-gold-500/15">
+                  <input
+                    autoFocus
+                    className="input text-sm w-full py-1.5"
+                    placeholder="Search skills…"
+                    value={query}
+                    onChange={e => setQuery(e.target.value)}
+                    onKeyDown={e => {
+                      if (e.key === 'Enter' && filtered.length === 1) pick(filtered[0]);
+                      if (e.key === 'Escape') { setOpen(false); setQuery(''); }
+                    }}
+                  />
+                </div>
+                <div className="max-h-56 overflow-y-auto">
+                  {filtered.length === 0 && (
+                    <div className="px-3 py-3 text-xs text-ink-100/40 text-center">No skills match</div>
+                  )}
+                  {activeCategory === 'All'
+                    ? SKILL_CATEGORY_ORDER.map(cat => {
+                        const catSkills = filtered.filter(s => s.category === cat);
+                        if (!catSkills.length) return null;
+                        const catColors = SKILL_CATEGORY_COLORS[cat];
+                        return (
+                          <div key={cat}>
+                            <div className="px-3 py-1 text-[10px] uppercase tracking-widest font-semibold sticky top-0 bg-ink-800" style={{ color: catColors.text }}>
+                              {cat}
+                            </div>
+                            {catSkills.map(s => {
+                              const cost = skillXpCost(s, 1);
+                              const affordable = xpRemaining >= cost;
+                              return (
+                                <button
+                                  key={s.name}
+                                  disabled={!affordable}
+                                  className={cx('w-full text-left px-3 py-2 text-sm flex items-center justify-between gap-2 transition-colors', affordable ? 'hover:bg-gold-500/10' : 'opacity-40 cursor-not-allowed')}
+                                  onClick={() => affordable && pick(s)}
+                                >
+                                  <span className="text-ink-100 flex items-center gap-1.5">
+                                    {s.name}
+                                    {s.isPrereq && <span className="text-[9px] text-amber-400/70">prereq</span>}
+                                  </span>
+                                  <span className="text-[10px] text-ink-100/40 flex-shrink-0">
+                                    {s.xpCost}xp{s.scaling === '*' ? '+' : s.scaling === '**' ? '×' : ''}
+                                  </span>
+                                </button>
+                              );
+                            })}
+                          </div>
+                        );
+                      })
+                    : filtered.map(s => {
+                        const cost = skillXpCost(s, 1);
+                        const affordable = xpRemaining >= cost;
+                        return (
+                          <button
+                            key={s.name}
+                            disabled={!affordable}
+                            className={cx('w-full text-left px-3 py-2 text-sm flex items-center justify-between gap-2 transition-colors', affordable ? 'hover:bg-gold-500/10' : 'opacity-40 cursor-not-allowed')}
+                            onClick={() => affordable && pick(s)}
+                          >
+                            <span className="text-ink-100 flex items-center gap-1.5">
+                              {s.name}
+                              {s.isPrereq && <span className="text-[9px] text-amber-400/70">prereq</span>}
+                              {s.requires?.length && <span className="text-[9px] text-ink-100/30">req: {s.requires.join(', ')}</span>}
+                            </span>
+                            <span className="text-[10px] text-ink-100/40 flex-shrink-0">
+                              {s.xpCost}xp{s.scaling === '*' ? '+' : s.scaling === '**' ? '×' : ''}
+                            </span>
+                          </button>
+                        );
+                      })
+                  }
+                </div>
+              </div>
+            )}
+          </div>
+        </div>
+        <div>
+          <label className="text-[10px] uppercase tracking-widest text-ink-100/40 block mb-1">Rank</label>
+          <input
+            type="number"
+            min={1}
+            max={selectedEntry?.maxRank ?? 10}
+            className="input text-sm w-20"
+            value={draft.rank}
+            onChange={e => setDraft(d => ({ ...d, rank: Math.max(1, parseInt(e.target.value) || 1) }))}
+          />
+        </div>
+      </div>
+      <div className="flex items-center justify-between">
+        {selectedEntry ? (
+          <div className="text-xs flex items-center gap-2">
+            <span className={cx('font-semibold', canAfford ? 'text-gold-300' : 'text-red-400')}>
+              {thisCost}xp {canAfford ? '' : '— not enough XP'}
+            </span>
+            {selectedEntry.scaling === '*' && <span className="text-ink-100/40">+1/rank</span>}
+            {selectedEntry.scaling === '**' && <span className="text-ink-100/40">flat/rank</span>}
+            {selectedEntry.requires?.length && <span className="text-ink-100/40">req: {selectedEntry.requires.join(', ')}</span>}
+          </div>
+        ) : <span />}
+        <button
+          onClick={queue}
+          disabled={!draft.skill_name || !canAfford}
+          className="btn btn-secondary btn-sm text-xs"
+        >
+          <Icons.Plus size={12} />
+          Queue
+        </button>
+      </div>
     </div>
   );
 }
@@ -731,28 +978,39 @@ function CharInventorySectionPage({
       {adding && (
         <div className="bg-ink-800/30 rounded-lg p-3 space-y-2 mb-2 border border-gold-500/10">
           <div className="grid grid-cols-[1fr_5rem] gap-2">
-            <input
-              autoFocus
-              className="input text-sm"
-              placeholder="Item name"
-              value={newItem.item}
-              onChange={e => setNewItem(n => ({ ...n, item: e.target.value }))}
-              onKeyDown={e => e.key === 'Enter' && addItem()}
-            />
-            <input
-              type="number"
-              className="input text-sm"
-              min={1}
-              value={newItem.qty}
-              onChange={e => setNewItem(n => ({ ...n, qty: parseInt(e.target.value) || 1 }))}
-            />
+            <div>
+              <label className="text-[10px] uppercase tracking-widest text-ink-100/40 block mb-1">Item</label>
+              <select
+                autoFocus
+                className="input text-sm"
+                value={newItem.item}
+                onChange={e => {
+                  const name = e.target.value;
+                  const entry = EMPIRE_CATALOGUE.find(c => c.item === name);
+                  setNewItem(n => ({ ...n, item: name, category: entry?.type ?? n.category }));
+                }}
+              >
+                <option value="">— choose item —</option>
+                {Array.from(new Set(EMPIRE_CATALOGUE.map(c => c.type))).map(type => (
+                  <optgroup key={type} label={type}>
+                    {EMPIRE_CATALOGUE.filter(c => c.type === type).map(c => (
+                      <option key={c.item} value={c.item}>{c.item}{c.unit ? ` (${c.unit})` : ''}</option>
+                    ))}
+                  </optgroup>
+                ))}
+              </select>
+            </div>
+            <div>
+              <label className="text-[10px] uppercase tracking-widest text-ink-100/40 block mb-1">Qty</label>
+              <input
+                type="number"
+                className="input text-sm"
+                min={1}
+                value={newItem.qty}
+                onChange={e => setNewItem(n => ({ ...n, qty: parseInt(e.target.value) || 1 }))}
+              />
+            </div>
           </div>
-          <input
-            className="input text-sm w-full"
-            placeholder="Category (optional)"
-            value={newItem.category}
-            onChange={e => setNewItem(n => ({ ...n, category: e.target.value }))}
-          />
           <input
             className="input text-sm w-full"
             placeholder="Notes (optional)"
