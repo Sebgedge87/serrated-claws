@@ -5,6 +5,7 @@ import { SKILLS_CATALOGUE, SKILL_CATEGORY_COLORS, SKILL_CATEGORY_ORDER } from '@
 import type { SkillCategory } from '@/lib/skillsCatalogue';
 import { TERRITORIES, RESOURCE_TYPES, resourceSubOptions, buildResourceString, parseResourceString } from '@/lib/personalResource';
 import type { ResourceType } from '@/lib/personalResource';
+import { EMPIRE_CATALOGUE } from '@/lib/catalogue';
 import { cx } from '@/lib/utils';
 
 interface Props {
@@ -443,8 +444,7 @@ function SkillsSection({
 }) {
   const [activeCategory, setActiveCategory] = useState<CategoryFilter>('All');
   const [adding, setAdding] = useState(false);
-  const [search, setSearch] = useState('');
-  const [newSkill, setNewSkill] = useState({ skill_name: '', category: 'Combat' as SkillCategory, rank: 1, notes: '' });
+  const [newSkill, setNewSkill] = useState({ skill_name: '', category: 'Combat' as SkillCategory, rank: 1 });
   const [busy, setBusy] = useState(false);
 
   const categoriesWithSkills = useMemo(() => {
@@ -472,19 +472,6 @@ function SkillsSection({
     ...[...grouped.keys()].filter(c => !(SKILL_CATEGORY_ORDER as string[]).includes(c)),
   ];
 
-  const suggestions = useMemo(() => {
-    if (!search) return [];
-    const q = search.toLowerCase();
-    return SKILLS_CATALOGUE
-      .filter(s => s.name.toLowerCase().includes(q) && (activeCategory === 'All' || s.category === activeCategory))
-      .slice(0, 6);
-  }, [search, activeCategory]);
-
-  function pickSuggestion(s: typeof SKILLS_CATALOGUE[number]) {
-    setNewSkill({ skill_name: s.name, category: s.category, rank: 1, notes: '' });
-    setSearch(s.name);
-  }
-
   async function addSkill() {
     if (!newSkill.skill_name.trim() || busy) return;
     setBusy(true);
@@ -494,10 +481,9 @@ function SkillsSection({
         skill_name: newSkill.skill_name.trim(),
         category: newSkill.category,
         rank: newSkill.rank,
-        notes: newSkill.notes.trim() || null,
+        notes: null,
       });
-      setSearch('');
-      setNewSkill({ skill_name: '', category: 'Combat', rank: 1, notes: '' });
+      setNewSkill({ skill_name: '', category: 'Combat', rank: 1 });
       setAdding(false);
     } finally {
       setBusy(false);
@@ -509,7 +495,7 @@ function SkillsSection({
       <div className="flex items-center justify-between mb-3">
         <span className="text-xs uppercase tracking-widest font-bold text-gold-300">Character Skills</span>
         {canEdit && (
-          <button onClick={() => setAdding(a => !a)} className="btn btn-ghost btn-sm text-xs">
+          <button onClick={() => { setAdding(a => !a); setNewSkill({ skill_name: '', category: activeCategory === 'All' ? 'Combat' : activeCategory, rank: 1 }); }} className="btn btn-ghost btn-sm text-xs">
             <Icons.Plus size={13} />
             Add Skill
           </button>
@@ -583,54 +569,43 @@ function SkillsSection({
 
       {adding && (
         <div className="bg-ink-800/30 rounded-lg p-3 space-y-2 mt-2 border border-gold-500/10">
-          <div className="relative">
-            <input
-              autoFocus
-              className="input text-sm w-full"
-              placeholder="Skill name (e.g. Magician, Endurance…)"
-              value={search}
-              onChange={e => {
-                setSearch(e.target.value);
-                setNewSkill(n => ({ ...n, skill_name: e.target.value }));
-              }}
-              onKeyDown={e => e.key === 'Enter' && !suggestions.length && addSkill()}
-            />
-            {suggestions.length > 0 && (
-              <div className="absolute top-full left-0 right-0 z-10 mt-1 bg-ink-800 border border-gold-500/20 rounded-lg shadow-lift overflow-hidden">
-                {suggestions.map(s => {
-                  const colors = SKILL_CATEGORY_COLORS[s.category];
-                  return (
-                    <button
-                      key={s.name}
-                      className="w-full text-left px-3 py-2 text-sm hover:bg-gold-500/10 flex items-center justify-between gap-2"
-                      onClick={() => pickSuggestion(s)}
-                    >
-                      <span>{s.name}</span>
-                      <span className="text-[10px] px-1.5 py-0.5 rounded-full border" style={{ background: colors.bg, color: colors.text, borderColor: colors.border }}>
-                        {s.category}
-                      </span>
-                    </button>
-                  );
-                })}
-              </div>
-            )}
-          </div>
-
-          <div className="grid grid-cols-2 gap-2">
-            <select
-              className="input text-sm"
-              value={newSkill.category}
-              onChange={e => setNewSkill(n => ({ ...n, category: e.target.value as SkillCategory }))}
-            >
-              {SKILL_CATEGORY_ORDER.map(c => <option key={c} value={c}>{c}</option>)}
-            </select>
-            <div className="flex items-center gap-2">
-              <label className="text-xs text-ink-100/50 whitespace-nowrap">Rank</label>
+          <div className="grid grid-cols-[1fr_auto] gap-2 items-end">
+            <div>
+              <label className="text-[10px] uppercase tracking-widest text-ink-100/40 block mb-1">Skill</label>
+              <select
+                autoFocus
+                className="input text-sm"
+                value={newSkill.skill_name}
+                onChange={e => {
+                  const name = e.target.value;
+                  const found = SKILLS_CATALOGUE.find(s => s.name === name);
+                  setNewSkill(n => ({ ...n, skill_name: name, category: found?.category ?? n.category }));
+                }}
+              >
+                <option value="">— choose skill —</option>
+                {activeCategory === 'All'
+                  ? SKILL_CATEGORY_ORDER.map(cat => {
+                      const catSkills = SKILLS_CATALOGUE.filter(s => s.category === cat);
+                      if (!catSkills.length) return null;
+                      return (
+                        <optgroup key={cat} label={cat}>
+                          {catSkills.map(s => <option key={s.name} value={s.name}>{s.name}{s.maxRank ? ` (max ${s.maxRank})` : ''}</option>)}
+                        </optgroup>
+                      );
+                    })
+                  : SKILLS_CATALOGUE
+                      .filter(s => s.category === activeCategory)
+                      .map(s => <option key={s.name} value={s.name}>{s.name}{s.maxRank ? ` (max ${s.maxRank})` : ''}</option>)
+                }
+              </select>
+            </div>
+            <div>
+              <label className="text-[10px] uppercase tracking-widest text-ink-100/40 block mb-1">Rank</label>
               <input
                 type="number"
                 min={1}
-                max={10}
-                className="input text-sm flex-1"
+                max={newSkill.skill_name ? (SKILLS_CATALOGUE.find(s => s.name === newSkill.skill_name)?.maxRank ?? 10) : 10}
+                className="input text-sm w-20"
                 value={newSkill.rank}
                 onChange={e => setNewSkill(n => ({ ...n, rank: Math.max(1, parseInt(e.target.value) || 1) }))}
               />
@@ -638,7 +613,7 @@ function SkillsSection({
           </div>
 
           <div className="flex justify-end gap-2">
-            <button onClick={() => { setAdding(false); setSearch(''); }} className="btn btn-ghost btn-sm text-xs">Cancel</button>
+            <button onClick={() => setAdding(false)} className="btn btn-ghost btn-sm text-xs">Cancel</button>
             <button onClick={addSkill} disabled={!newSkill.skill_name.trim() || busy} className="btn btn-primary btn-sm text-xs">
               {busy ? 'Adding…' : 'Add Skill'}
             </button>
@@ -731,28 +706,39 @@ function CharInventorySectionPage({
       {adding && (
         <div className="bg-ink-800/30 rounded-lg p-3 space-y-2 mb-2 border border-gold-500/10">
           <div className="grid grid-cols-[1fr_5rem] gap-2">
-            <input
-              autoFocus
-              className="input text-sm"
-              placeholder="Item name"
-              value={newItem.item}
-              onChange={e => setNewItem(n => ({ ...n, item: e.target.value }))}
-              onKeyDown={e => e.key === 'Enter' && addItem()}
-            />
-            <input
-              type="number"
-              className="input text-sm"
-              min={1}
-              value={newItem.qty}
-              onChange={e => setNewItem(n => ({ ...n, qty: parseInt(e.target.value) || 1 }))}
-            />
+            <div>
+              <label className="text-[10px] uppercase tracking-widest text-ink-100/40 block mb-1">Item</label>
+              <select
+                autoFocus
+                className="input text-sm"
+                value={newItem.item}
+                onChange={e => {
+                  const name = e.target.value;
+                  const entry = EMPIRE_CATALOGUE.find(c => c.item === name);
+                  setNewItem(n => ({ ...n, item: name, category: entry?.type ?? n.category }));
+                }}
+              >
+                <option value="">— choose item —</option>
+                {Array.from(new Set(EMPIRE_CATALOGUE.map(c => c.type))).map(type => (
+                  <optgroup key={type} label={type}>
+                    {EMPIRE_CATALOGUE.filter(c => c.type === type).map(c => (
+                      <option key={c.item} value={c.item}>{c.item}{c.unit ? ` (${c.unit})` : ''}</option>
+                    ))}
+                  </optgroup>
+                ))}
+              </select>
+            </div>
+            <div>
+              <label className="text-[10px] uppercase tracking-widest text-ink-100/40 block mb-1">Qty</label>
+              <input
+                type="number"
+                className="input text-sm"
+                min={1}
+                value={newItem.qty}
+                onChange={e => setNewItem(n => ({ ...n, qty: parseInt(e.target.value) || 1 }))}
+              />
+            </div>
           </div>
-          <input
-            className="input text-sm w-full"
-            placeholder="Category (optional)"
-            value={newItem.category}
-            onChange={e => setNewItem(n => ({ ...n, category: e.target.value }))}
-          />
           <input
             className="input text-sm w-full"
             placeholder="Notes (optional)"
