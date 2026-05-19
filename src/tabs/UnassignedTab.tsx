@@ -32,7 +32,7 @@ export function UnassignedTab({ data, isAdmin, onUpsert, onDelete, onUpsertCharI
         </div>
       </div>
 
-      <div className="grid gap-3.5">
+      <div className="grid sm:grid-cols-2 gap-3.5">
         {unassigned.map(m => (
           <MemberCard key={m.id} member={m} isAdmin={isAdmin} onEdit={setEditing} onDelete={onDelete} onViewSheet={onViewMember} />
         ))}

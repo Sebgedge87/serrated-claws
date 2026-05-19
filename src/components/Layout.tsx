@@ -93,12 +93,12 @@ export function Layout() {
   return (
     <div className="min-h-screen">
       {/* Header */}
-      <header className="relative overflow-hidden px-12 py-8 border-b border-gold-500/15 bg-gradient-to-br from-ink-900/95 to-ink-800/95">
+      <header className="relative overflow-hidden border-b border-gold-500/15 bg-gradient-to-br from-ink-900/95 to-ink-800/95">
         <div
           className="absolute -top-10 -right-10 w-72 h-72 opacity-[0.04] pointer-events-none text-gold-300"
           style={{ background: 'radial-gradient(circle, currentColor 1px, transparent 1px)', backgroundSize: '24px 24px' }}
         />
-        <div className="relative flex items-start justify-between">
+        <div className="page-wrap py-8 relative flex items-start justify-between">
           <div className="flex items-center gap-4">
             <div className="w-12 h-12 rounded-xl text-ink-800 grid place-items-center" style={{ background: 'linear-gradient(135deg, #d4b46d 0%, #b8954c 100%)', boxShadow: '0 8px 24px -8px rgba(201,169,97,0.6), 0 1px 0 rgba(255,255,255,0.3) inset' }}>
               <Icons.Swords size={24} />
@@ -142,7 +142,8 @@ export function Layout() {
       </header>
 
       {/* Action bar */}
-      <div className="sticky top-0 z-40 px-12 py-4 flex flex-wrap gap-3 items-center bg-ink-900/40 backdrop-blur-xl border-b border-gold-500/15">
+      <div className="sticky top-0 z-40 bg-ink-900/40 backdrop-blur-xl border-b border-gold-500/15">
+      <div className="page-wrap py-3 flex flex-wrap gap-3 items-center">
         <div className="relative flex-1 min-w-[280px]">
           <Icons.Search size={18} className="absolute left-3.5 top-1/2 -translate-y-1/2 text-ink-100/40 pointer-events-none" />
           <input
@@ -182,20 +183,22 @@ export function Layout() {
           <Icons.Download size={16} />
           Export
         </button>
-      </div>
+      </div></div>
 
       {/* Tabs */}
-      <nav className="px-12 flex gap-0.5 overflow-x-auto bg-ink-950/50 backdrop-blur border-b border-gold-500/15">
+      <nav className="bg-ink-950/50 backdrop-blur border-b border-gold-500/15">
+      <div className="page-wrap flex gap-0.5 overflow-x-auto">
         {tabs.map(t => (
           <button key={t.id} onClick={() => { setActiveTab(t.id); setSelectedMember(null); }} className={cx('tab-btn', activeTab === t.id && 'active')}>
             <t.Icon size={16} />
             {t.label}
           </button>
         ))}
-      </nav>
+      </div></nav>
 
       {/* Content */}
-      <main className="px-12 py-10 animate-fade-in">
+      <main className="py-8 sm:py-10 animate-fade-in">
+      <div className="page-wrap">
         {lance.loading && <div className="text-ink-100/60 text-center py-20">Loading roster…</div>}
         {lance.error && <ErrorBanner error={lance.error} />}
 
@@ -250,7 +253,7 @@ export function Layout() {
             )}
           </>
         )}
-      </main>
+      </div></main>
 
       {showAddHouse && (
         <AddHouseModal
