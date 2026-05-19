@@ -55,6 +55,7 @@ export interface House {
 export interface Coven {
   id: string;
   name: string;
+  domain: string | null;
   leader: string | null;
   description: string | null;
   mana_available: number;

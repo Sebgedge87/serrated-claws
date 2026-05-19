@@ -17,6 +17,7 @@ interface Props {
 }
 
 const A = '#b56eb5';
+const DOMAINS: RitualRealm[] = ['Spring', 'Summer', 'Autumn', 'Winter', 'Day', 'Night'];
 
 
 export function CovensTab({ data, isAdmin, onUpsert, onDelete, onUpsertRitual, onDeleteRitual, onUpdateMana }: Props) {
@@ -65,20 +66,24 @@ export function CovensTab({ data, isAdmin, onUpsert, onDelete, onUpsertRitual, o
           const members = data.members.filter(m => m.coven === c.id);
           const rituals = data.covenRituals.filter(r => r.coven_id === c.id);
           const totalMagnitude = rituals.reduce((s, r) => s + r.magnitude, 0);
+          const dc = c.domain ? REALM_COLORS[c.domain as RitualRealm] : null;
           return (
             <button key={c.id} onClick={() => setSelected(c.id)} className="card card-lift p-5 text-left w-full">
               <div className="flex items-center gap-3 mb-3">
-                <div className="w-10 h-10 rounded-xl grid place-items-center flex-shrink-0" style={{ background: `${A}20`, border: `1px solid ${A}40`, color: A }}>
+                <div className="w-10 h-10 rounded-xl grid place-items-center flex-shrink-0" style={{ background: dc ? `${dc.text}20` : `${A}20`, border: `1px solid ${dc ? dc.text : A}40`, color: dc?.text ?? A }}>
                   <Icons.Sparkles size={18} />
                 </div>
-                <h3 className="font-display font-bold text-lg text-ink-100 leading-tight m-0">{c.name}</h3>
+                <div>
+                  <h3 className="font-display font-bold text-lg text-ink-100 leading-tight m-0">{c.name}</h3>
+                  {c.domain && <span className="text-[11px] font-semibold uppercase tracking-wider" style={{ color: dc?.text ?? A }}>{c.domain}</span>}
+                </div>
               </div>
               {c.leader && <p className="text-xs mb-2 m-0" style={{ color: A }}>Led by {c.leader}</p>}
               {c.description && <p className="text-sm text-ink-100/60 mb-3 m-0" style={{ WebkitLineClamp: 2, display: '-webkit-box', WebkitBoxOrient: 'vertical', overflow: 'hidden' }}>{c.description}</p>}
               <div className="flex items-center justify-between pt-2 border-t border-gold-500/10">
                 <span className="text-xs text-ink-100/50">{members.length} member{members.length !== 1 ? 's' : ''}</span>
-                {rituals.length > 0 && <span className="text-xs" style={{ color: A }}>{rituals.length} ritual{rituals.length !== 1 ? 's' : ''} · {totalMagnitude} mag</span>}
-                <span className="text-xs" style={{ color: A }}>View →</span>
+                {rituals.length > 0 && <span className="text-xs" style={{ color: dc?.text ?? A }}>{rituals.length} ritual{rituals.length !== 1 ? 's' : ''} · {totalMagnitude} mag</span>}
+                <span className="text-xs" style={{ color: dc?.text ?? A }}>View →</span>
               </div>
             </button>
           );
@@ -150,13 +155,22 @@ function CovenDetail({
       </div>
 
       <div className="flex items-center gap-4 mb-6">
-        <div className="w-14 h-14 rounded-xl grid place-items-center" style={{ background: `${A}20`, border: `1px solid ${A}40`, color: A }}>
-          <Icons.Sparkles size={26} />
-        </div>
-        <div>
-          <h2 className="font-display font-bold text-3xl text-ink-100 m-0">{coven.name}</h2>
-          {coven.leader && <p className="text-sm m-0 mt-0.5" style={{ color: A }}>Led by {coven.leader}</p>}
-        </div>
+        {(() => {
+          const dc = coven.domain ? REALM_COLORS[coven.domain as RitualRealm] : null;
+          const c = dc?.text ?? A;
+          return (
+            <>
+              <div className="w-14 h-14 rounded-xl grid place-items-center" style={{ background: `${c}20`, border: `1px solid ${c}40`, color: c }}>
+                <Icons.Sparkles size={26} />
+              </div>
+              <div>
+                <h2 className="font-display font-bold text-3xl text-ink-100 m-0">{coven.name}</h2>
+                {coven.domain && <span className="text-xs font-semibold uppercase tracking-widest" style={{ color: c }}>{coven.domain}</span>}
+                {coven.leader && <p className="text-sm m-0 mt-0.5" style={{ color: A }}>Led by {coven.leader}</p>}
+              </div>
+            </>
+          );
+        })()}
       </div>
 
       {coven.description && (
@@ -277,6 +291,7 @@ function CovenDetail({
       {addingRitual && (
         <RitualModal
           covenId={coven.id}
+          domain={coven.domain as RitualRealm | null}
           onClose={() => setAddingRitual(false)}
           onSave={async r => { await onUpsertRitual(r); setAddingRitual(false); }}
         />
@@ -346,24 +361,55 @@ function CovenModal({ initial, onClose, onSave }: { initial: Partial<Coven>; onC
   const [form, setForm] = useState(initial);
   const [busy, setBusy] = useState(false);
 
+  const isNew = !initial.id;
+  const canSave = !!form.name?.trim() && (!isNew || !!form.domain);
+
   async function save() {
-    if (!form.name?.trim() || busy) return;
+    if (!canSave || busy) return;
     setBusy(true);
     try { await onSave(form); } finally { setBusy(false); }
   }
 
+  const dc = form.domain ? REALM_COLORS[form.domain as RitualRealm] : null;
+
   return (
-    <Modal onClose={onClose} title={initial.id ? 'Edit Coven' : 'New Coven'} icon={<Icons.Sparkles size={20} />} accent="#b56eb5"
-      footer={<><button onClick={onClose} className="btn btn-ghost">Cancel</button><button onClick={save} disabled={busy || !form.name?.trim()} className="btn btn-primary">{busy ? 'Saving…' : initial.id ? 'Save' : 'Create'}</button></>}>
+    <Modal onClose={onClose} title={isNew ? 'New Coven' : 'Edit Coven'} icon={<Icons.Sparkles size={20} />} accent="#b56eb5"
+      footer={<><button onClick={onClose} className="btn btn-ghost">Cancel</button><button onClick={save} disabled={busy || !canSave} className="btn btn-primary">{busy ? 'Saving…' : isNew ? 'Create' : 'Save'}</button></>}>
       <Field label="Name"><input className="input" value={form.name ?? ''} onChange={e => setForm({ ...form, name: e.target.value })} autoFocus /></Field>
+      <Field label={isNew ? 'Domain *' : 'Domain'}>
+        <div className="grid grid-cols-3 gap-2">
+          {DOMAINS.map(d => {
+            const c = REALM_COLORS[d];
+            const active = form.domain === d;
+            return (
+              <button
+                key={d}
+                type="button"
+                onClick={() => setForm(f => ({ ...f, domain: f.domain === d ? null : d }))}
+                className="rounded-lg px-3 py-2 text-sm font-semibold transition-all"
+                style={{
+                  background: active ? `${c.text}25` : 'rgba(255,255,255,0.04)',
+                  border: `1px solid ${active ? c.text : 'rgba(255,255,255,0.08)'}`,
+                  color: active ? c.text : 'rgba(255,255,255,0.5)',
+                }}
+              >
+                {d}
+              </button>
+            );
+          })}
+        </div>
+        {dc && <p className="text-[11px] mt-1.5" style={{ color: dc.text }}>Rituals will be filtered to {form.domain} + Special</p>}
+        {isNew && !form.domain && <p className="text-[11px] mt-1 text-ink-100/40">Select a domain to continue</p>}
+      </Field>
       <Field label="Leader" optional><input className="input" value={form.leader ?? ''} onChange={e => setForm({ ...form, leader: e.target.value || null })} /></Field>
       <Field label="Description" optional><textarea rows={3} className="input resize-y" value={form.description ?? ''} onChange={e => setForm({ ...form, description: e.target.value || null })} /></Field>
     </Modal>
   );
 }
 
-function RitualModal({ covenId, onClose, onSave }: {
+function RitualModal({ covenId, domain, onClose, onSave }: {
   covenId: string;
+  domain: RitualRealm | null;
   onClose: () => void;
   onSave: (r: Omit<CovenRitual, 'id'>) => Promise<void>;
 }) {
@@ -373,14 +419,19 @@ function RitualModal({ covenId, onClose, onSave }: {
   const [notes, setNotes] = useState('');
   const [busy, setBusy] = useState(false);
 
+  const allowed = useMemo(() =>
+    RITUALS_CATALOGUE.filter(r => !domain || r.realm === domain || r.realm === 'Special'),
+    [domain]
+  );
+
   const filtered = useMemo(() => {
     const q = search.trim().toLowerCase();
     if (!q) return [];
-    return RITUALS_CATALOGUE.filter(r =>
+    return allowed.filter(r =>
       r.name.toLowerCase().includes(q) ||
       r.realm.toLowerCase().includes(q)
     ).slice(0, 12);
-  }, [search]);
+  }, [search, allowed]);
 
   function pick(entry: typeof RITUALS_CATALOGUE[number]) {
     setSelected(entry);
@@ -416,12 +467,17 @@ function RitualModal({ covenId, onClose, onSave }: {
     <Modal onClose={onClose} title="Add Ritual" icon={<Icons.Sparkles size={20} />} accent="#b56eb5"
       footer={<><button onClick={onClose} className="btn btn-ghost">Cancel</button><button onClick={save} disabled={busy || !selected} className="btn btn-primary">{busy ? 'Adding…' : 'Add Ritual'}</button></>}>
 
+      {domain && (
+        <div className="text-[11px] mb-3 px-1" style={{ color: REALM_COLORS[domain]?.text ?? A }}>
+          Showing {domain} + Special rituals ({allowed.length} available)
+        </div>
+      )}
       <Field label="Search Ritual">
         <div className="relative">
           <input
             className="input pr-8"
             autoFocus
-            placeholder="Type ritual name or realm…"
+            placeholder="Type ritual name…"
             value={search}
             onChange={e => { setSearch(e.target.value); if (selected) setSelected(null); }}
           />
