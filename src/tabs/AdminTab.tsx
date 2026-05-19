@@ -1,5 +1,6 @@
 import { useState } from 'react';
 import type { LanceData, LanceEvent, LanceSettings, Profile, UserRole } from '@/lib/types';
+import { useConfirm } from '@/components/ConfirmDialog';
 import { Icons } from '@/components/Icons';
 import { initials } from '@/lib/utils';
 import { parseCoinToRings } from '@/lib/utils';
@@ -198,6 +199,7 @@ function EventModal({ initial, onClose, onSave, onDelete }: { initial: Partial<L
   const [date, setDate] = useState(initial.date ? initial.date.slice(0, 10) : '');
   const [order, setOrder] = useState(initial.sort_order ?? 0);
   const [busy, setBusy] = useState(false);
+  const { confirm, Dialog: ConfirmDialog } = useConfirm();
 
   async function save() {
     if (!name.trim() || !date || busy) return;
@@ -206,6 +208,7 @@ function EventModal({ initial, onClose, onSave, onDelete }: { initial: Partial<L
   }
 
   return (
+    <>
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm" onClick={onClose}>
       <div className="card p-6 w-full max-w-sm space-y-4" onClick={e => e.stopPropagation()}>
         <h3 className="font-display font-bold text-lg text-gold-300">{initial.id ? 'Edit Event' : 'New Event'}</h3>
@@ -223,7 +226,7 @@ function EventModal({ initial, onClose, onSave, onDelete }: { initial: Partial<L
         </div>
         <div className="flex justify-between pt-2">
           {onDelete ? (
-            <button onClick={async () => { if (confirm('Delete this event?')) await onDelete(); }} className="btn btn-danger btn-sm">Delete</button>
+            <button onClick={async () => { if (await confirm({ title: 'Delete this event?', danger: true })) await onDelete(); }} className="btn btn-danger btn-sm">Delete</button>
           ) : <div />}
           <div className="flex gap-2">
             <button onClick={onClose} className="btn btn-ghost">Cancel</button>
@@ -232,6 +235,8 @@ function EventModal({ initial, onClose, onSave, onDelete }: { initial: Partial<L
         </div>
       </div>
     </div>
+    {ConfirmDialog}
+    </>
   );
 }
 

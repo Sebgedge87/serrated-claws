@@ -4,6 +4,7 @@ import { RITUALS_CATALOGUE, REALM_COLORS } from '@/lib/ritualsCatalogue';
 import type { RitualRealm } from '@/lib/ritualsCatalogue';
 import { Icons } from '@/components/Icons';
 import { Modal, Field } from '@/components/Modal';
+import { useConfirm } from '@/components/ConfirmDialog';
 import { initials } from '@/lib/utils';
 
 interface Props {
@@ -23,22 +24,32 @@ const DOMAINS: RitualRealm[] = ['Spring', 'Summer', 'Autumn', 'Winter', 'Day', '
 export function CovensTab({ data, isAdmin, onUpsert, onDelete, onUpsertRitual, onDeleteRitual, onUpdateMana }: Props) {
   const [selected, setSelected] = useState<string | null>(null);
   const [editing, setEditing] = useState<Partial<Coven> | null>(null);
+  const { confirm, Dialog: ConfirmDialog } = useConfirm();
 
   const coven = selected ? data.covens.find(c => c.id === selected) : null;
 
   if (coven) {
     return (
-      <CovenDetail
-        coven={coven}
-        data={data}
-        isAdmin={isAdmin}
-        onBack={() => setSelected(null)}
-        onUpsert={onUpsert}
-        onDelete={async () => { if (confirm(`Delete ${coven.name}?`)) { await onDelete(coven.id); setSelected(null); } }}
-        onUpsertRitual={onUpsertRitual}
-        onDeleteRitual={onDeleteRitual}
-        onUpdateMana={onUpdateMana}
-      />
+      <>
+        <CovenDetail
+          coven={coven}
+          data={data}
+          isAdmin={isAdmin}
+          onBack={() => setSelected(null)}
+          onUpsert={onUpsert}
+          onDelete={async () => {
+            if (await confirm({ title: `Delete ${coven.name}?`, body: 'This will remove the coven and all its rituals.', danger: true })) {
+              await onDelete(coven.id);
+              setSelected(null);
+            }
+          }}
+          onUpsertRitual={onUpsertRitual}
+          onDeleteRitual={onDeleteRitual}
+          onUpdateMana={onUpdateMana}
+          confirm={confirm}
+        />
+        {ConfirmDialog}
+      </>
     );
   }
 
@@ -104,7 +115,7 @@ export function CovensTab({ data, isAdmin, onUpsert, onDelete, onUpsertRitual, o
           }}
         />
       )}
-
+      {ConfirmDialog}
     </div>
   );
 }
@@ -112,7 +123,7 @@ export function CovensTab({ data, isAdmin, onUpsert, onDelete, onUpsertRitual, o
 // ── Coven Detail ──────────────────────────────────────────────────────────────
 
 function CovenDetail({
-  coven, data, isAdmin, onBack, onUpsert, onDelete, onUpsertRitual, onDeleteRitual, onUpdateMana
+  coven, data, isAdmin, onBack, onUpsert, onDelete, onUpsertRitual, onDeleteRitual, onUpdateMana, confirm
 }: {
   coven: Coven;
   data: LanceData;
@@ -123,6 +134,7 @@ function CovenDetail({
   onUpsertRitual: (r: Omit<CovenRitual, 'id'> & { id?: string }) => Promise<void>;
   onDeleteRitual: (id: string) => Promise<void>;
   onUpdateMana: (covenId: string, mana: number) => Promise<void>;
+  confirm: (opts: { title: string; body?: string; danger?: boolean; confirmLabel?: string }) => Promise<boolean>;
 }) {
   const [addingRitual, setAddingRitual] = useState(false);
   const [editingCoven, setEditingCoven] = useState(false);
@@ -247,7 +259,7 @@ function CovenDetail({
                 </div>
               </div>
               {isAdmin && (
-                <button onClick={() => { if (confirm(`Remove ${r.ritual_name}?`)) onDeleteRitual(r.id); }} className="btn btn-ghost btn-sm text-red-400/60 hover:text-red-400 flex-shrink-0">
+                <button onClick={async () => { if (await confirm({ title: `Remove ${r.ritual_name}?`, danger: true, confirmLabel: 'Remove' })) onDeleteRitual(r.id); }} className="btn btn-ghost btn-sm text-red-400/60 hover:text-red-400 flex-shrink-0">
                   <Icons.Trash size={13} />
                 </button>
               )}

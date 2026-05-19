@@ -1,6 +1,7 @@
 import type { Member } from '@/lib/types';
 import { Icons } from '@/components/Icons';
 import { StatField } from '@/components/StatField';
+import { useConfirm } from '@/components/ConfirmDialog';
 import { initials, cx } from '@/lib/utils';
 
 interface Props {
@@ -15,10 +16,11 @@ interface Props {
 
 export function MemberCard({ member, isAdmin, canEditSelf, onEdit, onUnassign, onDelete, onViewSheet }: Props) {
   const accent = member.is_noble ? '#d4b46d' : member.status === 'active' ? '#6dd47e' : member.status === 'KIA' ? '#ff7a7a' : '#999';
-
   const canEdit = isAdmin || canEditSelf;
+  const { confirm, Dialog: ConfirmDialog } = useConfirm();
 
   return (
+    <>
     <div className="card card-lift overflow-hidden relative">
       <div className="h-[3px]" style={{ background: `linear-gradient(90deg, ${accent}, ${accent}40 60%, transparent)` }} />
       <div className="px-5 py-4 border-b border-gold-500/15 flex flex-wrap items-center justify-between gap-4 bg-gradient-to-b from-white/[0.03] to-transparent">
@@ -76,7 +78,10 @@ export function MemberCard({ member, isAdmin, canEditSelf, onEdit, onUnassign, o
               </button>
             )}
             {isAdmin && onDelete && (
-              <button onClick={() => confirm(`Permanently delete ${member.name}?`) && onDelete(member.id)} className="btn btn-danger btn-sm" title="Delete">
+              <button onClick={async () => {
+                if (await confirm({ title: `Delete ${member.name}?`, body: 'This cannot be undone.', danger: true }))
+                  onDelete(member.id);
+              }} className="btn btn-danger btn-sm" title="Delete">
                 <Icons.Trash size={13} />
               </button>
             )}
@@ -102,5 +107,7 @@ export function MemberCard({ member, isAdmin, canEditSelf, onEdit, onUnassign, o
         )}
       </div>
     </div>
+    {ConfirmDialog}
+    </>
   );
 }

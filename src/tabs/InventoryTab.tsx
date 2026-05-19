@@ -6,6 +6,7 @@ import { Icons } from '@/components/Icons';
 import { TIER_LABELS } from '@/lib/magicItemsCatalogue';
 import type { ItemTier } from '@/lib/magicItemsCatalogue';
 import { StockModal } from '@/components/modals/StockModal';
+import { useConfirm } from '@/components/ConfirmDialog';
 
 const TIER_PILL_COLORS: Record<ItemTier, { bg: string; text: string; border: string }> = {
   apprentice: { bg: 'rgba(212,180,109,0.15)', text: '#d4b46d', border: 'rgba(212,180,109,0.4)' },
@@ -268,6 +269,7 @@ function MagicItemsSection({
 }) {
   const memberMap = useMemo(() => Object.fromEntries(data.members.map(m => [m.id, m.name])), [data.members]);
   const [modal, setModal] = useState<{ open: boolean; initial?: Partial<MagicItemStock> }>({ open: false });
+  const { confirm, Dialog: ConfirmDialog } = useConfirm();
   const items = data.magicItemsStock;
 
   return (
@@ -336,7 +338,7 @@ function MagicItemsSection({
                           </button>
                           <button
                             onClick={async () => {
-                              if (confirm(`Remove "${item.item_name}" from the armoury?`)) await onDeleteStock(item.id);
+                              if (await confirm({ title: `Remove "${item.item_name}" from the armoury?`, danger: true })) await onDeleteStock(item.id);
                             }}
                             className="btn btn-danger btn-sm"
                           >
@@ -361,6 +363,7 @@ function MagicItemsSection({
           onSave={async item => { await onUpsertStock(item); setModal({ open: false }); }}
         />
       )}
+      {ConfirmDialog}
     </div>
   );
 }
