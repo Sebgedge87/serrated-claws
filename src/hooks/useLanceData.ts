@@ -100,10 +100,27 @@ export function useLanceData() {
 
   // ---- Members ----
   const upsertMember = useCallback(async (member: Partial<Member> & { name: string }) => {
+    const oldMember = member.id ? data.members.find(m => m.id === member.id) : null;
+    const oldResource = oldMember?.resource ?? null;
+    const newResource = member.resource ?? null;
+
     const { error: err } = await supabase.from('members').upsert(member);
     if (err) throw new Error(err.message);
+
+    // Sync inventory when resource changes
+    if (oldResource !== newResource) {
+      if (oldResource) {
+        const existing = data.inventory.find(i => i.item === oldResource);
+        await supabase.from('inventory').upsert({ item: oldResource, current_qty: Math.max(0, (existing?.current_qty ?? 0) - 1), required_qty: existing?.required_qty ?? 0 });
+      }
+      if (newResource) {
+        const existing = data.inventory.find(i => i.item === newResource);
+        await supabase.from('inventory').upsert({ item: newResource, current_qty: (existing?.current_qty ?? 0) + 1, required_qty: existing?.required_qty ?? 0 });
+      }
+    }
+
     await reload(true);
-  }, [reload]);
+  }, [data.members, data.inventory, reload]);
 
   /** Soft-remove: unassign from house rather than delete (admin-only delete is also available). */
   const unassignMember = useCallback(async (id: string) => {

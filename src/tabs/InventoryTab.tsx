@@ -103,98 +103,96 @@ export function InventoryTab({ data, isAdmin, onSetInventory, onLogInventory }: 
         </label>
       </div>
 
-      {/* Tables */}
-      {orderedTypes.map(type => {
-        const list = grouped.get(type)!;
-        const TypeIcon = TYPE_ICONS[type];
-        const c = TYPE_COLORS[type];
-        return (
-          <div key={type} className="mb-8">
-            <div className="flex items-center gap-3 mb-3">
-              <div className="w-8 h-8 rounded-lg grid place-items-center border" style={{ color: c, background: `linear-gradient(180deg, ${c}30, ${c}15)`, borderColor: `${c}40` }}>
-                <TypeIcon size={16} />
+      {/* Tables — 2-column grid on large screens */}
+      <div className="grid grid-cols-1 xl:grid-cols-2 gap-6">
+        {orderedTypes.map(type => {
+          const list = grouped.get(type)!;
+          const TypeIcon = TYPE_ICONS[type];
+          const c = TYPE_COLORS[type];
+          return (
+            <div key={type}>
+              <div className="flex items-center gap-3 mb-3">
+                <div className="w-8 h-8 rounded-lg grid place-items-center border" style={{ color: c, background: `linear-gradient(180deg, ${c}30, ${c}15)`, borderColor: `${c}40` }}>
+                  <TypeIcon size={16} />
+                </div>
+                <h3 className="text-sm uppercase tracking-widest font-bold m-0 font-sans" style={{ color: c }}>{type}</h3>
+                <div className="flex-1 h-px" style={{ background: `linear-gradient(90deg, ${c}50, transparent)` }} />
+                <span className="text-xs text-ink-100/50">{list.length}</span>
               </div>
-              <h3 className="text-sm uppercase tracking-widest font-bold m-0 font-sans" style={{ color: c }}>{type}</h3>
-              <div className="flex-1 h-px" style={{ background: `linear-gradient(90deg, ${c}50, transparent)` }} />
-              <span className="text-xs text-ink-100/50">{list.length} items</span>
-            </div>
-            <div className="card overflow-hidden">
-              <table className="w-full">
-                <thead className="bg-gold-500/10">
-                  <tr>
-                    <Th>Item</Th>
-                    <Th>Sub-type</Th>
-                    <Th>Unit</Th>
-                    <Th center>Current</Th>
-                    <Th center>Required</Th>
-                    <Th center>Status</Th>
-                    {isAdmin && <Th center>Actions</Th>}
-                  </tr>
-                </thead>
-                <tbody>
-                  {list.map((item, idx) => {
-                    const stock = invMap[item.item] ?? { item: item.item, current_qty: 0, required_qty: 0 };
-                    const status = stock.required_qty === 0 ? null : stock.current_qty >= stock.required_qty ? 'OK' : `−${stock.required_qty - stock.current_qty}`;
-                    return (
-                      <tr key={item.item} className={idx > 0 ? 'border-t border-gold-500/10' : ''}>
-                        <td className="px-4 py-3 text-sm font-semibold align-top">
-                          {item.item}
-                          {item.notes && <div className="text-[11px] text-ink-100/50 font-normal mt-0.5">{item.notes}</div>}
-                        </td>
-                        <td className="px-4 py-3 text-xs text-ink-100/60">{item.subType ?? '—'}</td>
-                        <td className="px-4 py-3 text-xs text-ink-100/60">{item.unit ?? '—'}</td>
-                        <td className="px-4 py-3 text-center">
-                          {isAdmin ? (
-                            <input
-                              type="number"
-                              defaultValue={stock.current_qty}
-                              onBlur={e => {
-                                const v = parseInt(e.target.value, 10) || 0;
-                                if (v !== stock.current_qty) onSetInventory(item.item, v, stock.required_qty);
-                              }}
-                              className="w-20 px-2 py-1.5 bg-black/40 border border-gold-500/15 rounded text-sm font-bold text-center"
-                            />
-                          ) : (
-                            <span className="font-bold">{stock.current_qty}</span>
-                          )}
-                        </td>
-                        <td className="px-4 py-3 text-center">
-                          {isAdmin ? (
-                            <input
-                              type="number"
-                              defaultValue={stock.required_qty}
-                              onBlur={e => {
-                                const v = parseInt(e.target.value, 10) || 0;
-                                if (v !== stock.required_qty) onSetInventory(item.item, stock.current_qty, v);
-                              }}
-                              className="w-20 px-2 py-1.5 bg-black/40 border border-gold-500/15 rounded text-sm text-ink-100/70 text-center"
-                            />
-                          ) : (
-                            <span className="text-ink-100/70">{stock.required_qty}</span>
-                          )}
-                        </td>
-                        <td className="px-4 py-3 text-center">
-                          {status && (
-                            <span className={status === 'OK' ? 'pill pill-active' : 'pill pill-kia'}>{status === 'OK' ? '✓ OK' : status}</span>
-                          )}
-                        </td>
-                        {isAdmin && (
-                          <td className="px-4 py-3 text-center">
-                            <div className="inline-flex gap-1">
-                              <button onClick={() => onLogInventory(item.item, 1, 'In')} className="px-2.5 py-1 bg-sage-500/15 text-sage-500 border border-sage-500/30 rounded font-bold text-sm">+</button>
-                              <button onClick={() => onLogInventory(item.item, 1, 'Out')} disabled={stock.current_qty <= 0} className="px-2.5 py-1 bg-red-500/15 text-red-300 border border-red-500/30 rounded font-bold text-sm disabled:opacity-30">−</button>
-                            </div>
+              <div className="card overflow-hidden">
+                <table className="w-full">
+                  <thead className="bg-gold-500/10">
+                    <tr>
+                      <Th>Item</Th>
+                      <Th center>Have</Th>
+                      <Th center>Need</Th>
+                      <Th center>Status</Th>
+                      {isAdmin && <Th center>±</Th>}
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {list.map((item, idx) => {
+                      const stock = invMap[item.item] ?? { item: item.item, current_qty: 0, required_qty: 0 };
+                      const status = stock.required_qty === 0 ? null : stock.current_qty >= stock.required_qty ? 'OK' : `−${stock.required_qty - stock.current_qty}`;
+                      return (
+                        <tr key={item.item} className={idx > 0 ? 'border-t border-gold-500/10' : ''}>
+                          <td className="px-3 py-2.5 text-sm font-semibold align-top">
+                            {item.item}
+                            {item.subType && <div className="text-[10px] text-ink-100/40 font-normal">{item.subType}</div>}
                           </td>
-                        )}
-                      </tr>
-                    );
-                  })}
-                </tbody>
-              </table>
+                          <td className="px-3 py-2.5 text-center">
+                            {isAdmin ? (
+                              <input
+                                type="number"
+                                defaultValue={stock.current_qty}
+                                onBlur={e => {
+                                  const v = parseInt(e.target.value, 10) || 0;
+                                  if (v !== stock.current_qty) onSetInventory(item.item, v, stock.required_qty);
+                                }}
+                                className="w-16 px-1.5 py-1 bg-black/40 border border-gold-500/15 rounded text-sm font-bold text-center"
+                              />
+                            ) : (
+                              <span className="font-bold">{stock.current_qty}</span>
+                            )}
+                          </td>
+                          <td className="px-3 py-2.5 text-center">
+                            {isAdmin ? (
+                              <input
+                                type="number"
+                                defaultValue={stock.required_qty}
+                                onBlur={e => {
+                                  const v = parseInt(e.target.value, 10) || 0;
+                                  if (v !== stock.required_qty) onSetInventory(item.item, stock.current_qty, v);
+                                }}
+                                className="w-16 px-1.5 py-1 bg-black/40 border border-gold-500/15 rounded text-sm text-ink-100/70 text-center"
+                              />
+                            ) : (
+                              <span className="text-ink-100/70">{stock.required_qty}</span>
+                            )}
+                          </td>
+                          <td className="px-3 py-2.5 text-center">
+                            {status && (
+                              <span className={status === 'OK' ? 'pill pill-active' : 'pill pill-kia'}>{status === 'OK' ? '✓' : status}</span>
+                            )}
+                          </td>
+                          {isAdmin && (
+                            <td className="px-3 py-2.5 text-center">
+                              <div className="inline-flex gap-1">
+                                <button onClick={() => onLogInventory(item.item, 1, 'In')} className="px-2 py-1 bg-sage-500/15 text-sage-500 border border-sage-500/30 rounded font-bold text-sm">+</button>
+                                <button onClick={() => onLogInventory(item.item, 1, 'Out')} disabled={stock.current_qty <= 0} className="px-2 py-1 bg-red-500/15 text-red-300 border border-red-500/30 rounded font-bold text-sm disabled:opacity-30">−</button>
+                              </div>
+                            </td>
+                          )}
+                        </tr>
+                      );
+                    })}
+                  </tbody>
+                </table>
+              </div>
             </div>
-          </div>
-        );
-      })}
+          );
+        })}
+      </div>
 
       {filtered.length === 0 && <p className="text-center py-16 text-ink-100/50">No items match your filters</p>}
 
