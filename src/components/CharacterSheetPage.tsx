@@ -139,7 +139,8 @@ function HeroSection({
   const [busy, setBusy] = useState(false);
   const [saveError, setSaveError] = useState<string | null>(null);
 
-  const accent = member.is_noble ? '#d4b46d' : member.status === 'active' ? '#6dd47e' : member.status === 'KIA' ? '#ff7a7a' : '#999';
+  const accent = (form.is_noble ?? member.is_noble) ? '#d4b46d' : (form.status ?? member.status) === 'active' ? '#6dd47e' : (form.status ?? member.status) === 'KIA' ? '#ff7a7a' : '#999';
+  const ro = !editing; // read-only shorthand
 
   function startEdit() {
     setForm({ ...member });
@@ -171,134 +172,131 @@ function HeroSection({
     setForm(f => ({ ...f, [key]: value }));
   }
 
-  if (editing) {
-    return (
-      <div className="card overflow-hidden">
-        <div className="h-[3px]" style={{ background: `linear-gradient(90deg, ${accent}, ${accent}40 60%, transparent)` }} />
-        <div className="px-6 py-5">
-          <div className="grid grid-cols-2 gap-4 mb-4">
-            <div>
-              <label className="text-[10px] uppercase tracking-widest text-ink-100/50 font-semibold block mb-1">Character Name</label>
-              <input className="input font-display font-semibold" value={form.name ?? ''} onChange={e => set('name', e.target.value)} />
-            </div>
-            <div>
-              <label className="text-[10px] uppercase tracking-widest text-ink-100/50 font-semibold block mb-1">Player Name</label>
-              <input className="input" value={form.player_name ?? ''} onChange={e => set('player_name', e.target.value || null)} />
-            </div>
-            <div>
-              <label className="text-[10px] uppercase tracking-widest text-ink-100/50 font-semibold block mb-1">PID</label>
-              <input className="input font-mono" value={form.pid ?? ''} onChange={e => set('pid', e.target.value || null)} />
-            </div>
-            <div>
-              <label className="text-[10px] uppercase tracking-widest text-ink-100/50 font-semibold block mb-1">Rank</label>
-              <input className="input" value={form.rank ?? ''} onChange={e => set('rank', e.target.value || null)} />
-            </div>
-            <div>
-              <label className="text-[10px] uppercase tracking-widest text-ink-100/50 font-semibold block mb-1">Claw</label>
+  const inputCls = (extra = '') =>
+    `input ${extra} ${ro ? 'opacity-70 cursor-default pointer-events-none select-text' : ''}`;
+
+  return (
+    <div className="card overflow-hidden">
+      <div className="h-[3px]" style={{ background: `linear-gradient(90deg, ${accent}, ${accent}40 60%, transparent)` }} />
+      <div className="px-6 py-5">
+        <div className="flex items-center justify-between mb-4">
+          <div className="text-xs uppercase tracking-widest text-ink-100/40 font-semibold">Character</div>
+          {canEdit && (
+            editing ? (
+              <div className="flex gap-2">
+                <button onClick={cancelEdit} className="btn btn-ghost btn-sm">Cancel</button>
+                <button onClick={saveEdit} disabled={!form.name?.trim() || busy} className="btn btn-primary btn-sm">
+                  <Icons.Save size={13} />
+                  {busy ? 'Saving…' : 'Save'}
+                </button>
+              </div>
+            ) : (
+              <button onClick={startEdit} className="btn btn-ghost btn-sm">
+                <Icons.Edit size={13} />
+                Edit
+              </button>
+            )
+          )}
+        </div>
+
+        <div className="grid grid-cols-2 gap-4">
+          <div>
+            <label className="text-[10px] uppercase tracking-widest text-ink-100/50 font-semibold block mb-1">Character Name</label>
+            <input className={inputCls('font-display font-semibold')} readOnly={ro} value={ro ? (member.name ?? '') : (form.name ?? '')} onChange={e => set('name', e.target.value)} />
+          </div>
+          <div>
+            <label className="text-[10px] uppercase tracking-widest text-ink-100/50 font-semibold block mb-1">Player Name</label>
+            <input className={inputCls()} readOnly={ro} value={ro ? (member.player_name ?? '') : (form.player_name ?? '')} onChange={e => set('player_name', e.target.value || null)} />
+          </div>
+          <div>
+            <label className="text-[10px] uppercase tracking-widest text-ink-100/50 font-semibold block mb-1">PID</label>
+            <input className={inputCls('font-mono')} readOnly={ro} value={ro ? (member.pid ?? '') : (form.pid ?? '')} onChange={e => set('pid', e.target.value || null)} />
+          </div>
+          <div>
+            <label className="text-[10px] uppercase tracking-widest text-ink-100/50 font-semibold block mb-1">Rank</label>
+            <input className={inputCls()} readOnly={ro} value={ro ? (member.rank ?? '') : (form.rank ?? '')} onChange={e => set('rank', e.target.value || null)} />
+          </div>
+          <div>
+            <label className="text-[10px] uppercase tracking-widest text-ink-100/50 font-semibold block mb-1">Claw</label>
+            {ro ? (
+              <input className={inputCls()} readOnly value={data.functions.find(f => f.id === member.function)?.name ?? ''} />
+            ) : (
               <select className="input" value={form.function ?? ''} onChange={e => set('function', e.target.value || null)}>
                 <option value="">None</option>
                 {data.functions.map(f => <option key={f.id} value={f.id}>{f.name}</option>)}
               </select>
-            </div>
-            <div>
-              <label className="text-[10px] uppercase tracking-widest text-ink-100/50 font-semibold block mb-1">Military Role</label>
-              <input className="input" placeholder="Shield Wall, Battle Mage…" value={form.military_function ?? ''} onChange={e => set('military_function', e.target.value || null)} />
-            </div>
-            <div>
-              <label className="text-[10px] uppercase tracking-widest text-ink-100/50 font-semibold block mb-1">HP</label>
-              <input type="number" min={0} className="input" value={form.hp ?? ''} onChange={e => set('hp', e.target.value !== '' ? Number(e.target.value) : null)} />
-            </div>
-            <div>
-              <label className="text-[10px] uppercase tracking-widest text-ink-100/50 font-semibold block mb-1">MP</label>
-              <input type="number" min={0} className="input" value={form.mp ?? ''} onChange={e => set('mp', e.target.value !== '' ? Number(e.target.value) : null)} />
-            </div>
-            <div>
-              <label className="text-[10px] uppercase tracking-widest text-ink-100/50 font-semibold block mb-1">Coin / Event</label>
-              <input className="input" placeholder="e.g. 18 rings" value={form.coin_per_event ?? ''} onChange={e => set('coin_per_event', e.target.value || null)} />
-            </div>
-            <div>
-              <label className="text-[10px] uppercase tracking-widest text-ink-100/50 font-semibold block mb-1">Coven</label>
+            )}
+          </div>
+          <div>
+            <label className="text-[10px] uppercase tracking-widest text-ink-100/50 font-semibold block mb-1">Military Role</label>
+            <input className={inputCls()} readOnly={ro} placeholder="Shield Wall, Battle Mage…" value={ro ? (member.military_function ?? '') : (form.military_function ?? '')} onChange={e => set('military_function', e.target.value || null)} />
+          </div>
+          <div>
+            <label className="text-[10px] uppercase tracking-widest text-ink-100/50 font-semibold block mb-1">HP</label>
+            <input type={ro ? 'text' : 'number'} min={0} className={inputCls()} readOnly={ro} value={ro ? (member.hp ?? '') : (form.hp ?? '')} onChange={e => set('hp', e.target.value !== '' ? Number(e.target.value) : null)} />
+          </div>
+          <div>
+            <label className="text-[10px] uppercase tracking-widest text-ink-100/50 font-semibold block mb-1">MP</label>
+            <input type={ro ? 'text' : 'number'} min={0} className={inputCls()} readOnly={ro} value={ro ? (member.mp ?? '') : (form.mp ?? '')} onChange={e => set('mp', e.target.value !== '' ? Number(e.target.value) : null)} />
+          </div>
+          <div>
+            <label className="text-[10px] uppercase tracking-widest text-ink-100/50 font-semibold block mb-1">Coin / Event</label>
+            <input className={inputCls()} readOnly={ro} placeholder="e.g. 18 rings" value={ro ? (member.coin_per_event ?? '') : (form.coin_per_event ?? '')} onChange={e => set('coin_per_event', e.target.value || null)} />
+          </div>
+          <div>
+            <label className="text-[10px] uppercase tracking-widest text-ink-100/50 font-semibold block mb-1">Coven</label>
+            {ro ? (
+              <input className={inputCls()} readOnly value={data.covens.find(c => c.id === member.coven)?.name ?? ''} />
+            ) : (
               <select className="input" value={form.coven ?? ''} onChange={e => set('coven', e.target.value || null)}>
                 <option value="">None</option>
                 {data.covens.map(c => <option key={c.id} value={c.id}>{c.name}</option>)}
               </select>
-            </div>
-            {isAdmin && (
-              <>
-                <div>
-                  <label className="text-[10px] uppercase tracking-widest text-ink-100/50 font-semibold block mb-1">House</label>
+            )}
+          </div>
+          {isAdmin && (
+            <>
+              <div>
+                <label className="text-[10px] uppercase tracking-widest text-ink-100/50 font-semibold block mb-1">House</label>
+                {ro ? (
+                  <input className={inputCls()} readOnly value={house?.name ?? 'Unassigned'} />
+                ) : (
                   <select className="input" value={form.house_id ?? ''} onChange={e => set('house_id', e.target.value || null)}>
                     <option value="">Unassigned</option>
                     {data.houses.map(h => <option key={h.id} value={h.id}>{h.name}</option>)}
                   </select>
-                </div>
-                <div>
-                  <label className="text-[10px] uppercase tracking-widest text-ink-100/50 font-semibold block mb-1">Status</label>
+                )}
+              </div>
+              <div>
+                <label className="text-[10px] uppercase tracking-widest text-ink-100/50 font-semibold block mb-1">Status</label>
+                {ro ? (
+                  <input className={inputCls()} readOnly value={member.status ?? ''} />
+                ) : (
                   <select className="input" value={form.status ?? 'active'} onChange={e => set('status', e.target.value as Member['status'])}>
                     <option value="active">Active</option>
                     <option value="inactive">Inactive</option>
                     <option value="KIA">KIA</option>
                   </select>
-                </div>
-              </>
-            )}
-            <div className="flex items-center gap-4 col-span-2">
-              <label className="flex items-center gap-2 cursor-pointer text-sm">
-                <input type="checkbox" checked={!!form.is_noble} onChange={e => set('is_noble', e.target.checked)} className="w-4 h-4 accent-gold-300" />
-                Noble
-              </label>
-              <label className="flex items-center gap-2 cursor-pointer text-sm">
-                <input type="checkbox" checked={!!form.attending_event} onChange={e => set('attending_event', e.target.checked)} className="w-4 h-4 accent-gold-300" />
-                Attending next event
-              </label>
-            </div>
-          </div>
-          {saveError && (
-            <div className="text-red-300 text-sm bg-red-500/10 border border-red-500/30 rounded-lg px-3 py-2 mb-3">
-              {saveError}
-            </div>
+                )}
+              </div>
+            </>
           )}
-          <div className="flex gap-2 justify-end">
-            <button onClick={cancelEdit} className="btn btn-ghost btn-sm">Cancel</button>
-            <button onClick={saveEdit} disabled={!form.name?.trim() || busy} className="btn btn-primary btn-sm">
-              <Icons.Save size={13} />
-              {busy ? 'Saving…' : 'Save'}
-            </button>
+          <div className="flex items-center gap-4 col-span-2">
+            <label className={`flex items-center gap-2 text-sm ${ro ? 'cursor-default' : 'cursor-pointer'}`}>
+              <input type="checkbox" disabled={ro} checked={ro ? !!member.is_noble : !!form.is_noble} onChange={e => set('is_noble', e.target.checked)} className="w-4 h-4 accent-gold-300" />
+              Noble
+            </label>
+            <label className={`flex items-center gap-2 text-sm ${ro ? 'cursor-default' : 'cursor-pointer'}`}>
+              <input type="checkbox" disabled={ro} checked={ro ? !!member.attending_event : !!form.attending_event} onChange={e => set('attending_event', e.target.checked)} className="w-4 h-4 accent-gold-300" />
+              Attending next event
+            </label>
           </div>
         </div>
-      </div>
-    );
-  }
 
-  return (
-    <div className="card overflow-hidden">
-      <div className="h-[3px]" style={{ background: `linear-gradient(90deg, ${accent}, ${accent}40 60%, transparent)` }} />
-      <div className="px-6 py-5 flex flex-wrap items-start justify-between gap-4">
-        <div>
-          <h2 className="text-3xl font-display font-bold m-0 text-gold-300 select-none">
-            {member.name}
-          </h2>
-          <div className="flex flex-wrap items-center gap-2 mt-2">
-            {member.is_noble && (
-              <span className="pill pill-noble">
-                <Icons.Crown size={11} />
-                Noble
-              </span>
-            )}
-            <span className={`pill pill-${member.status.toLowerCase()}`}>{member.status}</span>
-            {house && <span className="text-sm text-ink-100/60">{house.name}</span>}
-            {member.rank && <span className="text-sm font-semibold text-ink-100">{member.rank}</span>}
+        {saveError && (
+          <div className="text-red-300 text-sm bg-red-500/10 border border-red-500/30 rounded-lg px-3 py-2 mt-4">
+            {saveError}
           </div>
-          <div className="flex flex-wrap items-center gap-3 mt-2 text-sm text-ink-100/60">
-            {member.player_name && <span>{member.player_name}</span>}
-            {member.pid && <span className="font-mono text-[12px] opacity-70">PID {member.pid}</span>}
-          </div>
-        </div>
-        {canEdit && (
-          <button onClick={startEdit} className="btn btn-ghost btn-sm">
-            <Icons.Edit size={13} />
-            Edit
-          </button>
         )}
       </div>
     </div>
