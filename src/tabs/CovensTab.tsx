@@ -432,7 +432,7 @@ function RitualModal({ covenId, domain, onClose, onSave }: {
   const [busy, setBusy] = useState(false);
 
   const allowed = useMemo(() =>
-    RITUALS_CATALOGUE.filter(r => !domain || r.realm === domain || r.realm === 'Special'),
+    RITUALS_CATALOGUE.filter(r => !domain || r.realm === domain),
     [domain]
   );
 
