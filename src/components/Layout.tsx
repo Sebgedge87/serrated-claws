@@ -212,12 +212,14 @@ export function Layout() {
         {lance.loading && <div className="text-ink-100/60 text-center py-20">Loading roster…</div>}
         {lance.error && <ErrorBanner error={lance.error} />}
 
-        {!lance.loading && !lance.error && selectedMember && (
+        {!lance.loading && !lance.error && selectedMember && (() => {
+          const liveMember = lance.data.members.find(m => m.id === selectedMember.id) ?? selectedMember;
+          return (
           <CharacterSheetPage
-            member={selectedMember}
+            member={liveMember}
             data={lance.data}
             isAdmin={isAdmin}
-            canEdit={isAdmin || profile?.member_id === selectedMember.id}
+            canEdit={isAdmin || profile?.member_id === liveMember.id}
             wikiUrl={WIKI_URL}
             onBack={() => setSelectedMember(null)}
             onUpsertMember={lance.upsertMember}
@@ -226,7 +228,8 @@ export function Layout() {
             onUpsertCharInventory={lance.upsertCharInventory}
             onDeleteCharInventory={lance.deleteCharInventory}
           />
-        )}
+          );
+        })()}
 
         {!lance.loading && !lance.error && !selectedMember && (
           <>
