@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import type { CharInventoryItem, LanceData, Member } from '@/lib/types';
+import type { CharInventoryItem, CharacterSkill, LanceData, Member } from '@/lib/types';
 import { Icons } from '@/components/Icons';
 import { MemberCard } from '@/components/MemberCard';
 import { AddPersonModal } from '@/components/modals/AddPersonModal';
@@ -11,9 +11,11 @@ interface Props {
   onDelete: (id: string) => Promise<void>;
   onUpsertCharInventory?: (item: Omit<CharInventoryItem, 'id'> & { id?: string }) => Promise<void>;
   onDeleteCharInventory?: (id: string) => Promise<void>;
+  onUpsertSkill?: (skill: Omit<CharacterSkill, 'id'> & { id?: string }) => Promise<void>;
+  onDeleteSkill?: (id: string) => Promise<void>;
 }
 
-export function UnassignedTab({ data, isAdmin, onUpsert, onDelete, onUpsertCharInventory, onDeleteCharInventory }: Props) {
+export function UnassignedTab({ data, isAdmin, onUpsert, onDelete, onUpsertCharInventory, onDeleteCharInventory, onUpsertSkill, onDeleteSkill }: Props) {
   const [editing, setEditing] = useState<Member | null>(null);
   const unassigned = data.members.filter(m => !m.house_id);
 
@@ -47,6 +49,8 @@ export function UnassignedTab({ data, isAdmin, onUpsert, onDelete, onUpsertCharI
           }}
           onUpsertCharInventory={onUpsertCharInventory}
           onDeleteCharInventory={onDeleteCharInventory}
+          onUpsertSkill={onUpsertSkill}
+          onDeleteSkill={onDeleteSkill}
         />
       )}
     </div>

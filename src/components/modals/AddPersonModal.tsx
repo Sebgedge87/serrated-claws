@@ -1,5 +1,7 @@
-import { useState } from 'react';
-import type { CharInventoryItem, Member, LanceData } from '@/lib/types';
+import { useMemo, useState } from 'react';
+import type { CharInventoryItem, CharacterSkill, CraftingQueueItem, Member, LanceData } from '@/lib/types';
+import { SKILLS_CATALOGUE, SKILL_CATEGORY_COLORS, SKILL_CATEGORY_ORDER } from '@/lib/skillsCatalogue';
+import type { SkillCategory } from '@/lib/skillsCatalogue';
 import { Icons } from '@/components/Icons';
 import { Modal, Field } from '@/components/Modal';
 
@@ -10,9 +12,11 @@ interface Props {
   onSave: (member: Partial<Member> & { name: string }) => Promise<void>;
   onUpsertCharInventory?: (item: Omit<CharInventoryItem, 'id'> & { id?: string }) => Promise<void>;
   onDeleteCharInventory?: (id: string) => Promise<void>;
+  onUpsertSkill?: (skill: Omit<CharacterSkill, 'id'> & { id?: string }) => Promise<void>;
+  onDeleteSkill?: (id: string) => Promise<void>;
 }
 
-export function AddPersonModal({ data, initial, onClose, onSave, onUpsertCharInventory, onDeleteCharInventory }: Props) {
+export function AddPersonModal({ data, initial, onClose, onSave, onUpsertCharInventory, onDeleteCharInventory, onUpsertSkill, onDeleteSkill }: Props) {
   const [form, setForm] = useState<Partial<Member>>({
     name: '',
     player_name: null,
@@ -135,6 +139,15 @@ export function AddPersonModal({ data, initial, onClose, onSave, onUpsertCharInv
         </Field>
       </div>
 
+      {initial?.id && onUpsertSkill && onDeleteSkill && (
+        <CharacterSkillsSection
+          memberId={initial.id}
+          skills={data.characterSkills.filter(s => s.member_id === initial.id)}
+          onUpsert={onUpsertSkill}
+          onDelete={onDeleteSkill}
+        />
+      )}
+
       {initial?.id && onUpsertCharInventory && onDeleteCharInventory && (
         <CharInventorySection
           memberId={initial.id}
@@ -143,9 +156,204 @@ export function AddPersonModal({ data, initial, onClose, onSave, onUpsertCharInv
           onDelete={onDeleteCharInventory}
         />
       )}
+
+      {initial?.id && (
+        <CraftingSection
+          memberId={initial.id}
+          queue={data.craftingQueue}
+          members={data.members}
+        />
+      )}
     </Modal>
   );
 }
+
+// ── Character Skills ─────────────────────────────────────────────────────────
+
+function CharacterSkillsSection({
+  memberId,
+  skills,
+  onUpsert,
+  onDelete,
+}: {
+  memberId: string;
+  skills: CharacterSkill[];
+  onUpsert: (skill: Omit<CharacterSkill, 'id'> & { id?: string }) => Promise<void>;
+  onDelete: (id: string) => Promise<void>;
+}) {
+  const [adding, setAdding] = useState(false);
+  const [search, setSearch] = useState('');
+  const [newSkill, setNewSkill] = useState({ skill_name: '', category: 'Combat' as SkillCategory, rank: 1, notes: '' });
+  const [busy, setBusy] = useState(false);
+
+  const suggestions = useMemo(() => {
+    if (!search) return [];
+    const q = search.toLowerCase();
+    return SKILLS_CATALOGUE.filter(s => s.name.toLowerCase().includes(q)).slice(0, 6);
+  }, [search]);
+
+  function pickSuggestion(s: typeof SKILLS_CATALOGUE[number]) {
+    setNewSkill({ skill_name: s.name, category: s.category, rank: 1, notes: '' });
+    setSearch(s.name);
+  }
+
+  async function addSkill() {
+    if (!newSkill.skill_name.trim() || busy) return;
+    setBusy(true);
+    try {
+      await onUpsert({
+        member_id: memberId,
+        skill_name: newSkill.skill_name.trim(),
+        category: newSkill.category,
+        rank: newSkill.rank,
+        notes: newSkill.notes.trim() || null,
+      });
+      setSearch('');
+      setNewSkill({ skill_name: '', category: 'Combat', rank: 1, notes: '' });
+      setAdding(false);
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  const grouped = useMemo(() => {
+    const map = new Map<string, CharacterSkill[]>();
+    for (const s of skills) {
+      const cat = s.category || 'Other';
+      if (!map.has(cat)) map.set(cat, []);
+      map.get(cat)!.push(s);
+    }
+    return map;
+  }, [skills]);
+
+  const orderedCategories = [
+    ...SKILL_CATEGORY_ORDER.filter(c => grouped.has(c)),
+    ...[...grouped.keys()].filter(c => !(SKILL_CATEGORY_ORDER as string[]).includes(c)),
+  ];
+
+  return (
+    <div className="mt-5 pt-5 border-t border-gold-500/15">
+      <div className="flex items-center justify-between mb-3">
+        <span className="text-xs uppercase tracking-widest font-bold text-gold-300">Character Skills</span>
+        <button onClick={() => setAdding(a => !a)} className="btn btn-ghost btn-sm text-xs">
+          <Icons.Plus size={13} />
+          Add Skill
+        </button>
+      </div>
+
+      {orderedCategories.map(cat => {
+        const catSkills = grouped.get(cat)!;
+        const colors = SKILL_CATEGORY_COLORS[(cat as SkillCategory)] ?? SKILL_CATEGORY_COLORS.Other;
+        return (
+          <div key={cat} className="mb-3">
+            <div className="text-[10px] uppercase tracking-widest text-ink-100/40 mb-1.5">{cat}</div>
+            <div className="flex flex-wrap gap-1.5">
+              {catSkills.map(sk => (
+                <div
+                  key={sk.id}
+                  className="flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-medium border"
+                  style={{ background: colors.bg, color: colors.text, borderColor: colors.border }}
+                >
+                  <span>{sk.skill_name}</span>
+                  {sk.rank > 1 && (
+                    <span className="px-1 py-0.5 rounded text-[10px] font-bold" style={{ background: colors.border, color: colors.text }}>
+                      ×{sk.rank}
+                    </span>
+                  )}
+                  <button
+                    onClick={() => onDelete(sk.id)}
+                    className="ml-0.5 opacity-50 hover:opacity-100 transition-opacity"
+                    title="Remove skill"
+                  >
+                    <Icons.X size={11} />
+                  </button>
+                </div>
+              ))}
+            </div>
+          </div>
+        );
+      })}
+
+      {skills.length === 0 && !adding && (
+        <p className="text-xs text-ink-100/40 text-center py-2">No skills recorded · click Add Skill to begin</p>
+      )}
+
+      {adding && (
+        <div className="bg-ink-800/30 rounded-lg p-3 space-y-2 mb-2 border border-gold-500/10 mt-2">
+          <div className="relative">
+            <input
+              autoFocus
+              className="input text-sm w-full"
+              placeholder="Skill name (e.g. Magician, Endurance…)"
+              value={search}
+              onChange={e => {
+                setSearch(e.target.value);
+                setNewSkill(n => ({ ...n, skill_name: e.target.value }));
+              }}
+              onKeyDown={e => e.key === 'Enter' && !suggestions.length && addSkill()}
+            />
+            {suggestions.length > 0 && (
+              <div className="absolute top-full left-0 right-0 z-10 mt-1 bg-ink-800 border border-gold-500/20 rounded-lg shadow-lift overflow-hidden">
+                {suggestions.map(s => {
+                  const colors = SKILL_CATEGORY_COLORS[s.category];
+                  return (
+                    <button
+                      key={s.name}
+                      className="w-full text-left px-3 py-2 text-sm hover:bg-gold-500/10 flex items-center justify-between gap-2"
+                      onClick={() => pickSuggestion(s)}
+                    >
+                      <span>{s.name}</span>
+                      <span className="text-[10px] px-1.5 py-0.5 rounded-full border" style={{ background: colors.bg, color: colors.text, borderColor: colors.border }}>
+                        {s.category}
+                      </span>
+                    </button>
+                  );
+                })}
+              </div>
+            )}
+          </div>
+
+          <div className="grid grid-cols-2 gap-2">
+            <select
+              className="input text-sm"
+              value={newSkill.category}
+              onChange={e => setNewSkill(n => ({ ...n, category: e.target.value as SkillCategory }))}
+            >
+              {SKILL_CATEGORY_ORDER.map(c => <option key={c} value={c}>{c}</option>)}
+            </select>
+            <div className="flex items-center gap-2">
+              <label className="text-xs text-ink-100/50 whitespace-nowrap">Rank</label>
+              <input
+                type="number"
+                min={1}
+                max={10}
+                className="input text-sm flex-1"
+                value={newSkill.rank}
+                onChange={e => setNewSkill(n => ({ ...n, rank: Math.max(1, parseInt(e.target.value) || 1) }))}
+              />
+            </div>
+          </div>
+
+          <input
+            className="input text-sm w-full"
+            placeholder="Notes (optional)"
+            value={newSkill.notes}
+            onChange={e => setNewSkill(n => ({ ...n, notes: e.target.value }))}
+          />
+
+          <div className="flex justify-end gap-2">
+            <button onClick={() => { setAdding(false); setSearch(''); }} className="btn btn-ghost btn-sm text-xs">Cancel</button>
+            <button onClick={addSkill} disabled={!newSkill.skill_name.trim() || busy} className="btn btn-primary btn-sm text-xs">
+              {busy ? 'Adding…' : 'Add Skill'}
+            </button>
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}
+
+// ── Character Inventory ───────────────────────────────────────────────────────
 
 function CharInventorySection({
   memberId,
@@ -272,6 +480,60 @@ function CharInventorySection({
       {items.length === 0 && !adding && (
         <p className="text-xs text-ink-100/40 text-center py-2">No items · click Add Item to begin</p>
       )}
+    </div>
+  );
+}
+
+// ── Crafting ──────────────────────────────────────────────────────────────────
+
+const CRAFTING_STATUS_COLORS: Record<CraftingQueueItem['status'], string> = {
+  'planned':           '#a0a0b8',
+  'materials-sourced': '#6ab0e0',
+  'in-progress':       '#d4b46d',
+  'complete':          '#6ad47e',
+  'cancelled':         '#e87070',
+};
+
+function CraftingSection({
+  memberId,
+  queue,
+  members,
+}: {
+  memberId: string;
+  queue: CraftingQueueItem[];
+  members: { id: string; name: string }[];
+}) {
+  const crafting = queue.filter(q => q.crafter_id === memberId && q.status !== 'complete' && q.status !== 'cancelled');
+  if (crafting.length === 0) return null;
+
+  return (
+    <div className="mt-5 pt-5 border-t border-gold-500/15">
+      <div className="flex items-center gap-2 mb-3">
+        <span className="text-xs uppercase tracking-widest font-bold text-gold-300">Currently Crafting</span>
+        <span className="text-[10px] text-ink-100/40">({crafting.length})</span>
+      </div>
+      <div className="space-y-1.5">
+        {crafting.map(item => {
+          const recipient = members.find(m => m.id === item.recipient_id);
+          const statusColor = CRAFTING_STATUS_COLORS[item.status];
+          return (
+            <div key={item.id} className="flex items-center gap-3 px-3 py-2 bg-ink-800/40 rounded-lg">
+              <div className="flex-1 min-w-0">
+                <span className="text-sm text-ink-100">{item.item_name}</span>
+                <span className="text-xs text-ink-100/50 ml-2 capitalize">{item.tier}</span>
+                {recipient && <span className="text-xs text-ink-100/40 ml-2">→ {recipient.name}</span>}
+                {item.target_event && <span className="text-xs text-ink-100/30 ml-2">by {item.target_event}</span>}
+              </div>
+              <span
+                className="text-[10px] px-2 py-0.5 rounded-full border flex-shrink-0"
+                style={{ color: statusColor, borderColor: `${statusColor}50`, background: `${statusColor}18` }}
+              >
+                {item.status.replace('-', ' ')}
+              </span>
+            </div>
+          );
+        })}
+      </div>
     </div>
   );
 }

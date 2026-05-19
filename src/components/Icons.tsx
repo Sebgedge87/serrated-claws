@@ -101,6 +101,7 @@ export const Icons = {
       <path d="M16.5 3.5a2.121 2.121 0 0 1 3 3L7 19l-4 1 1-4L16.5 3.5z" />
     </>
   ),
+  X: base(<><line x1="18" y1="6" x2="6" y2="18" /><line x1="6" y1="6" x2="18" y2="18" /></>),
   Trash: base(
     <>
       <path d="M3 6h18" />
