@@ -42,7 +42,6 @@ export function CreateCharacterScreen({ userId, onCreated, onClose }: Props) {
           rank: 'Member',
           is_noble: false,
           status: 'active',
-          attending_event: false,
         })
         .select()
         .single();
