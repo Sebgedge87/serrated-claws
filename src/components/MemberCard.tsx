@@ -10,9 +10,10 @@ interface Props {
   onEdit: (m: Member) => void;
   onUnassign?: (id: string) => void;
   onDelete?: (id: string) => void;
+  onViewSheet?: (m: Member) => void;
 }
 
-export function MemberCard({ member, isAdmin, canEditSelf, onEdit, onUnassign, onDelete }: Props) {
+export function MemberCard({ member, isAdmin, canEditSelf, onEdit, onUnassign, onDelete, onViewSheet }: Props) {
   const accent = member.is_noble ? '#d4b46d' : member.status === 'active' ? '#6dd47e' : member.status === 'KIA' ? '#ff7a7a' : '#999';
 
   const canEdit = isAdmin || canEditSelf;
@@ -55,12 +56,20 @@ export function MemberCard({ member, isAdmin, canEditSelf, onEdit, onUnassign, o
             </div>
           </div>
         </div>
-        {canEdit && (
+        {(canEdit || onViewSheet) && (
           <div className="flex gap-1.5 flex-shrink-0">
+            {onViewSheet && (
+              <button onClick={() => onViewSheet(member)} className="btn btn-ghost btn-sm">
+                <Icons.BookOpen size={13} />
+                Character Sheet
+              </button>
+            )}
+            {canEdit && (
             <button onClick={() => onEdit(member)} className="btn btn-secondary btn-sm">
               <Icons.Edit size={13} />
               Edit
             </button>
+            )}
             {isAdmin && onUnassign && member.house_id && (
               <button onClick={() => onUnassign(member.id)} className="btn btn-ghost btn-sm" title="Move to Unassigned">
                 <Icons.Question size={13} />
