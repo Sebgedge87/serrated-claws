@@ -2,127 +2,171 @@ import { useState } from 'react';
 import type { Business, LanceData } from '@/lib/types';
 import { Icons } from '@/components/Icons';
 import { Modal, Field } from '@/components/Modal';
+import { initials } from '@/lib/utils';
 
 interface Props {
   data: LanceData;
   isAdmin: boolean;
   onUpsert: (b: Partial<Business> & { id: string; name: string }) => Promise<void>;
+  onDelete: (id: string) => Promise<void>;
 }
 
-export function BusinessesTab({ data, isAdmin, onUpsert }: Props) {
-  const [editing, setEditing] = useState<Business | null>(null);
+const A = '#7eb0d4';
 
-  return (
-    <div>
-      <div className="flex items-center gap-3.5 mb-6">
-        <div className="w-12 h-12 rounded-xl grid place-items-center border border-sky-500/40 text-sky-500" style={{ background: 'linear-gradient(180deg, rgba(126,176,212,0.3), rgba(126,176,212,0.1))' }}>
-          <Icons.Briefcase size={24} />
-        </div>
-        <div>
-          <h2 className="text-3xl font-display font-bold m-0 bg-gradient-to-b from-gold-50 to-gold-500 text-transparent bg-clip-text">Businesses</h2>
-          <p className="text-sm text-ink-100/60 m-0">Holdings of the lance</p>
-        </div>
-      </div>
+export function BusinessesTab({ data, isAdmin, onUpsert, onDelete }: Props) {
+  const [selected, setSelected] = useState<string | null>(null);
+  const [editing, setEditing] = useState<Partial<Business> | null>(null);
 
-      <div className="grid gap-3.5">
-        {data.businesses.map(biz => {
-          const owners = biz.owners.map(id => data.members.find(m => m.id === id)).filter(Boolean);
-          return (
-            <div key={biz.id} className="card card-lift p-5">
-              <div className="flex justify-between items-start gap-4 mb-3">
-                <div>
-                  <h3 className="text-xl font-display font-bold text-ink-100 m-0">{biz.name}</h3>
-                  <p className="text-xs text-ink-100/60 uppercase tracking-widest mt-0.5">{biz.type}</p>
-                </div>
-                {isAdmin && (
-                  <button onClick={() => setEditing(biz)} className="btn btn-secondary btn-sm">
-                    <Icons.Edit size={13} />
-                    Edit
-                  </button>
-                )}
+  const biz = selected ? data.businesses.find(b => b.id === selected) : null;
+
+  if (biz) {
+    const owners = biz.owners.map(id => data.members.find(m => m.id === id)).filter(Boolean);
+    return (
+      <div className="animate-fade-in">
+        <div className="flex items-center justify-between mb-6">
+          <button onClick={() => setSelected(null)} className="btn btn-ghost btn-sm">← Back to Businesses</button>
+          {isAdmin && (
+            <div className="flex gap-2">
+              <button onClick={() => setEditing(biz)} className="btn btn-secondary btn-sm"><Icons.Edit size={13} /> Edit</button>
+              <button onClick={async () => { if (confirm(`Delete ${biz.name}?`)) { await onDelete(biz.id); setSelected(null); } }} className="btn btn-danger btn-sm">
+                <Icons.Trash size={13} /> Delete
+              </button>
+            </div>
+          )}
+        </div>
+
+        <div className="flex items-center gap-4 mb-6">
+          <div className="w-14 h-14 rounded-xl grid place-items-center" style={{ background: `${A}20`, border: `1px solid ${A}40`, color: A }}>
+            <Icons.Briefcase size={26} />
+          </div>
+          <div>
+            <h2 className="font-display font-bold text-3xl text-ink-100 m-0">{biz.name}</h2>
+            {biz.type && <p className="text-xs uppercase tracking-widest text-ink-100/50 m-0 mt-0.5">{biz.type}</p>}
+          </div>
+        </div>
+
+        <div className="grid grid-cols-[repeat(auto-fit,minmax(280px,1fr))] gap-4 mb-6">
+          {biz.resources && (
+            <div className="card p-5">
+              <div className="text-[10px] uppercase tracking-widest text-ink-100/50 font-semibold mb-2">Resources</div>
+              <p className="text-ink-100/80 m-0">{biz.resources}</p>
+            </div>
+          )}
+          {biz.notes && (
+            <div className="card p-5">
+              <div className="text-[10px] uppercase tracking-widest text-ink-100/50 font-semibold mb-2">Notes</div>
+              <p className="text-ink-100/80 m-0">{biz.notes}</p>
+            </div>
+          )}
+        </div>
+
+        <div className="flex items-center gap-2.5 mb-4">
+          <Icons.Users size={15} style={{ color: A }} />
+          <h3 className="text-xs uppercase tracking-widest font-bold m-0" style={{ color: A }}>Owners · {owners.length}</h3>
+          <div className="flex-1 h-px" style={{ background: `linear-gradient(90deg, ${A}40, transparent)` }} />
+        </div>
+
+        <div className="grid grid-cols-[repeat(auto-fill,minmax(260px,1fr))] gap-3">
+          {owners.map(o => o && (
+            <div key={o.id} className="card card-lift p-4 flex items-center gap-3">
+              <div className="w-10 h-10 rounded-full grid place-items-center font-display font-bold text-sm flex-shrink-0"
+                   style={{ background: `${A}20`, border: `1px solid ${A}40`, color: A }}>
+                {initials(o.name)}
               </div>
-              <div className="grid grid-cols-[repeat(auto-fit,minmax(220px,1fr))] gap-3">
-                <div>
-                  <div className="text-[10px] uppercase tracking-widest text-ink-100/50 font-semibold mb-1">Owners</div>
-                  {owners.length === 0 ? (
-                    <div className="text-sm text-ink-100/40 italic">Unclaimed</div>
-                  ) : (
-                    <div className="flex flex-wrap gap-1.5">
-                      {owners.map(o => o && (
-                        <span key={o.id} className="text-xs bg-black/30 border border-gold-500/20 rounded-md px-2 py-1">{o.name}</span>
-                      ))}
-                    </div>
-                  )}
-                </div>
-                {biz.resources && (
-                  <div>
-                    <div className="text-[10px] uppercase tracking-widest text-ink-100/50 font-semibold mb-1">Resources</div>
-                    <div className="text-sm">{biz.resources}</div>
-                  </div>
-                )}
-                {biz.notes && (
-                  <div>
-                    <div className="text-[10px] uppercase tracking-widest text-ink-100/50 font-semibold mb-1">Notes</div>
-                    <div className="text-sm">{biz.notes}</div>
-                  </div>
-                )}
+              <div className="min-w-0">
+                <div className="font-semibold text-ink-100 truncate">{o.name}</div>
+                <div className="text-xs text-ink-100/50">{data.houses.find(h => h.id === o.house_id)?.name ?? 'Unassigned'}</div>
               </div>
             </div>
-          );
-        })}
+          ))}
+          {owners.length === 0 && <p className="text-ink-100/40 text-sm py-4">Unclaimed — no owners assigned.</p>}
+        </div>
+
+        {editing && <BizModal data={data} initial={editing} onClose={() => setEditing(null)} onSave={async b => { await onUpsert(b); setEditing(null); }} />}
+      </div>
+    );
+  }
+
+  return (
+    <div className="animate-fade-in">
+      <div className="flex items-center justify-between mb-6 flex-wrap gap-3">
+        <div className="flex items-center gap-3.5">
+          <div className="w-12 h-12 rounded-xl grid place-items-center" style={{ background: `${A}20`, border: `1px solid ${A}40`, color: A }}>
+            <Icons.Briefcase size={24} />
+          </div>
+          <div>
+            <h2 className="text-3xl font-display font-bold m-0 bg-gradient-to-b from-gold-50 to-gold-500 text-transparent bg-clip-text">Businesses</h2>
+            <p className="text-sm text-ink-100/60 m-0">{data.businesses.length} holdings of the lance</p>
+          </div>
+        </div>
+        {isAdmin && (
+          <button onClick={() => setEditing({ name: '', owners: [] })} className="btn btn-secondary">
+            <Icons.Plus size={15} /> New Business
+          </button>
+        )}
       </div>
 
-      {editing && (
-        <EditBusinessModal data={data} business={editing} onClose={() => setEditing(null)} onSave={async b => {
-          await onUpsert(b);
-          setEditing(null);
-        }} />
+      <div className="grid grid-cols-[repeat(auto-fill,minmax(280px,1fr))] gap-4">
+        {data.businesses.map(b => {
+          const owners = b.owners.map(id => data.members.find(m => m.id === id)).filter(Boolean);
+          return (
+            <button key={b.id} onClick={() => setSelected(b.id)} className="card card-lift p-5 text-left w-full">
+              <div className="flex items-center gap-3 mb-3">
+                <div className="w-10 h-10 rounded-xl grid place-items-center flex-shrink-0" style={{ background: `${A}20`, border: `1px solid ${A}40`, color: A }}>
+                  <Icons.Briefcase size={18} />
+                </div>
+                <div className="min-w-0">
+                  <h3 className="font-display font-bold text-lg text-ink-100 leading-tight m-0 truncate">{b.name}</h3>
+                  {b.type && <p className="text-[11px] uppercase tracking-widest text-ink-100/50 m-0">{b.type}</p>}
+                </div>
+              </div>
+              {b.resources && <p className="text-sm text-ink-100/60 mb-3 m-0" style={{ WebkitLineClamp: 2, display: '-webkit-box', WebkitBoxOrient: 'vertical', overflow: 'hidden' }}>{b.resources}</p>}
+              <div className="flex items-center justify-between pt-2 border-t border-gold-500/10">
+                <span className="text-xs text-ink-100/50">{owners.length} owner{owners.length !== 1 ? 's' : ''}</span>
+                <span className="text-xs" style={{ color: A }}>View →</span>
+              </div>
+            </button>
+          );
+        })}
+        {data.businesses.length === 0 && (
+          <p className="text-ink-100/40 text-sm py-16 text-center col-span-full">No businesses yet.{isAdmin ? ' Click "New Business" to add one.' : ''}</p>
+        )}
+      </div>
+
+      {editing !== null && (
+        <BizModal
+          data={data}
+          initial={editing}
+          onClose={() => setEditing(null)}
+          onSave={async b => { await onUpsert(b); setEditing(null); }}
+        />
       )}
     </div>
   );
 }
 
-function EditBusinessModal({ data, business, onClose, onSave }: { data: LanceData; business: Business; onClose: () => void; onSave: (b: Partial<Business> & { id: string; name: string }) => Promise<void> }) {
-  const [form, setForm] = useState(business);
+function BizModal({ data, initial, onClose, onSave }: { data: LanceData; initial: Partial<Business>; onClose: () => void; onSave: (b: Partial<Business> & { id: string; name: string }) => Promise<void> }) {
+  const [form, setForm] = useState<Partial<Business> & { owners: string[] }>({ owners: [], ...initial });
   const [busy, setBusy] = useState(false);
 
   function toggleOwner(id: string) {
-    setForm(f => ({
-      ...f,
-      owners: f.owners.includes(id) ? f.owners.filter(o => o !== id) : [...f.owners, id]
-    }));
+    setForm(f => ({ ...f, owners: f.owners.includes(id) ? f.owners.filter(o => o !== id) : [...f.owners, id] }));
   }
 
   async function save() {
-    if (busy) return;
+    if (!form.name?.trim() || busy) return;
     setBusy(true);
-    try { await onSave(form); } finally { setBusy(false); }
+    const id = form.id || form.name.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '') || `biz-${Date.now()}`;
+    try { await onSave({ ...form, id, name: form.name }); } finally { setBusy(false); }
   }
 
   return (
-    <Modal
-      onClose={onClose}
-      title="Edit Business"
-      icon={<Icons.Briefcase size={22} />}
-      footer={
-        <>
-          <button onClick={onClose} className="btn btn-ghost">Cancel</button>
-          <button onClick={save} disabled={busy} className="btn btn-primary">{busy ? 'Saving…' : 'Save changes'}</button>
-        </>
-      }
-    >
-      <Field label="Name">
-        <input className="input" value={form.name} onChange={e => setForm({ ...form, name: e.target.value })} />
-      </Field>
-      <Field label="Type">
-        <input className="input" value={form.type ?? ''} onChange={e => setForm({ ...form, type: e.target.value || null })} />
-      </Field>
-      <Field label="Resources" optional>
-        <textarea rows={2} className="input resize-y" value={form.resources ?? ''} onChange={e => setForm({ ...form, resources: e.target.value || null })} />
-      </Field>
-      <Field label="Notes" optional>
-        <textarea rows={3} className="input resize-y" value={form.notes ?? ''} onChange={e => setForm({ ...form, notes: e.target.value || null })} />
-      </Field>
+    <Modal onClose={onClose} title={initial.id ? 'Edit Business' : 'New Business'} icon={<Icons.Briefcase size={20} />} accent="#7eb0d4" width="lg"
+      footer={<><button onClick={onClose} className="btn btn-ghost">Cancel</button><button onClick={save} disabled={busy || !form.name?.trim()} className="btn btn-primary">{busy ? 'Saving…' : initial.id ? 'Save' : 'Create'}</button></>}>
+      <Field label="Name"><input className="input" value={form.name ?? ''} onChange={e => setForm({ ...form, name: e.target.value })} autoFocus /></Field>
+      <Field label="Type" optional><input className="input" value={form.type ?? ''} onChange={e => setForm({ ...form, type: e.target.value || null })} /></Field>
+      <Field label="Resources" optional><textarea rows={2} className="input resize-y" value={form.resources ?? ''} onChange={e => setForm({ ...form, resources: e.target.value || null })} /></Field>
+      <Field label="Notes" optional><textarea rows={2} className="input resize-y" value={form.notes ?? ''} onChange={e => setForm({ ...form, notes: e.target.value || null })} /></Field>
       <Field label="Owners">
         <div className="max-h-48 overflow-auto bg-black/30 border border-gold-500/15 rounded-lg p-2 space-y-1">
           {data.members.map(m => (

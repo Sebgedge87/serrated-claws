@@ -2,6 +2,8 @@ import { useCallback, useEffect, useState } from 'react';
 import { supabase } from '@/lib/supabase';
 import type {
   Business,
+  Coven,
+  Func,
   House,
   LanceData,
   Member
@@ -116,6 +118,39 @@ export function useLanceData() {
     await reload();
   }, [reload]);
 
+  // ---- Covens ----
+  const upsertCoven = useCallback(async (coven: Partial<Coven> & { id: string; name: string }) => {
+    const { error: err } = await supabase.from('covens').upsert(coven);
+    if (err) throw new Error(err.message);
+    await reload();
+  }, [reload]);
+
+  const deleteCoven = useCallback(async (id: string) => {
+    const { error: err } = await supabase.from('covens').delete().eq('id', id);
+    if (err) throw new Error(err.message);
+    await reload();
+  }, [reload]);
+
+  // ---- Functions ----
+  const upsertFunction = useCallback(async (fn: Partial<Func> & { id: string; name: string }) => {
+    const { error: err } = await supabase.from('functions').upsert(fn);
+    if (err) throw new Error(err.message);
+    await reload();
+  }, [reload]);
+
+  const deleteFunction = useCallback(async (id: string) => {
+    const { error: err } = await supabase.from('functions').delete().eq('id', id);
+    if (err) throw new Error(err.message);
+    await reload();
+  }, [reload]);
+
+  // ---- Business delete ----
+  const deleteBusiness = useCallback(async (id: string) => {
+    const { error: err } = await supabase.from('businesses').delete().eq('id', id);
+    if (err) throw new Error(err.message);
+    await reload();
+  }, [reload]);
+
   // ---- Inventory ----
   const setInventory = useCallback(async (item: string, current_qty: number, required_qty: number) => {
     const { error: err } = await supabase.from('inventory').upsert({ item, current_qty, required_qty });
@@ -143,6 +178,11 @@ export function useLanceData() {
     unassignMember,
     deleteMember,
     upsertBusiness,
+    deleteBusiness,
+    upsertCoven,
+    deleteCoven,
+    upsertFunction,
+    deleteFunction,
     setInventory,
     logInventory
   };

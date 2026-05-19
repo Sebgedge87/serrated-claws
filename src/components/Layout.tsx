@@ -158,9 +158,9 @@ export function Layout() {
             {activeTab === 'overview' && <OverviewTab data={lance.data} filteredMembers={filteredMembers} />}
             {activeHouse && <HouseTab house={activeHouse} data={lance.data} search={search} isAdmin={isAdmin} onUpsert={lance.upsertMember} onUnassign={lance.unassignMember} onDelete={lance.deleteMember} />}
             {activeTab === 'unassigned' && <UnassignedTab data={lance.data} isAdmin={isAdmin} onUpsert={lance.upsertMember} onDelete={lance.deleteMember} />}
-            {activeTab === 'covens' && <CovensTab data={lance.data} />}
-            {activeTab === 'functions' && <FunctionsTab data={lance.data} />}
-            {activeTab === 'businesses' && <BusinessesTab data={lance.data} isAdmin={isAdmin} onUpsert={lance.upsertBusiness} />}
+            {activeTab === 'covens' && <CovensTab data={lance.data} isAdmin={isAdmin} onUpsert={lance.upsertCoven} onDelete={lance.deleteCoven} />}
+            {activeTab === 'functions' && <FunctionsTab data={lance.data} isAdmin={isAdmin} onUpsert={lance.upsertFunction} onDelete={lance.deleteFunction} />}
+            {activeTab === 'businesses' && <BusinessesTab data={lance.data} isAdmin={isAdmin} onUpsert={lance.upsertBusiness} onDelete={lance.deleteBusiness} />}
             {activeTab === 'inventory' && <InventoryTab data={lance.data} isAdmin={isAdmin} onSetInventory={lance.setInventory} onLogInventory={lance.logInventory} />}
           </>
         )}

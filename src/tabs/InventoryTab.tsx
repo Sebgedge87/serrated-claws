@@ -65,7 +65,7 @@ export function InventoryTab({ data, isAdmin, onSetInventory, onLogInventory }: 
             </p>
           </div>
         </div>
-        <MoneyHelper inventory={invMap} />
+        <MoneyHelper inventory={invMap} onSetInventory={isAdmin ? onSetInventory : undefined} />
       </div>
 
       {/* Filters */}
@@ -241,10 +241,11 @@ function Th({ children, center, right }: { children: React.ReactNode; center?: b
   );
 }
 
-function MoneyHelper({ inventory }: { inventory: Record<string, { current_qty: number; required_qty: number }> }) {
+function MoneyHelper({ inventory, onSetInventory }: { inventory: Record<string, { current_qty: number; required_qty: number }>; onSetInventory?: (item: string, current: number, required: number) => Promise<void> }) {
   const [rings, setRings] = useState(0);
   const [crowns, setCrowns] = useState(0);
   const [thrones, setThrones] = useState(0);
+  const [saving, setSaving] = useState(false);
 
   const totalRings = rings + crowns * 20 + thrones * 160;
 
@@ -254,10 +255,24 @@ function MoneyHelper({ inventory }: { inventory: Record<string, { current_qty: n
     setThrones(inventory['Throne']?.current_qty ?? 0);
   }
 
+  async function saveStockpile() {
+    if (!onSetInventory || saving) return;
+    setSaving(true);
+    try {
+      await Promise.all([
+        onSetInventory('Ring', rings, inventory['Ring']?.required_qty ?? 0),
+        onSetInventory('Crown', crowns, inventory['Crown']?.required_qty ?? 0),
+        onSetInventory('Throne', thrones, inventory['Throne']?.required_qty ?? 0),
+      ]);
+    } finally {
+      setSaving(false);
+    }
+  }
+
   return (
     <div className="card p-4 min-w-[320px]" style={{ borderLeft: '3px solid #e0c66d' }}>
       <div className="flex justify-between items-center mb-3">
-        <h4 className="text-xs font-bold text-gold-300 uppercase tracking-widest m-0">💰 Money Helper</h4>
+        <h4 className="text-xs font-bold text-gold-300 uppercase tracking-widest m-0">Money Helper</h4>
         <button onClick={useStockpile} className="btn btn-ghost btn-sm">Use Stockpile</button>
       </div>
       <div className="grid grid-cols-3 gap-2 mb-3">
@@ -270,6 +285,11 @@ function MoneyHelper({ inventory }: { inventory: Record<string, { current_qty: n
         <div className="flex justify-between"><span className="text-ink-100/60">= Crowns:</span><span className="font-bold">{(totalRings / 20).toFixed(2)}</span></div>
         <div className="flex justify-between"><span className="text-ink-100/60">= Thrones:</span><span className="font-bold">{(totalRings / 160).toFixed(3)}</span></div>
       </div>
+      {onSetInventory && (
+        <button onClick={saveStockpile} disabled={saving} className="btn btn-primary w-full mt-3 btn-sm">
+          {saving ? 'Saving…' : 'Save to Stockpile'}
+        </button>
+      )}
       <div className="text-[10px] text-ink-100/50 mt-2 text-center">20 rings = 1 crown · 8 crowns = 1 throne</div>
     </div>
   );
