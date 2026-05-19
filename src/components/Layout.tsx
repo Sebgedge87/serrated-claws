@@ -117,6 +117,18 @@ export function Layout() {
                 <div className="text-[10px] uppercase tracking-widest text-gold-300/80">{profile.role}</div>
               </div>
             )}
+            {profile?.member_id && (
+              <button
+                onClick={() => {
+                  const me = lance.data.members.find(m => m.id === profile.member_id);
+                  if (me) setSelectedMember(me);
+                }}
+                className="btn btn-ghost btn-sm"
+              >
+                <Icons.Users size={14} />
+                My Character
+              </button>
+            )}
             <a href={WIKI_URL} target="_blank" rel="noopener noreferrer" className="btn btn-ghost btn-sm">
               <Icons.BookOpen size={14} />
               Empire Wiki
