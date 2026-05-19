@@ -21,3 +21,7 @@ do $$ begin
 end $$;
 
 notify pgrst, 'reload schema';
+
+-- Add wording field for coven leader casting notes
+alter table public.coven_rituals add column if not exists wording text;
+notify pgrst, 'reload schema';
