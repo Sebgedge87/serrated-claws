@@ -1,4 +1,5 @@
 import { useMemo, useState } from 'react';
+import { useConfirm } from '@/components/ConfirmDialog';
 import type { CraftingQueueItem, LanceData, MagicItemStock } from '@/lib/types';
 import {
   MAGIC_ITEMS_CATALOGUE,
@@ -197,6 +198,7 @@ function StockView({
   onDelete: (id: string) => Promise<void>;
 }) {
   const memberMap = useMemo(() => Object.fromEntries(data.members.map(m => [m.id, m.name])), [data.members]);
+  const { confirm, Dialog: ConfirmDialog } = useConfirm();
 
   return (
     <div>
@@ -266,7 +268,7 @@ function StockView({
                           </button>
                           <button
                             onClick={async () => {
-                              if (confirm(`Remove "${item.item_name}" from the armoury?`)) await onDelete(item.id);
+                              if (await confirm({ title: `Remove "${item.item_name}" from the armoury?`, danger: true })) await onDelete(item.id);
                             }}
                             className="btn btn-danger btn-sm"
                           >
@@ -282,6 +284,7 @@ function StockView({
           </table>
         </div>
       )}
+      {ConfirmDialog}
     </div>
   );
 }
@@ -436,8 +439,10 @@ function QueueCard({
   const tier = item.tier as ItemTier;
   const tc = TIER_PILL_COLORS[tier] ?? TIER_PILL_COLORS.apprentice;
   const sc = QUEUE_STATUS_COLORS[item.status];
+  const { confirm, Dialog: ConfirmDialog } = useConfirm();
 
   return (
+    <>
     <div className="card card-lift p-4">
       <div className="flex items-start justify-between gap-3 flex-wrap">
         <div className="flex items-center gap-2.5 flex-wrap">
@@ -454,7 +459,7 @@ function QueueCard({
             <button onClick={() => onEdit(item)} className="btn btn-ghost btn-sm"><Icons.Edit size={13} /></button>
             <button
               onClick={async () => {
-                if (confirm(`Remove "${item.item_name}" from the queue?`)) await onDelete(item.id);
+                if (await confirm({ title: `Remove "${item.item_name}" from the queue?`, danger: true })) await onDelete(item.id);
               }}
               className="btn btn-danger btn-sm"
             >
@@ -503,6 +508,8 @@ function QueueCard({
 
       {item.notes && <p className="text-xs text-ink-100/50 mt-2 italic">{item.notes}</p>}
     </div>
+    {ConfirmDialog}
+    </>
   );
 }
 

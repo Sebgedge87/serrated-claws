@@ -2,6 +2,7 @@ import { useState } from 'react';
 import type { Func, LanceData } from '@/lib/types';
 import { Icons } from '@/components/Icons';
 import { Modal, Field } from '@/components/Modal';
+import { useConfirm } from '@/components/ConfirmDialog';
 import { initials } from '@/lib/utils';
 
 interface Props {
@@ -16,6 +17,7 @@ const A = '#d4b46d';
 export function FunctionsTab({ data, isAdmin, onUpsert, onDelete }: Props) {
   const [selected, setSelected] = useState<string | null>(null);
   const [editing, setEditing] = useState<Partial<Func> | null>(null);
+  const { confirm, Dialog: ConfirmDialog } = useConfirm();
 
   const fn = selected ? data.functions.find(f => f.id === selected) : null;
 
@@ -28,7 +30,7 @@ export function FunctionsTab({ data, isAdmin, onUpsert, onDelete }: Props) {
           {isAdmin && (
             <div className="flex gap-2">
               <button onClick={() => setEditing(fn)} className="btn btn-secondary btn-sm"><Icons.Edit size={13} /> Edit</button>
-              <button onClick={async () => { if (confirm(`Delete ${fn.name}?`)) { await onDelete(fn.id); setSelected(null); } }} className="btn btn-danger btn-sm">
+              <button onClick={async () => { if (await confirm({ title: `Delete ${fn.name}?`, danger: true })) { await onDelete(fn.id); setSelected(null); } }} className="btn btn-danger btn-sm">
                 <Icons.Trash size={13} /> Delete
               </button>
             </div>
@@ -138,6 +140,7 @@ export function FunctionsTab({ data, isAdmin, onUpsert, onDelete }: Props) {
           }}
         />
       )}
+      {ConfirmDialog}
     </div>
   );
 }

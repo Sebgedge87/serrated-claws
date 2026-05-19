@@ -2,6 +2,7 @@ import { useState } from 'react';
 import type { Business, LanceData } from '@/lib/types';
 import { Icons } from '@/components/Icons';
 import { Modal, Field } from '@/components/Modal';
+import { useConfirm } from '@/components/ConfirmDialog';
 import { initials } from '@/lib/utils';
 
 interface Props {
@@ -16,6 +17,7 @@ const A = '#7eb0d4';
 export function BusinessesTab({ data, isAdmin, onUpsert, onDelete }: Props) {
   const [selected, setSelected] = useState<string | null>(null);
   const [editing, setEditing] = useState<Partial<Business> | null>(null);
+  const { confirm, Dialog: ConfirmDialog } = useConfirm();
 
   const biz = selected ? data.businesses.find(b => b.id === selected) : null;
 
@@ -28,7 +30,7 @@ export function BusinessesTab({ data, isAdmin, onUpsert, onDelete }: Props) {
           {isAdmin && (
             <div className="flex gap-2">
               <button onClick={() => setEditing(biz)} className="btn btn-secondary btn-sm"><Icons.Edit size={13} /> Edit</button>
-              <button onClick={async () => { if (confirm(`Delete ${biz.name}?`)) { await onDelete(biz.id); setSelected(null); } }} className="btn btn-danger btn-sm">
+              <button onClick={async () => { if (await confirm({ title: `Delete ${biz.name}?`, danger: true })) { await onDelete(biz.id); setSelected(null); } }} className="btn btn-danger btn-sm">
                 <Icons.Trash size={13} /> Delete
               </button>
             </div>
@@ -141,6 +143,7 @@ export function BusinessesTab({ data, isAdmin, onUpsert, onDelete }: Props) {
           onSave={async b => { await onUpsert(b); setEditing(null); }}
         />
       )}
+      {ConfirmDialog}
     </div>
   );
 }
