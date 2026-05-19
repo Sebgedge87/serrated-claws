@@ -1,6 +1,6 @@
 import type { Member, LanceData } from '@/lib/types';
 import { Icons } from '@/components/Icons';
-import { parseCoinToRings } from '@/lib/utils';
+import { memberIncomeRings } from '@/lib/utils';
 
 interface Props {
   data: LanceData;
@@ -56,9 +56,9 @@ export function OverviewTab({ data, filteredMembers, isAdmin, onNavigate }: Prop
   const totalInRings = rings + crowns * 20 + thrones * 160;
 
   // Income per event + tithe
-  const grossIncomeRings = data.members.reduce((sum, m) => sum + parseCoinToRings(m.coin_per_event), 0);
+  const grossIncomeRings = data.members.reduce((sum, m) => sum + memberIncomeRings(m.rings_per_event, m.crowns_per_event, m.thrones_per_event), 0);
   const tithingRings = Math.round(grossIncomeRings * 0.1);
-  const incomeMembers = data.members.filter(m => m.coin_per_event).length;
+  const incomeMembers = data.members.filter(m => memberIncomeRings(m.rings_per_event, m.crowns_per_event, m.thrones_per_event) > 0).length;
 
   const stats = [
     { label: 'Total Members', value: totalMembers, Icon: Icons.Users, color: '#d4b46d', tab: null as string | null },

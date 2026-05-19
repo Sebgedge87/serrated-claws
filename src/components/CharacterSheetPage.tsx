@@ -6,7 +6,7 @@ import type { SkillCategory } from '@/lib/skillsCatalogue';
 import { TERRITORIES, RESOURCE_TYPES, resourceSubOptions, buildResourceString, parseResourceString } from '@/lib/personalResource';
 import type { ResourceType } from '@/lib/personalResource';
 import { EMPIRE_CATALOGUE } from '@/lib/catalogue';
-import { cx } from '@/lib/utils';
+import { cx, formatIncome } from '@/lib/utils';
 
 interface Props {
   member: Member;
@@ -239,9 +239,26 @@ function HeroSection({
             <label className="text-[10px] uppercase tracking-widest text-ink-100/50 font-semibold block mb-1">MP</label>
             <input type={ro ? 'text' : 'number'} min={0} className={inputCls()} readOnly={ro} value={ro ? (member.mp ?? '') : (form.mp ?? '')} onChange={e => set('mp', e.target.value !== '' ? Number(e.target.value) : null)} />
           </div>
-          <div>
-            <label className="text-[10px] uppercase tracking-widest text-ink-100/50 font-semibold block mb-1">Coin / Event</label>
-            <input className={inputCls()} readOnly={ro} placeholder="e.g. 18 rings" value={ro ? (member.coin_per_event ?? '') : (form.coin_per_event ?? '')} onChange={e => set('coin_per_event', e.target.value || null)} />
+          <div className="col-span-2">
+            <label className="text-[10px] uppercase tracking-widest text-ink-100/50 font-semibold block mb-1">Income / Event</label>
+            {ro ? (
+              <input className={inputCls()} readOnly value={formatIncome(member.rings_per_event, member.crowns_per_event, member.thrones_per_event) ?? ''} />
+            ) : (
+              <div className="grid grid-cols-3 gap-2">
+                <div>
+                  <label className="text-[10px] text-ink-100/40 block mb-0.5">Rings</label>
+                  <input type="number" min={0} className="input" placeholder="0" value={form.rings_per_event ?? ''} onChange={e => set('rings_per_event', e.target.value !== '' ? Number(e.target.value) : null)} />
+                </div>
+                <div>
+                  <label className="text-[10px] text-ink-100/40 block mb-0.5">Crowns</label>
+                  <input type="number" min={0} className="input" placeholder="0" value={form.crowns_per_event ?? ''} onChange={e => set('crowns_per_event', e.target.value !== '' ? Number(e.target.value) : null)} />
+                </div>
+                <div>
+                  <label className="text-[10px] text-ink-100/40 block mb-0.5">Thrones</label>
+                  <input type="number" min={0} className="input" placeholder="0" value={form.thrones_per_event ?? ''} onChange={e => set('thrones_per_event', e.target.value !== '' ? Number(e.target.value) : null)} />
+                </div>
+              </div>
+            )}
           </div>
           <div>
             <label className="text-[10px] uppercase tracking-widest text-ink-100/50 font-semibold block mb-1">Coven</label>
@@ -320,7 +337,7 @@ function StatsCard({
   const [xpInput, setXpInput] = useState(String(member.total_xp ?? 8));
   const [xpError, setXpError] = useState<string | null>(null);
   const [editingStats, setEditingStats] = useState(false);
-  const [statsForm, setStatsForm] = useState({ hp: member.hp ?? '', mp: member.mp ?? '', coin_per_event: member.coin_per_event ?? '' });
+  const [statsForm, setStatsForm] = useState({ hp: member.hp ?? '', mp: member.mp ?? '', rings_per_event: member.rings_per_event ?? '', crowns_per_event: member.crowns_per_event ?? '', thrones_per_event: member.thrones_per_event ?? '' });
   const [statsBusy, setStatsBusy] = useState(false);
 
   const totalXp = member.total_xp ?? 8;
@@ -350,7 +367,9 @@ function StatsCard({
         name: member.name,
         hp: statsForm.hp !== '' ? Number(statsForm.hp) : null,
         mp: statsForm.mp !== '' ? Number(statsForm.mp) : null,
-        coin_per_event: statsForm.coin_per_event.trim() || null,
+        rings_per_event: statsForm.rings_per_event !== '' ? Number(statsForm.rings_per_event) : null,
+        crowns_per_event: statsForm.crowns_per_event !== '' ? Number(statsForm.crowns_per_event) : null,
+        thrones_per_event: statsForm.thrones_per_event !== '' ? Number(statsForm.thrones_per_event) : null,
       });
       setEditingStats(false);
     } finally {
@@ -415,7 +434,7 @@ function StatsCard({
       <div className="flex items-center justify-between mb-3">
         <div className="text-[10px] uppercase tracking-widest text-ink-100/50 font-semibold">Stats</div>
         {canEdit && !editingStats && (
-          <button onClick={() => { setStatsForm({ hp: member.hp ?? '', mp: member.mp ?? '', coin_per_event: member.coin_per_event ?? '' }); setEditingStats(true); }} className="text-[10px] text-ink-100/40 hover:text-gold-300 transition-colors">
+          <button onClick={() => { setStatsForm({ hp: member.hp ?? '', mp: member.mp ?? '', rings_per_event: member.rings_per_event ?? '', crowns_per_event: member.crowns_per_event ?? '', thrones_per_event: member.thrones_per_event ?? '' }); setEditingStats(true); }} className="text-[10px] text-ink-100/40 hover:text-gold-300 transition-colors">
             edit
           </button>
         )}
@@ -435,7 +454,20 @@ function StatsCard({
           </div>
           <div>
             <label className="text-[10px] uppercase tracking-widest text-ink-100/40 block mb-1 flex items-center gap-1"><Icons.Coins size={10} className="text-gold-300" /> Income / Event</label>
-            <input className="input text-sm py-1 w-full" placeholder="e.g. 18 rings" value={statsForm.coin_per_event} onChange={e => setStatsForm(f => ({ ...f, coin_per_event: e.target.value }))} />
+            <div className="grid grid-cols-3 gap-2">
+              <div>
+                <label className="text-[10px] text-ink-100/40 block mb-0.5">Rings</label>
+                <input type="number" min={0} className="input text-sm py-1" placeholder="0" value={statsForm.rings_per_event} onChange={e => setStatsForm(f => ({ ...f, rings_per_event: e.target.value }))} />
+              </div>
+              <div>
+                <label className="text-[10px] text-ink-100/40 block mb-0.5">Crowns</label>
+                <input type="number" min={0} className="input text-sm py-1" placeholder="0" value={statsForm.crowns_per_event} onChange={e => setStatsForm(f => ({ ...f, crowns_per_event: e.target.value }))} />
+              </div>
+              <div>
+                <label className="text-[10px] text-ink-100/40 block mb-0.5">Thrones</label>
+                <input type="number" min={0} className="input text-sm py-1" placeholder="0" value={statsForm.thrones_per_event} onChange={e => setStatsForm(f => ({ ...f, thrones_per_event: e.target.value }))} />
+              </div>
+            </div>
           </div>
           <div className="flex gap-2 justify-end pt-1">
             <button onClick={() => setEditingStats(false)} className="btn btn-ghost btn-sm text-xs">Cancel</button>
@@ -458,13 +490,13 @@ function StatsCard({
               <span className="text-sm font-mono font-bold text-blue-400">{member.mp}</span>
             </div>
           )}
-          {member.coin_per_event && (
+          {formatIncome(member.rings_per_event, member.crowns_per_event, member.thrones_per_event) && (
             <div className="flex items-center justify-between">
               <span className="text-xs text-ink-100/60 flex items-center gap-1.5"><Icons.Coins size={12} className="text-gold-300" /> Income / Event</span>
-              <span className="text-sm font-mono font-bold text-gold-300">{member.coin_per_event}</span>
+              <span className="text-sm font-mono font-bold text-gold-300">{formatIncome(member.rings_per_event, member.crowns_per_event, member.thrones_per_event)}</span>
             </div>
           )}
-          {!member.hp && !member.mp && !member.coin_per_event && canEdit && (
+          {!member.hp && !member.mp && !formatIncome(member.rings_per_event, member.crowns_per_event, member.thrones_per_event) && canEdit && (
             <p className="text-xs text-ink-100/30 text-center py-1">No stats set · click edit</p>
           )}
           {member.coven && (

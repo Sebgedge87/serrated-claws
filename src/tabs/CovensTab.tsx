@@ -446,15 +446,6 @@ function RitualModal({ covenId, domain, onClose, onSave }: {
     );
   }, [search, allowed]);
 
-  const grouped = useMemo(() => {
-    const groups: Record<string, typeof RITUALS_CATALOGUE> = {};
-    for (const r of filtered) {
-      if (!groups[r.realm]) groups[r.realm] = [];
-      groups[r.realm].push(r);
-    }
-    return groups;
-  }, [filtered]);
-
   function pick(entry: typeof RITUALS_CATALOGUE[number]) {
     setSelected(entry);
   }
@@ -510,31 +501,20 @@ function RitualModal({ covenId, domain, onClose, onSave }: {
       ) : (
         <div className="border border-gold-500/15 rounded-lg overflow-hidden">
           <div className="max-h-64 overflow-y-auto">
-            {Object.keys(grouped).length === 0 ? (
+            {filtered.length === 0 ? (
               <p className="text-center text-ink-100/40 text-sm py-6">No rituals match "{search}"</p>
-            ) : Object.entries(grouped).map(([realm, entries]) => {
-              const c = REALM_COLORS[realm as RitualRealm];
-              return (
-                <div key={realm}>
-                  <div className="px-3 py-1.5 text-[10px] uppercase tracking-widest font-bold sticky top-0 z-10"
-                       style={{ background: `${c?.text ?? A}18`, color: c?.text ?? A }}>
-                    {realm} · {entries.length}
-                  </div>
-                  {entries.map(r => (
-                    <button
-                      key={r.name}
-                      onClick={() => pick(r)}
-                      className="w-full text-left px-3 py-2.5 hover:bg-white/5 flex items-start gap-3 border-t border-gold-500/8 transition-colors"
-                    >
-                      <div className="min-w-0">
-                        <div className="text-sm font-medium text-ink-100 leading-snug">{r.name}</div>
-                        <div className="text-[11px] text-ink-100/50 leading-snug line-clamp-1">{r.effect}</div>
-                      </div>
-                    </button>
-                  ))}
+            ) : filtered.map(r => (
+              <button
+                key={r.name}
+                onClick={() => pick(r)}
+                className="w-full text-left px-3 py-2.5 hover:bg-white/5 flex items-start gap-3 border-b border-gold-500/8 last:border-0 transition-colors"
+              >
+                <div className="min-w-0">
+                  <div className="text-sm font-medium text-ink-100 leading-snug">{r.name}</div>
+                  <div className="text-[11px] text-ink-100/50 leading-snug line-clamp-1">{r.effect}</div>
                 </div>
-              );
-            })}
+              </button>
+            ))}
           </div>
           <div className="px-3 py-1.5 border-t border-gold-500/10 text-[11px] text-ink-100/30">
             {filtered.length} ritual{filtered.length !== 1 ? 's' : ''} · click to select

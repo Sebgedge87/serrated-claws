@@ -92,13 +92,13 @@ export function useLanceData() {
       setProfiles((profs.data ?? []) as Profile[]);
 
 
-      // Auto-clear attending_event flags the day after each event
+      // Auto-clear attending_event flags the day after each event ends
       const today = new Date(); today.setHours(0, 0, 0, 0);
       for (const ev of (evts.data ?? []) as LanceEvent[]) {
         if (!ev.cleared) {
-          const dayAfter = new Date(ev.date);
-          dayAfter.setDate(dayAfter.getDate() + 1);
-          if (today >= dayAfter) {
+          const clearAfter = new Date(ev.end_date ?? ev.start_date);
+          clearAfter.setDate(clearAfter.getDate() + 1);
+          if (today >= clearAfter) {
             await supabase.from('members').update({ attending_event: false }).eq('attending_event', true);
             await supabase.from('events').update({ cleared: true }).eq('id', ev.id);
           }
@@ -233,8 +233,14 @@ export function useLanceData() {
   }, [reload]);
 
   // ---- Events ----
-  const upsertEvent = useCallback(async (ev: Partial<LanceEvent> & { name: string; date: string }) => {
+  const upsertEvent = useCallback(async (ev: Partial<LanceEvent> & { name: string; start_date: string }) => {
     const { error: err } = await supabase.from('events').upsert({ ...ev, cleared: ev.cleared ?? false });
+    if (err) throw new Error(err.message);
+    await reload(true);
+  }, [reload]);
+
+  const clearAttending = useCallback(async () => {
+    const { error: err } = await supabase.from('members').update({ attending_event: false }).eq('attending_event', true);
     if (err) throw new Error(err.message);
     await reload(true);
   }, [reload]);
@@ -378,6 +384,7 @@ export function useLanceData() {
     clearInventoryLog,
     upsertEvent,
     deleteEvent,
+    clearAttending,
     upsertCharInventory,
     deleteCharInventory,
     upsertCharacterSkill,

@@ -1,15 +1,17 @@
 /** Shared utilities. */
 
-/** Convert any string-form coin amount (e.g. "4 crowns", "18 r", "1 throne") to rings. */
-export function parseCoinToRings(value: string | null | undefined): number {
-  if (!value) return 0;
-  const s = String(value).toLowerCase();
-  const match = s.match(/(\d+(?:\.\d+)?)/);
-  if (!match) return 0;
-  const num = parseFloat(match[1]);
-  if (s.includes('throne')) return num * 160;
-  if (s.includes('crown') || s.includes(' c')) return num * 20;
-  return num;
+/** Total income in rings from structured currency fields. */
+export function memberIncomeRings(rings: number | null, crowns: number | null, thrones: number | null): number {
+  return (rings ?? 0) + (crowns ?? 0) * 20 + (thrones ?? 0) * 160;
+}
+
+/** Format income fields as a compact string, e.g. "1t · 2c · 18r". Returns null if all zero. */
+export function formatIncome(rings: number | null, crowns: number | null, thrones: number | null): string | null {
+  const parts: string[] = [];
+  if (thrones) parts.push(`${thrones}t`);
+  if (crowns) parts.push(`${crowns}c`);
+  if (rings) parts.push(`${rings}r`);
+  return parts.length ? parts.join(' · ') : null;
 }
 
 /** Initials for avatar tiles. */
