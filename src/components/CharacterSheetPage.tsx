@@ -94,6 +94,7 @@ export function CharacterSheetPage({
           <SkillsSection
             memberId={member.id}
             skills={data.characterSkills.filter(s => s.member_id === member.id)}
+            totalXp={member.total_xp ?? 8}
             canEdit={canEdit}
             onUpsert={onUpsertSkill}
             onDelete={onDeleteSkill}
@@ -510,23 +511,37 @@ function PersonalResourceCard({
 
 type CategoryFilter = SkillCategory | 'All';
 
+type PendingSkill = { skill_name: string; category: SkillCategory; rank: number; xpCost: number };
+
 function SkillsSection({
   memberId,
   skills,
+  totalXp,
   canEdit,
   onUpsert,
   onDelete,
 }: {
   memberId: string;
   skills: CharacterSkill[];
+  totalXp: number;
   canEdit: boolean;
   onUpsert: (s: Omit<CharacterSkill, 'id'> & { id?: string }) => Promise<void>;
   onDelete: (id: string) => Promise<void>;
 }) {
   const [activeCategory, setActiveCategory] = useState<CategoryFilter>('All');
   const [adding, setAdding] = useState(false);
-  const [newSkill, setNewSkill] = useState({ skill_name: '', category: 'Combat' as SkillCategory, rank: 1 });
+  const [pending, setPending] = useState<PendingSkill[]>([]);
   const [busy, setBusy] = useState(false);
+
+  const xpSpent = useMemo(() =>
+    skills.reduce((sum, sk) => {
+      const cat = SKILLS_CATALOGUE.find(c => c.name === sk.skill_name);
+      return sum + (cat ? skillXpCost(cat, sk.rank) : sk.rank);
+    }, 0),
+  [skills]);
+
+  const pendingXp = pending.reduce((s, p) => s + p.xpCost, 0);
+  const xpRemaining = totalXp - xpSpent - pendingXp;
 
   const categoriesWithSkills = useMemo(() => {
     const cats = new Set<SkillCategory>();
@@ -535,7 +550,6 @@ function SkillsSection({
   }, [skills]);
 
   const visibleTabs: CategoryFilter[] = ['All', ...SKILL_CATEGORY_ORDER.filter(c => categoriesWithSkills.has(c) || adding)];
-
   const filteredSkills = activeCategory === 'All' ? skills : skills.filter(s => s.category === activeCategory);
 
   const grouped = useMemo(() => {
@@ -553,32 +567,37 @@ function SkillsSection({
     ...[...grouped.keys()].filter(c => !(SKILL_CATEGORY_ORDER as string[]).includes(c)),
   ];
 
-  async function addSkill() {
-    if (!newSkill.skill_name.trim() || busy) return;
+  function queueSkill(skill: PendingSkill) {
+    setPending(p => [...p, skill]);
+  }
+
+  async function saveAll() {
+    if (!pending.length || busy) return;
     setBusy(true);
     try {
-      await onUpsert({
-        member_id: memberId,
-        skill_name: newSkill.skill_name.trim(),
-        category: newSkill.category,
-        rank: newSkill.rank,
-        notes: null,
-      });
-      setNewSkill({ skill_name: '', category: 'Combat', rank: 1 });
+      for (const p of pending) {
+        await onUpsert({ member_id: memberId, skill_name: p.skill_name, category: p.category, rank: p.rank, notes: null });
+      }
+      setPending([]);
       setAdding(false);
     } finally {
       setBusy(false);
     }
   }
 
+  function cancelAdding() {
+    setPending([]);
+    setAdding(false);
+  }
+
   return (
     <div className="card px-5 py-5">
       <div className="flex items-center justify-between mb-3">
         <span className="text-xs uppercase tracking-widest font-bold text-gold-300">Character Skills</span>
-        {canEdit && (
-          <button onClick={() => { setAdding(a => !a); setNewSkill({ skill_name: '', category: activeCategory === 'All' ? 'Combat' : activeCategory, rank: 1 }); }} className="btn btn-ghost btn-sm text-xs">
+        {canEdit && !adding && (
+          <button onClick={() => setAdding(true)} className="btn btn-ghost btn-sm text-xs">
             <Icons.Plus size={13} />
-            Add Skill
+            Add Skills
           </button>
         )}
       </div>
@@ -606,7 +625,7 @@ function SkillsSection({
         })}
       </div>
 
-      {/* Skills list */}
+      {/* Existing skills */}
       {orderedCategories.map(cat => {
         const catSkills = grouped.get(cat)!;
         const colors = SKILL_CATEGORY_COLORS[(cat as SkillCategory)] ?? SKILL_CATEGORY_COLORS.Other;
@@ -633,11 +652,7 @@ function SkillsSection({
                     )}
                     <span className="opacity-60 text-[10px]">{xpCostTotal}xp</span>
                     {canEdit && (
-                      <button
-                        onClick={() => onDelete(sk.id)}
-                        className="ml-0.5 opacity-50 hover:opacity-100 transition-opacity"
-                        title="Remove skill"
-                      >
+                      <button onClick={() => onDelete(sk.id)} className="ml-0.5 opacity-50 hover:opacity-100 transition-opacity" title="Remove skill">
                         <Icons.X size={11} />
                       </button>
                     )}
@@ -650,18 +665,56 @@ function SkillsSection({
       })}
 
       {skills.length === 0 && !adding && (
-        <p className="text-xs text-ink-100/40 text-center py-4">No skills recorded{canEdit ? ' · click Add Skill to begin' : ''}</p>
+        <p className="text-xs text-ink-100/40 text-center py-4">No skills recorded{canEdit ? ' · click Add Skills to begin' : ''}</p>
       )}
 
+      {/* Add skills panel */}
       {adding && (
-        <SkillPicker
-          activeCategory={activeCategory}
-          newSkill={newSkill}
-          setNewSkill={setNewSkill}
-          busy={busy}
-          onAdd={addSkill}
-          onCancel={() => setAdding(false)}
-        />
+        <div className="mt-3 border-t border-gold-500/10 pt-3 space-y-3">
+          {/* Pending queue */}
+          {pending.length > 0 && (
+            <div className="space-y-1">
+              <div className="text-[10px] uppercase tracking-widest text-ink-100/40 mb-1">Queued</div>
+              {pending.map((p, i) => {
+                const colors = SKILL_CATEGORY_COLORS[p.category];
+                return (
+                  <div key={i} className="flex items-center gap-2 px-2.5 py-1.5 rounded-lg text-xs" style={{ background: colors.bg, color: colors.text }}>
+                    <span className="flex-1">{p.skill_name}{p.rank > 1 ? ` ×${p.rank}` : ''}</span>
+                    <span className="opacity-60">{p.xpCost}xp</span>
+                    <button onClick={() => setPending(q => q.filter((_, j) => j !== i))} className="opacity-50 hover:opacity-100">
+                      <Icons.X size={11} />
+                    </button>
+                  </div>
+                );
+              })}
+            </div>
+          )}
+
+          {/* XP bar */}
+          <div className="text-[11px] flex items-center gap-2">
+            <span className={cx('font-semibold', xpRemaining < 0 ? 'text-red-400' : 'text-gold-300')}>
+              {xpRemaining}xp remaining
+            </span>
+            <span className="text-ink-100/30">({xpSpent + pendingXp} / {totalXp} used)</span>
+          </div>
+
+          <SkillPicker
+            activeCategory={activeCategory}
+            xpRemaining={xpRemaining}
+            onQueue={queueSkill}
+          />
+
+          <div className="flex items-center justify-between">
+            <button onClick={cancelAdding} className="btn btn-ghost btn-sm text-xs">Cancel</button>
+            <button
+              onClick={saveAll}
+              disabled={!pending.length || busy || xpRemaining < 0}
+              className="btn btn-primary btn-sm text-xs"
+            >
+              {busy ? 'Saving…' : pending.length > 1 ? `Save ${pending.length} Skills` : 'Save Skill'}
+            </button>
+          </div>
+        </div>
       )}
     </div>
   );
@@ -671,42 +724,43 @@ function SkillsSection({
 
 function SkillPicker({
   activeCategory,
-  newSkill,
-  setNewSkill,
-  busy,
-  onAdd,
-  onCancel,
+  xpRemaining,
+  onQueue,
 }: {
   activeCategory: CategoryFilter;
-  newSkill: { skill_name: string; category: SkillCategory; rank: number };
-  setNewSkill: (updater: (n: { skill_name: string; category: SkillCategory; rank: number }) => { skill_name: string; category: SkillCategory; rank: number }) => void;
-  busy: boolean;
-  onAdd: () => void;
-  onCancel: () => void;
+  xpRemaining: number;
+  onQueue: (skill: PendingSkill) => void;
 }) {
+  const [draft, setDraft] = useState({ skill_name: '', category: 'Combat' as SkillCategory, rank: 1 });
   const [query, setQuery] = useState('');
   const [open, setOpen] = useState(false);
 
   const filtered = useMemo(() => {
-    const base = activeCategory === 'All'
-      ? SKILLS_CATALOGUE
-      : SKILLS_CATALOGUE.filter(s => s.category === activeCategory);
+    const base = activeCategory === 'All' ? SKILLS_CATALOGUE : SKILLS_CATALOGUE.filter(s => s.category === activeCategory);
     if (!query.trim()) return base;
     const q = query.toLowerCase();
     return base.filter(s => s.name.toLowerCase().includes(q));
   }, [activeCategory, query]);
 
-  const selectedEntry = SKILLS_CATALOGUE.find(s => s.name === newSkill.skill_name);
+  const selectedEntry = SKILLS_CATALOGUE.find(s => s.name === draft.skill_name);
   const colors = selectedEntry ? SKILL_CATEGORY_COLORS[selectedEntry.category] : null;
+  const thisCost = selectedEntry ? skillXpCost(selectedEntry, draft.rank) : 0;
+  const canAfford = xpRemaining >= thisCost;
 
   function pick(s: typeof SKILLS_CATALOGUE[number]) {
-    setNewSkill(n => ({ ...n, skill_name: s.name, category: s.category }));
+    setDraft(d => ({ ...d, skill_name: s.name, category: s.category, rank: 1 }));
     setQuery('');
     setOpen(false);
   }
 
+  function queue() {
+    if (!draft.skill_name || !canAfford) return;
+    onQueue({ skill_name: draft.skill_name, category: draft.category, rank: draft.rank, xpCost: thisCost });
+    setDraft({ skill_name: '', category: 'Combat', rank: 1 });
+  }
+
   return (
-    <div className="bg-ink-800/30 rounded-lg p-3 space-y-2 mt-2 border border-gold-500/10">
+    <div className="bg-ink-800/30 rounded-lg p-3 space-y-2 border border-gold-500/10">
       <div className="grid grid-cols-[1fr_auto] gap-2 items-end">
         <div>
           <label className="text-[10px] uppercase tracking-widest text-ink-100/40 block mb-1">Skill</label>
@@ -716,10 +770,10 @@ function SkillPicker({
               className={cx('input text-sm w-full text-left flex items-center justify-between gap-2', open && 'border-gold-300')}
               onClick={() => setOpen(o => !o)}
             >
-              {newSkill.skill_name
+              {draft.skill_name
                 ? <span className="flex items-center gap-2">
                     {colors && <span className="w-2 h-2 rounded-full flex-shrink-0" style={{ background: colors.text }} />}
-                    {newSkill.skill_name}
+                    {draft.skill_name}
                     {selectedEntry?.maxRank && <span className="text-[10px] text-ink-100/40">max {selectedEntry.maxRank}</span>}
                   </span>
                 : <span className="text-ink-100/40">— choose skill —</span>
@@ -753,46 +807,53 @@ function SkillPicker({
                         const catColors = SKILL_CATEGORY_COLORS[cat];
                         return (
                           <div key={cat}>
-                            <div className="px-3 py-1 text-[10px] uppercase tracking-widest font-semibold sticky top-0 bg-ink-800"
-                              style={{ color: catColors.text }}>
+                            <div className="px-3 py-1 text-[10px] uppercase tracking-widest font-semibold sticky top-0 bg-ink-800" style={{ color: catColors.text }}>
                               {cat}
                             </div>
-                            {catSkills.map(s => (
-                              <button
-                                key={s.name}
-                                className="w-full text-left px-3 py-2 text-sm hover:bg-gold-500/10 flex items-center justify-between gap-2 transition-colors"
-                                onClick={() => pick(s)}
-                              >
-                                <span className="text-ink-100 flex items-center gap-1.5">
-                                  {s.name}
-                                  {s.isPrereq && <span className="text-[9px] text-amber-400/70">prereq</span>}
-                                </span>
-                                <span className="text-[10px] text-ink-100/40 flex-shrink-0 flex items-center gap-1.5">
-                                  {s.xpCost}xp{s.scaling === '*' ? '+' : s.scaling === '**' ? '×' : ''}
-                                  {s.maxRank && <span>· max {s.maxRank}</span>}
-                                </span>
-                              </button>
-                            ))}
+                            {catSkills.map(s => {
+                              const cost = skillXpCost(s, 1);
+                              const affordable = xpRemaining >= cost;
+                              return (
+                                <button
+                                  key={s.name}
+                                  disabled={!affordable}
+                                  className={cx('w-full text-left px-3 py-2 text-sm flex items-center justify-between gap-2 transition-colors', affordable ? 'hover:bg-gold-500/10' : 'opacity-40 cursor-not-allowed')}
+                                  onClick={() => affordable && pick(s)}
+                                >
+                                  <span className="text-ink-100 flex items-center gap-1.5">
+                                    {s.name}
+                                    {s.isPrereq && <span className="text-[9px] text-amber-400/70">prereq</span>}
+                                  </span>
+                                  <span className="text-[10px] text-ink-100/40 flex-shrink-0">
+                                    {s.xpCost}xp{s.scaling === '*' ? '+' : s.scaling === '**' ? '×' : ''}
+                                  </span>
+                                </button>
+                              );
+                            })}
                           </div>
                         );
                       })
-                    : filtered.map(s => (
-                        <button
-                          key={s.name}
-                          className="w-full text-left px-3 py-2 text-sm hover:bg-gold-500/10 flex items-center justify-between gap-2 transition-colors"
-                          onClick={() => pick(s)}
-                        >
-                          <span className="text-ink-100 flex items-center gap-1.5">
-                            {s.name}
-                            {s.isPrereq && <span className="text-[9px] text-amber-400/70">prereq</span>}
-                            {s.requires?.length && <span className="text-[9px] text-ink-100/30">req: {s.requires.join(', ')}</span>}
-                          </span>
-                          <span className="text-[10px] text-ink-100/40 flex-shrink-0 flex items-center gap-1.5">
-                            {s.xpCost}xp{s.scaling === '*' ? '+' : s.scaling === '**' ? '×' : ''}
-                            {s.maxRank && <span>· max {s.maxRank}</span>}
-                          </span>
-                        </button>
-                      ))
+                    : filtered.map(s => {
+                        const cost = skillXpCost(s, 1);
+                        const affordable = xpRemaining >= cost;
+                        return (
+                          <button
+                            key={s.name}
+                            disabled={!affordable}
+                            className={cx('w-full text-left px-3 py-2 text-sm flex items-center justify-between gap-2 transition-colors', affordable ? 'hover:bg-gold-500/10' : 'opacity-40 cursor-not-allowed')}
+                            onClick={() => affordable && pick(s)}
+                          >
+                            <span className="text-ink-100 flex items-center gap-1.5">
+                              {s.name}
+                              {s.isPrereq && <span className="text-[9px] text-amber-400/70">prereq</span>}
+                              {s.requires?.length && <span className="text-[9px] text-ink-100/30">req: {s.requires.join(', ')}</span>}
+                            </span>
+                            <span className="text-[10px] text-ink-100/40 flex-shrink-0">
+                              {s.xpCost}xp{s.scaling === '*' ? '+' : s.scaling === '**' ? '×' : ''}
+                            </span>
+                          </button>
+                        );
+                      })
                   }
                 </div>
               </div>
@@ -806,31 +867,30 @@ function SkillPicker({
             min={1}
             max={selectedEntry?.maxRank ?? 10}
             className="input text-sm w-20"
-            value={newSkill.rank}
-            onChange={e => setNewSkill(n => ({ ...n, rank: Math.max(1, parseInt(e.target.value) || 1) }))}
+            value={draft.rank}
+            onChange={e => setDraft(d => ({ ...d, rank: Math.max(1, parseInt(e.target.value) || 1) }))}
           />
         </div>
       </div>
       <div className="flex items-center justify-between">
         {selectedEntry ? (
-          <div className="text-xs text-ink-100/50 flex items-center gap-3">
-            <span>
-              Cost: <span className="text-gold-300 font-semibold">{skillXpCost(selectedEntry, newSkill.rank)} xp</span>
+          <div className="text-xs flex items-center gap-2">
+            <span className={cx('font-semibold', canAfford ? 'text-gold-300' : 'text-red-400')}>
+              {thisCost}xp {canAfford ? '' : '— not enough XP'}
             </span>
-            {selectedEntry.scaling === '*' && <span className="text-ink-100/40">+1 per additional rank</span>}
-            {selectedEntry.scaling === '**' && <span className="text-ink-100/40">flat cost per rank</span>}
-            {selectedEntry.isPrereq && <span className="text-amber-400/70">category prerequisite</span>}
-            {selectedEntry.requires?.length && (
-              <span className="text-ink-100/40">requires: {selectedEntry.requires.join(', ')}</span>
-            )}
+            {selectedEntry.scaling === '*' && <span className="text-ink-100/40">+1/rank</span>}
+            {selectedEntry.scaling === '**' && <span className="text-ink-100/40">flat/rank</span>}
+            {selectedEntry.requires?.length && <span className="text-ink-100/40">req: {selectedEntry.requires.join(', ')}</span>}
           </div>
         ) : <span />}
-        <div className="flex gap-2">
-          <button onClick={onCancel} className="btn btn-ghost btn-sm text-xs">Cancel</button>
-          <button onClick={onAdd} disabled={!newSkill.skill_name.trim() || busy} className="btn btn-primary btn-sm text-xs">
-            {busy ? 'Adding…' : 'Add Skill'}
-          </button>
-        </div>
+        <button
+          onClick={queue}
+          disabled={!draft.skill_name || !canAfford}
+          className="btn btn-secondary btn-sm text-xs"
+        >
+          <Icons.Plus size={12} />
+          Queue
+        </button>
       </div>
     </div>
   );

@@ -16,6 +16,7 @@ export function CreateCharacterScreen({ userId, onCreated, onClose }: Props) {
     player_name: '',
     pid: '',
     house_id: '',
+    total_xp: 8,
   });
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -42,6 +43,7 @@ export function CreateCharacterScreen({ userId, onCreated, onClose }: Props) {
           rank: 'Member',
           is_noble: false,
           status: 'active',
+          total_xp: form.total_xp,
         })
         .select()
         .single();
@@ -114,6 +116,20 @@ export function CreateCharacterScreen({ userId, onCreated, onClose }: Props) {
                 value={form.pid}
                 onChange={e => setForm(f => ({ ...f, pid: e.target.value }))}
               />
+            </div>
+
+            <div>
+              <label className="text-[10px] uppercase tracking-widest text-ink-100/50 font-semibold block mb-1.5">
+                Total XP
+              </label>
+              <input
+                type="number"
+                min={0}
+                className="input"
+                value={form.total_xp}
+                onChange={e => setForm(f => ({ ...f, total_xp: parseInt(e.target.value) || 8 }))}
+              />
+              <p className="text-[11px] text-ink-100/40 mt-1">Starting characters begin at 8 XP</p>
             </div>
 
             {houses.length > 0 && (
