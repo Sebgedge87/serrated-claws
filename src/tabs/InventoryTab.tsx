@@ -1,14 +1,35 @@
 import { useMemo, useState } from 'react';
-import type { LanceData } from '@/lib/types';
+import type { LanceData, MagicItemStock } from '@/lib/types';
 import { EMPIRE_CATALOGUE, INVENTORY_TYPES, TYPE_COLORS } from '@/lib/catalogue';
 import type { CatalogueEntry, CatalogueType } from '@/lib/types';
 import { Icons } from '@/components/Icons';
+import { TIER_LABELS } from '@/lib/magicItemsCatalogue';
+import type { ItemTier } from '@/lib/magicItemsCatalogue';
+import { StockModal } from '@/components/modals/StockModal';
+
+const TIER_PILL_COLORS: Record<ItemTier, { bg: string; text: string; border: string }> = {
+  apprentice: { bg: 'rgba(212,180,109,0.15)', text: '#d4b46d', border: 'rgba(212,180,109,0.4)' },
+  journeyman: { bg: 'rgba(100,160,220,0.15)', text: '#6ca0dc', border: 'rgba(100,160,220,0.4)' },
+  adept:      { bg: 'rgba(160,100,220,0.15)', text: '#a064dc', border: 'rgba(160,100,220,0.4)' },
+  masterwork: { bg: 'rgba(231,110,181,0.15)', text: '#e76eb5', border: 'rgba(231,110,181,0.4)' }
+};
+
+const ACCENT = '#e76eb5';
+
+const STATUS_COLORS: Record<MagicItemStock['status'], { bg: string; text: string; border: string }> = {
+  available: { bg: 'rgba(109,212,126,0.15)', text: '#6dd47e', border: 'rgba(109,212,126,0.4)' },
+  bonded:    { bg: 'rgba(212,180,109,0.15)', text: '#d4b46d', border: 'rgba(212,180,109,0.4)' },
+  reserved:  { bg: 'rgba(100,160,220,0.15)', text: '#6ca0dc', border: 'rgba(100,160,220,0.4)' },
+  expired:   { bg: 'rgba(180,50,50,0.15)',   text: '#f87171', border: 'rgba(180,50,50,0.4)' }
+};
 
 interface Props {
   data: LanceData;
   isAdmin: boolean;
   onSetInventory: (item: string, current: number, required: number) => Promise<void>;
   onLogInventory: (item: string, amount: number, direction: 'In' | 'Out' | 'Adjustment', notes?: string) => Promise<void>;
+  onUpsertStock: (item: Partial<MagicItemStock> & { item_name: string; tier: string; form: string }) => Promise<void>;
+  onDeleteStock: (id: string) => Promise<void>;
 }
 
 const TYPE_ICONS: Record<CatalogueType, typeof Icons.Package> = {
@@ -22,7 +43,7 @@ const TYPE_ICONS: Record<CatalogueType, typeof Icons.Package> = {
   'Magic Item': Icons.Wand
 };
 
-export function InventoryTab({ data, isAdmin, onSetInventory, onLogInventory }: Props) {
+export function InventoryTab({ data, isAdmin, onSetInventory, onLogInventory, onUpsertStock, onDeleteStock }: Props) {
   const [typeFilter, setTypeFilter] = useState<'All' | CatalogueType>('All');
   const [search, setSearch] = useState('');
   const [showAll, setShowAll] = useState(true);
@@ -196,6 +217,9 @@ export function InventoryTab({ data, isAdmin, onSetInventory, onLogInventory }: 
 
       {filtered.length === 0 && <p className="text-center py-16 text-ink-100/50">No items match your filters</p>}
 
+      {/* Magic Items Stock section */}
+      <MagicItemsSection data={data} isAdmin={isAdmin} onUpsertStock={onUpsertStock} onDeleteStock={onDeleteStock} />
+
       {data.inventoryLog.length > 0 && (
         <div className="mt-10">
           <h3 className="text-lg font-display font-bold text-gold-300 mb-3">Recent Transactions</h3>
@@ -226,6 +250,116 @@ export function InventoryTab({ data, isAdmin, onSetInventory, onLogInventory }: 
             </table>
           </div>
         </div>
+      )}
+    </div>
+  );
+}
+
+function MagicItemsSection({
+  data,
+  isAdmin,
+  onUpsertStock,
+  onDeleteStock
+}: {
+  data: LanceData;
+  isAdmin: boolean;
+  onUpsertStock: (item: Partial<MagicItemStock> & { item_name: string; tier: string; form: string }) => Promise<void>;
+  onDeleteStock: (id: string) => Promise<void>;
+}) {
+  const memberMap = useMemo(() => Object.fromEntries(data.members.map(m => [m.id, m.name])), [data.members]);
+  const [modal, setModal] = useState<{ open: boolean; initial?: Partial<MagicItemStock> }>({ open: false });
+  const items = data.magicItemsStock;
+
+  return (
+    <div className="mt-8">
+      <div className="flex items-center gap-3 mb-3">
+        <div className="w-8 h-8 rounded-lg grid place-items-center border" style={{ color: ACCENT, background: `${ACCENT}20`, borderColor: `${ACCENT}40` }}>
+          <Icons.Wand size={16} />
+        </div>
+        <h3 className="text-sm uppercase tracking-widest font-bold m-0 font-sans" style={{ color: ACCENT }}>Magic Items</h3>
+        <div className="flex-1 h-px" style={{ background: `linear-gradient(90deg, ${ACCENT}50, transparent)` }} />
+        <span className="text-xs text-ink-100/50">{items.length}</span>
+        {isAdmin && (
+          <button onClick={() => setModal({ open: true })} className="btn btn-primary btn-sm" style={{ background: `linear-gradient(180deg, ${ACCENT}cc, ${ACCENT}99)` }}>
+            <Icons.Plus size={14} />
+            Add Item
+          </button>
+        )}
+      </div>
+
+      {items.length === 0 ? (
+        <div className="card p-8 text-center text-ink-100/40 text-sm">No magic items in the armoury yet.</div>
+      ) : (
+        <div className="card overflow-hidden">
+          <table className="w-full">
+            <thead className="bg-gold-500/10">
+              <tr>
+                <Th>Item</Th>
+                <Th>Tier</Th>
+                <Th>Form</Th>
+                <Th>Bonded To</Th>
+                <Th>Status</Th>
+                <Th>Created</Th>
+                <Th>Expires</Th>
+                {isAdmin && <Th center>Actions</Th>}
+              </tr>
+            </thead>
+            <tbody>
+              {items.map((item, idx) => {
+                const tier = item.tier as ItemTier;
+                const tc = TIER_PILL_COLORS[tier] ?? TIER_PILL_COLORS.apprentice;
+                const sc = STATUS_COLORS[item.status];
+                return (
+                  <tr key={item.id} className={idx > 0 ? 'border-t border-gold-500/10' : ''}>
+                    <td className="px-3 py-2.5 text-sm font-semibold">{item.item_name}</td>
+                    <td className="px-3 py-2.5">
+                      <span className="pill" style={{ background: tc.bg, color: tc.text, border: `1px solid ${tc.border}` }}>
+                        {TIER_LABELS[tier] ?? tier}
+                      </span>
+                    </td>
+                    <td className="px-3 py-2.5 text-sm text-ink-100/60">{item.form}</td>
+                    <td className="px-3 py-2.5 text-sm">
+                      {item.bonded_to ? (memberMap[item.bonded_to] ?? 'Unknown') : <span className="text-ink-100/40">—</span>}
+                    </td>
+                    <td className="px-3 py-2.5">
+                      <span className="pill" style={{ background: sc.bg, color: sc.text, border: `1px solid ${sc.border}` }}>
+                        {item.status}
+                      </span>
+                    </td>
+                    <td className="px-3 py-2.5 text-xs text-ink-100/50">{item.created_at_event ?? '—'}</td>
+                    <td className="px-3 py-2.5 text-xs text-ink-100/50">{item.expires_after_event ?? '—'}</td>
+                    {isAdmin && (
+                      <td className="px-3 py-2.5">
+                        <div className="flex gap-1 justify-center">
+                          <button onClick={() => setModal({ open: true, initial: item })} className="btn btn-ghost btn-sm">
+                            <Icons.Edit size={13} />
+                          </button>
+                          <button
+                            onClick={async () => {
+                              if (confirm(`Remove "${item.item_name}" from the armoury?`)) await onDeleteStock(item.id);
+                            }}
+                            className="btn btn-danger btn-sm"
+                          >
+                            <Icons.Trash size={13} />
+                          </button>
+                        </div>
+                      </td>
+                    )}
+                  </tr>
+                );
+              })}
+            </tbody>
+          </table>
+        </div>
+      )}
+
+      {modal.open && (
+        <StockModal
+          data={data}
+          initial={modal.initial}
+          onClose={() => setModal({ open: false })}
+          onSave={async item => { await onUpsertStock(item); setModal({ open: false }); }}
+        />
       )}
     </div>
   );

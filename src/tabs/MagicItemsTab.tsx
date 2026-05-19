@@ -5,16 +5,19 @@ import {
   MATERIAL_NAMES,
   TIER_LABELS,
   type CatalogueItem,
-  type ItemForm,
   type ItemTier,
   type MaterialCost
 } from '@/lib/magicItemsCatalogue';
+import { SPELLS_CATALOGUE } from '@/lib/spellsCatalogue';
+import { RITUALS_CATALOGUE, REALM_COLORS, RITUAL_REALM_ORDER } from '@/lib/ritualsCatalogue';
+import type { RitualRealm } from '@/lib/ritualsCatalogue';
 import { Icons } from '@/components/Icons';
 import { Modal, Field } from '@/components/Modal';
+import { StockModal } from '@/components/modals/StockModal';
 
 const ACCENT = '#e76eb5';
 
-type SubView = 'stock' | 'queue' | 'catalogue';
+type SubView = 'stock' | 'queue' | 'catalogue' | 'spells' | 'rituals';
 
 const TIER_PILL_COLORS: Record<ItemTier, { bg: string; text: string; border: string }> = {
   apprentice: { bg: 'rgba(212,180,109,0.15)', text: '#d4b46d', border: 'rgba(212,180,109,0.4)' },
@@ -100,7 +103,7 @@ export function MagicItemsTab({ data, isAdmin, onUpsertStock, onDeleteStock, onU
 
       {/* Sub-nav */}
       <div className="flex gap-1 mb-6 border-b border-gold-500/15 pb-0">
-        {(['stock', 'queue', 'catalogue'] as SubView[]).map(v => (
+        {(['stock', 'queue', 'catalogue', 'spells', 'rituals'] as SubView[]).map(v => (
           <button
             key={v}
             onClick={() => setSubView(v)}
@@ -110,6 +113,8 @@ export function MagicItemsTab({ data, isAdmin, onUpsertStock, onDeleteStock, onU
             {v === 'stock' && <Icons.Shield size={15} />}
             {v === 'queue' && <Icons.Sparkles size={15} />}
             {v === 'catalogue' && <Icons.Package size={15} />}
+            {v === 'spells' && <Icons.Wand size={15} />}
+            {v === 'rituals' && <Icons.Gem size={15} />}
             {v.charAt(0).toUpperCase() + v.slice(1)}
           </button>
         ))}
@@ -142,6 +147,9 @@ export function MagicItemsTab({ data, isAdmin, onUpsertStock, onDeleteStock, onU
           onAddToQueue={item => setQueueModal({ open: true, prefill: item })}
         />
       )}
+
+      {subView === 'spells' && <SpellsView />}
+      {subView === 'rituals' && <RitualsView />}
 
       {stockModal.open && (
         <StockModal
@@ -753,176 +761,6 @@ function CatalogueView({
 }
 
 // ============================================================
-// STOCK MODAL
-// ============================================================
-function StockModal({
-  data,
-  initial,
-  prefill,
-  onClose,
-  onSave
-}: {
-  data: LanceData;
-  initial?: Partial<MagicItemStock>;
-  prefill?: CatalogueItem;
-  onClose: () => void;
-  onSave: (item: Partial<MagicItemStock> & { item_name: string; tier: string; form: string }) => Promise<void>;
-}) {
-  const [search, setSearch] = useState(prefill?.name ?? initial?.item_name ?? '');
-  const [selectedCatalogue, setSelectedCatalogue] = useState<CatalogueItem | null>(prefill ?? null);
-  const [form, setForm] = useState<Partial<MagicItemStock>>({
-    item_name: prefill?.name ?? initial?.item_name ?? '',
-    tier: prefill?.tier ?? initial?.tier ?? 'apprentice',
-    form: prefill?.form ?? initial?.form ?? 'talisman',
-    bonded_to: initial?.bonded_to ?? null,
-    status: initial?.status ?? 'available',
-    created_at_event: initial?.created_at_event ?? null,
-    expires_after_event: initial?.expires_after_event ?? null,
-    notes: initial?.notes ?? null,
-    ...(initial?.id ? { id: initial.id } : {})
-  });
-  const [busy, setBusy] = useState(false);
-
-  const suggestions = useMemo(() => {
-    if (!search || search === selectedCatalogue?.name) return [];
-    const q = search.toLowerCase();
-    return MAGIC_ITEMS_CATALOGUE.filter(i => i.name.toLowerCase().includes(q)).slice(0, 8);
-  }, [search, selectedCatalogue]);
-
-  function selectItem(item: CatalogueItem) {
-    setSelectedCatalogue(item);
-    setSearch(item.name);
-    setForm(f => ({ ...f, item_name: item.name, tier: item.tier, form: item.form }));
-  }
-
-  function set<K extends keyof MagicItemStock>(key: K, value: MagicItemStock[K] | null) {
-    setForm(f => ({ ...f, [key]: value }));
-  }
-
-  async function save() {
-    if (!form.item_name?.trim() || !form.tier || !form.form || busy) return;
-    setBusy(true);
-    try {
-      await onSave({
-        ...form,
-        item_name: form.item_name.trim(),
-        tier: form.tier,
-        form: form.form
-      } as Partial<MagicItemStock> & { item_name: string; tier: string; form: string });
-    } finally {
-      setBusy(false);
-    }
-  }
-
-  return (
-    <Modal
-      onClose={onClose}
-      title={initial?.id ? 'Edit Item' : 'Add Item to Armoury'}
-      subtitle="Magic Items Stock"
-      icon={<Icons.Wand size={20} />}
-      accent={ACCENT}
-      footer={
-        <>
-          <button onClick={onClose} className="btn btn-ghost">Cancel</button>
-          <button onClick={save} disabled={!form.item_name?.trim() || busy} className="btn btn-primary" style={{ background: `linear-gradient(180deg, ${ACCENT}cc, ${ACCENT}99)` }}>
-            <Icons.Plus size={15} />
-            {busy ? 'Saving…' : initial?.id ? 'Save changes' : 'Add Item'}
-          </button>
-        </>
-      }
-    >
-      <div className="grid grid-cols-2 gap-4">
-        <Field label="Item Name (from catalogue)" span="full">
-          <div className="relative">
-            <input
-              className="input"
-              value={search}
-              onChange={e => {
-                setSearch(e.target.value);
-                setForm(f => ({ ...f, item_name: e.target.value }));
-                setSelectedCatalogue(null);
-              }}
-              placeholder="Search catalogue…"
-              autoFocus
-            />
-            {suggestions.length > 0 && (
-              <div className="absolute top-full left-0 right-0 z-10 mt-1 bg-ink-800 border border-gold-500/20 rounded-lg shadow-lift overflow-hidden">
-                {suggestions.map(item => (
-                  <button
-                    key={item.id}
-                    className="w-full text-left px-3 py-2 text-sm hover:bg-gold-500/10 flex items-center justify-between gap-2"
-                    onClick={() => selectItem(item)}
-                  >
-                    <span>{item.name}</span>
-                    <span className="text-xs text-ink-100/50">{TIER_LABELS[item.tier]}</span>
-                  </button>
-                ))}
-              </div>
-            )}
-          </div>
-        </Field>
-
-        <Field label="Tier">
-          <select className="input" value={form.tier ?? 'apprentice'} onChange={e => set('tier', e.target.value)}>
-            <option value="apprentice">Apprentice</option>
-            <option value="journeyman">Journeyman</option>
-            <option value="adept">Adept</option>
-            <option value="masterwork">Masterwork</option>
-          </select>
-        </Field>
-
-        <Field label="Form">
-          <select className="input" value={form.form ?? 'talisman'} onChange={e => set('form', e.target.value as ItemForm)}>
-            <option value="weapon-1h">Weapon (1H)</option>
-            <option value="weapon-great">Weapon (Great)</option>
-            <option value="weapon-polearm">Weapon (Polearm)</option>
-            <option value="weapon-spear">Weapon (Spear)</option>
-            <option value="weapon-implement">Weapon (Implement)</option>
-            <option value="weapon-paired">Weapon (Paired)</option>
-            <option value="armour">Armour</option>
-            <option value="talisman">Talisman</option>
-            <option value="talisman-icon">Talisman (Icon)</option>
-            <option value="talisman-reliquary">Talisman (Reliquary)</option>
-            <option value="talisman-paraphernalia">Talisman (Paraphernalia)</option>
-            <option value="standard">Standard</option>
-          </select>
-        </Field>
-
-        <Field label="Bonded To">
-          <select className="input" value={form.bonded_to ?? ''} onChange={e => set('bonded_to', e.target.value || null)}>
-            <option value="">— Unassigned —</option>
-            {data.members.filter(m => m.status === 'active').map(m => (
-              <option key={m.id} value={m.id}>{m.name}</option>
-            ))}
-          </select>
-        </Field>
-
-        <Field label="Status">
-          <select className="input" value={form.status ?? 'available'} onChange={e => set('status', e.target.value as MagicItemStock['status'])}>
-            <option value="available">Available</option>
-            <option value="bonded">Bonded</option>
-            <option value="reserved">Reserved</option>
-            <option value="expired">Expired</option>
-          </select>
-        </Field>
-
-        <Field label="Created at Event" optional>
-          <input className="input" placeholder="E2 386YE" value={form.created_at_event ?? ''} onChange={e => set('created_at_event', e.target.value || null)} />
-        </Field>
-
-        <Field label="Expires After Event" optional>
-          <input className="input" placeholder="E1 387YE" value={form.expires_after_event ?? ''} onChange={e => set('expires_after_event', e.target.value || null)} />
-        </Field>
-
-        <Field label="Notes" optional span="full">
-          <textarea className="input resize-y" rows={2} value={form.notes ?? ''} onChange={e => set('notes', e.target.value || null)} />
-        </Field>
-      </div>
-    </Modal>
-  );
-}
-
-// ============================================================
 // QUEUE MODAL
 // ============================================================
 function QueueModal({
@@ -1101,6 +939,162 @@ function QueueModal({
         </Field>
       </div>
     </Modal>
+  );
+}
+
+// ============================================================
+// SPELLS VIEW
+// ============================================================
+function SpellsView() {
+  const regular = SPELLS_CATALOGUE.filter(s => s.type === 'Regular');
+  const offensive = SPELLS_CATALOGUE.filter(s => s.type === 'Offensive');
+
+  return (
+    <div>
+      <p className="text-xs text-ink-100/50 mb-5 leading-relaxed">
+        All spells cost 1 personal mana unless stated. Offensive spells require an implement (wand/rod/staff).
+        Regular spells require 30s roleplay + touch. Swift casting costs +1 mana.
+      </p>
+      {[{ label: 'Regular Spells', items: regular }, { label: 'Offensive Spells', items: offensive }].map(({ label, items }) => (
+        <div key={label} className="mb-8">
+          <div className="flex items-center gap-3 mb-3">
+            <div className="w-8 h-8 rounded-lg grid place-items-center border" style={{ color: ACCENT, background: `${ACCENT}20`, borderColor: `${ACCENT}40` }}>
+              <Icons.Wand size={14} />
+            </div>
+            <h3 className="text-xs uppercase tracking-widest font-bold" style={{ color: ACCENT }}>{label}</h3>
+            <div className="flex-1 h-px" style={{ background: `linear-gradient(90deg, ${ACCENT}50, transparent)` }} />
+            <span className="text-xs text-ink-100/50">{items.length}</span>
+          </div>
+          <div className="card overflow-hidden">
+            <table className="w-full">
+              <thead className="bg-gold-500/10">
+                <tr>
+                  <Th>Spell</Th>
+                  <Th center>Mana</Th>
+                  <Th>Requires</Th>
+                  <Th>Effect</Th>
+                </tr>
+              </thead>
+              <tbody>
+                {items.map((spell, idx) => (
+                  <tr key={spell.name} className={idx > 0 ? 'border-t border-gold-500/10' : ''}>
+                    <td className="px-4 py-3 font-semibold text-sm whitespace-nowrap">{spell.name}</td>
+                    <td className="px-4 py-3 text-center">
+                      <span className="pill" style={{ background: `${ACCENT}20`, color: ACCENT, border: `1px solid ${ACCENT}40` }}>{spell.manaCost}</span>
+                    </td>
+                    <td className="px-4 py-3 text-xs text-ink-100/60 whitespace-nowrap">{spell.skillRequired}</td>
+                    <td className="px-4 py-3 text-sm text-ink-100/80">{spell.effect}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        </div>
+      ))}
+    </div>
+  );
+}
+
+// ============================================================
+// RITUALS VIEW
+// ============================================================
+function RitualsView() {
+  const [search, setSearch] = useState('');
+  const [realmFilter, setRealmFilter] = useState<'all' | RitualRealm>('all');
+
+  const filtered = useMemo(() => {
+    const q = search.toLowerCase();
+    return RITUALS_CATALOGUE.filter(r => {
+      if (realmFilter !== 'all' && r.realm !== realmFilter) return false;
+      if (q && !r.name.toLowerCase().includes(q) && !r.effect.toLowerCase().includes(q)) return false;
+      return true;
+    });
+  }, [search, realmFilter]);
+
+  const byRealm = useMemo(() => {
+    const map = new Map<RitualRealm, typeof RITUALS_CATALOGUE>();
+    for (const r of filtered) {
+      const arr = map.get(r.realm) ?? [];
+      arr.push(r);
+      map.set(r.realm, arr);
+    }
+    return map;
+  }, [filtered]);
+
+  return (
+    <div>
+      <div className="flex gap-3 mb-5 flex-wrap items-center">
+        <div className="relative flex-1 min-w-[240px]">
+          <Icons.Search size={16} className="absolute left-3 top-1/2 -translate-y-1/2 text-ink-100/40 pointer-events-none" />
+          <input className="input pl-10" placeholder="Search rituals, effects…" value={search} onChange={e => setSearch(e.target.value)} />
+        </div>
+        <div className="flex gap-1 flex-wrap">
+          {(['all', ...RITUAL_REALM_ORDER] as const).map(r => {
+            const active = realmFilter === r;
+            const c = r === 'all' ? '#d4b46d' : REALM_COLORS[r].text;
+            return (
+              <button
+                key={r}
+                onClick={() => setRealmFilter(r)}
+                className="px-3 py-2 text-xs font-medium rounded-lg border transition-all"
+                style={{
+                  background: active ? `${c}22` : 'transparent',
+                  color: active ? c : 'rgba(232,230,227,0.5)',
+                  borderColor: active ? `${c}50` : 'rgba(201,169,97,0.15)',
+                  fontWeight: active ? 600 : 500
+                }}
+              >
+                {r === 'all' ? 'All Realms' : r}
+              </button>
+            );
+          })}
+        </div>
+      </div>
+
+      {filtered.length === 0 ? (
+        <p className="text-center py-16 text-ink-100/50">No rituals match your filters.</p>
+      ) : (
+        <div className="space-y-8">
+          {RITUAL_REALM_ORDER.map(realm => {
+            const items = byRealm.get(realm);
+            if (!items || items.length === 0) return null;
+            const c = REALM_COLORS[realm];
+            return (
+              <div key={realm}>
+                <div className="flex items-center gap-3 mb-3">
+                  <div className="w-8 h-8 rounded-lg grid place-items-center border" style={{ color: c.text, background: c.bg, borderColor: c.border }}>
+                    <Icons.Gem size={14} />
+                  </div>
+                  <h3 className="text-xs uppercase tracking-widest font-bold" style={{ color: c.text }}>{realm}</h3>
+                  <div className="flex-1 h-px" style={{ background: `linear-gradient(90deg, ${c.border}, transparent)` }} />
+                  <span className="text-xs text-ink-100/50">{items.length}</span>
+                </div>
+                <div className="card overflow-hidden">
+                  <table className="w-full">
+                    <thead className="bg-gold-500/10">
+                      <tr>
+                        <Th>Ritual</Th>
+                        <Th>Effect</Th>
+                        <Th>Mastered Via</Th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {items.map((ritual, idx) => (
+                        <tr key={ritual.name} className={idx > 0 ? 'border-t border-gold-500/10' : ''}>
+                          <td className="px-4 py-3 font-semibold text-sm whitespace-nowrap align-top">{ritual.name}</td>
+                          <td className="px-4 py-3 text-sm text-ink-100/80 align-top">{ritual.effect}</td>
+                          <td className="px-4 py-3 text-xs text-ink-100/50 whitespace-nowrap align-top">{ritual.mastered}</td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              </div>
+            );
+          })}
+        </div>
+      )}
+    </div>
   );
 }
 
