@@ -13,6 +13,7 @@ interface Props {
 const ROLES: UserRole[] = ['admin', 'member', 'viewer'];
 
 const ROLE_COLORS: Record<UserRole, string> = {
+  super_admin: '#f0a040',
   admin: '#d4b46d',
   member: '#7eb0d4',
   viewer: '#9ca3af'

@@ -5,6 +5,7 @@ import { parseCoinToRings } from '@/lib/utils';
 interface Props {
   data: LanceData;
   filteredMembers: Member[];
+  isAdmin: boolean;
 }
 
 const HOUSE_COLORS = ['#d4b46d', '#a8413f', '#7eb0d4', '#9c7eb0', '#7ea88e'];
@@ -30,7 +31,7 @@ function getResourceMeta(name: string) {
   return { color: '#d4b46d', Icon: Icons.Gem };
 }
 
-export function OverviewTab({ data, filteredMembers }: Props) {
+export function OverviewTab({ data, filteredMembers, isAdmin }: Props) {
   const totalMembers = data.members.length;
   const coven = data.members.filter(m => m.coven).length;
   const nobles = filteredMembers.filter(m => m.is_noble);
@@ -53,8 +54,10 @@ export function OverviewTab({ data, filteredMembers }: Props) {
   const thrones = inv['Throne']?.current_qty ?? 0;
   const totalInRings = rings + crowns * 20 + thrones * 160;
 
-  // Income per event
-  const incomeRings = data.members.reduce((sum, m) => sum + parseCoinToRings(m.coin_per_event), 0);
+  // Income per event + tithe
+  const grossIncomeRings = data.members.reduce((sum, m) => sum + parseCoinToRings(m.coin_per_event), 0);
+  const tithingRings = Math.round(grossIncomeRings * 0.1);
+  const incomeMembers = data.members.filter(m => m.coin_per_event).length;
 
   const stats = [
     { label: 'Total Members', value: totalMembers, Icon: Icons.Users, color: '#d4b46d' },
@@ -115,17 +118,23 @@ export function OverviewTab({ data, filteredMembers }: Props) {
             <div className="w-10 h-10 rounded-xl grid place-items-center text-sage-500 border border-sage-500/40" style={{ background: 'linear-gradient(180deg, rgba(109,212,126,0.25), rgba(109,212,126,0.12))' }}>
               <Icons.Zap size={20} />
             </div>
-            <h3 className="text-sm font-bold text-sage-500 m-0 uppercase tracking-widest">Income Per Event</h3>
+            <h3 className="text-sm font-bold text-sage-500 m-0 uppercase tracking-widest">Lance Tithe Per Event</h3>
           </div>
           <div className="text-[40px] font-display font-bold text-sage-500 leading-none mb-2">
-            {incomeRings.toLocaleString()}
+            {tithingRings.toLocaleString()}
             <span className="text-base text-ink-100/60 ml-2 font-medium font-sans">rings</span>
           </div>
-          <div className="text-sm text-ink-100/60">
-            ≈ {(incomeRings / 20).toFixed(1)} crowns · {(incomeRings / 160).toFixed(2)} thrones
+          <div className="text-sm text-ink-100/60 mb-3.5">
+            ≈ {(tithingRings / 20).toFixed(1)} crowns · {(tithingRings / 160).toFixed(2)} thrones
           </div>
-          <div className="mt-3.5 pt-3.5 border-t border-gold-500/15 text-xs text-ink-100/50">
-            Aggregated from {data.members.filter(m => m.coin_per_event).length} members with stipend
+          <div className="mt-3.5 pt-3.5 border-t border-gold-500/15 text-xs space-y-1.5">
+            <div className="text-ink-100/50">10% tithe from {incomeMembers} member{incomeMembers !== 1 ? 's' : ''} with stipend</div>
+            {isAdmin && (
+              <div className="text-ink-100/40">
+                Gross income: <span className="text-ink-100/70 font-semibold">{grossIncomeRings.toLocaleString()} r</span>
+                <span className="ml-1.5">≈ {(grossIncomeRings / 20).toFixed(1)} c · {(grossIncomeRings / 160).toFixed(2)} t</span>
+              </div>
+            )}
           </div>
         </div>
       </div>

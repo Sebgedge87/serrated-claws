@@ -5,7 +5,7 @@
 -- ============================================================================
 -- Profiles (one per auth user)
 -- ============================================================================
-create type public.user_role as enum ('admin', 'member', 'viewer');
+create type public.user_role as enum ('super_admin', 'admin', 'member', 'viewer');
 
 create table public.profiles (
   id uuid primary key references auth.users on delete cascade,
@@ -172,7 +172,7 @@ alter table public.inventory_log enable row level security;
 -- helper: is the calling user an admin?
 create or replace function public.is_admin()
 returns boolean language sql stable security definer set search_path = public as $$
-  select exists (select 1 from public.profiles where id = auth.uid() and role = 'admin');
+  select exists (select 1 from public.profiles where id = auth.uid() and role in ('admin', 'super_admin'));
 $$;
 
 -- helper: is the calling user the claimer of a member row?

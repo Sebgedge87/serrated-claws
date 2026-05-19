@@ -6,7 +6,7 @@ export interface LanceSettings {
   motto: string | null;
   description: string | null;
 }
-export type UserRole = 'admin' | 'member' | 'viewer';
+export type UserRole = 'super_admin' | 'admin' | 'member' | 'viewer';
 
 export interface Profile {
   id: string;

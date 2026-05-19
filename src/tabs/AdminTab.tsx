@@ -15,10 +15,12 @@ interface Props {
 }
 
 const A = '#d4b46d';
-const ROLES: UserRole[] = ['admin', 'member', 'viewer'];
-const ROLE_COLORS: Record<UserRole, string> = { admin: '#d4b46d', member: '#7eb0d4', viewer: '#9ca3af' };
+const ROLE_COLORS: Record<UserRole, string> = { super_admin: '#f0a040', admin: '#d4b46d', member: '#7eb0d4', viewer: '#9ca3af' };
 
 export function AdminTab({ data, profiles, settings, currentUserId, onUpdateProfile, onUpsertSettings, onResetInventoryQty, onClearInventoryLog }: Props) {
+  const currentRole = profiles.find(p => p.id === currentUserId)?.role ?? 'admin';
+  const isSuperAdmin = currentRole === 'super_admin';
+
   return (
     <div className="animate-fade-in space-y-10">
       <div className="flex items-center gap-3.5">
@@ -27,14 +29,17 @@ export function AdminTab({ data, profiles, settings, currentUserId, onUpdateProf
         </div>
         <div>
           <h2 className="text-3xl font-display font-bold m-0 bg-gradient-to-b from-gold-50 to-gold-500 text-transparent bg-clip-text">Admin</h2>
-          <p className="text-sm text-ink-100/60 m-0">Settings, access control, and lance management</p>
+          <p className="text-sm text-ink-100/60 m-0">
+            Settings, access control, and lance management
+            {isSuperAdmin && <span className="ml-2 text-[10px] uppercase tracking-widest text-orange-300/70">(Super Admin)</span>}
+          </p>
         </div>
       </div>
 
       <StatsSection data={data} profiles={profiles} />
       <SettingsSection settings={settings} onSave={onUpsertSettings} />
-      <RolesSection profiles={profiles} data={data} currentUserId={currentUserId} onUpdateProfile={onUpdateProfile} />
-      <DangerZone onResetInventoryQty={onResetInventoryQty} onClearInventoryLog={onClearInventoryLog} logCount={data.inventoryLog.length} />
+      <RolesSection profiles={profiles} data={data} currentUserId={currentUserId} currentRole={currentRole} onUpdateProfile={onUpdateProfile} />
+      {isSuperAdmin && <DangerZone onResetInventoryQty={onResetInventoryQty} onClearInventoryLog={onClearInventoryLog} logCount={data.inventoryLog.length} />}
     </div>
   );
 }
@@ -175,9 +180,11 @@ function SettingsSection({ settings, onSave }: { settings: LanceSettings | null;
 
 // ── Roles ─────────────────────────────────────────────────────────────────────
 
-function RolesSection({ profiles, data, currentUserId, onUpdateProfile }: { profiles: Profile[]; data: LanceData; currentUserId: string; onUpdateProfile: Props['onUpdateProfile'] }) {
+function RolesSection({ profiles, data, currentUserId, currentRole, onUpdateProfile }: { profiles: Profile[]; data: LanceData; currentUserId: string; currentRole: UserRole; onUpdateProfile: Props['onUpdateProfile'] }) {
   const [busy, setBusy] = useState<string | null>(null);
-  const adminCount = profiles.filter(p => p.role === 'admin').length;
+  const isSuperAdmin = currentRole === 'super_admin';
+  const adminCount = profiles.filter(p => p.role === 'admin' || p.role === 'super_admin').length;
+  const availableRoles: UserRole[] = isSuperAdmin ? ['super_admin', 'admin', 'member', 'viewer'] : ['admin', 'member', 'viewer'];
   const claimedMemberIds = new Set(profiles.filter(p => p.member_id).map(p => p.member_id!));
 
   async function setRole(id: string, role: UserRole) {
@@ -197,23 +204,25 @@ function RolesSection({ profiles, data, currentUserId, onUpdateProfile }: { prof
           <thead className="bg-gold-500/10">
             <tr>
               <th className="px-4 py-2.5 text-[11px] uppercase tracking-widest font-bold text-left text-ink-100">Permission</th>
-              {(['admin', 'member', 'viewer'] as UserRole[]).map(r => (
+              {(['super_admin', 'admin', 'member', 'viewer'] as UserRole[]).map(r => (
                 <th key={r} className="px-4 py-2.5 text-center"><RolePill role={r} /></th>
               ))}
             </tr>
           </thead>
           <tbody>
             {[
-              ['View all data (members, houses, inventory…)', true, true, true],
-              ['Edit own linked character', true, true, false],
-              ['Add / edit / delete members', true, false, false],
-              ['Manage houses, covens, functions, businesses', true, false, false],
-              ['Edit inventory quantities & log transactions', true, false, false],
-              ['Access admin page (roles, danger zone)', true, false, false],
-            ].map(([label, admin, member, viewer], i) => (
+              ['View all data (members, houses, inventory…)', true, true, true, true],
+              ['Edit own linked character', true, true, true, false],
+              ['Add / edit / delete members', true, true, false, false],
+              ['Manage houses, covens, functions, businesses', true, true, false, false],
+              ['Edit inventory quantities & log transactions', true, true, false, false],
+              ['Access admin page (roles)', true, true, false, false],
+              ['Danger zone (bulk resets)', true, false, false, false],
+              ['Assign super_admin role', true, false, false, false],
+            ].map(([label, superAdmin, admin, member, viewer], i) => (
               <tr key={i} className={i > 0 ? 'border-t border-gold-500/10' : ''}>
                 <td className="px-4 py-2.5 text-ink-100/70">{label as string}</td>
-                {[admin, member, viewer].map((allowed, j) => (
+                {[superAdmin, admin, member, viewer].map((allowed, j) => (
                   <td key={j} className="px-4 py-2.5 text-center">
                     {allowed
                       ? <span className="text-green-400 font-bold">✓</span>
@@ -258,13 +267,13 @@ function RolesSection({ profiles, data, currentUserId, onUpdateProfile }: { prof
                   <td className="px-4 py-3">
                     <select
                       value={p.role}
-                      disabled={busy === p.id || (isSelf && adminCount <= 1)}
+                      disabled={busy === p.id || (isSelf && adminCount <= 1) || (!isSuperAdmin && p.role === 'super_admin')}
                       onChange={e => setRole(p.id, e.target.value as UserRole)}
                       className="px-2.5 py-1.5 bg-black/40 border border-gold-500/15 rounded text-sm cursor-pointer disabled:opacity-50"
                       style={{ color: ROLE_COLORS[p.role] }}
-                      title={isSelf && adminCount <= 1 ? "Can't demote the only admin" : undefined}
+                      title={!isSuperAdmin && p.role === 'super_admin' ? "Only super admins can change this role" : isSelf && adminCount <= 1 ? "Can't demote the only admin" : undefined}
                     >
-                      {ROLES.map(r => <option key={r} value={r} style={{ color: ROLE_COLORS[r] }}>{r}</option>)}
+                      {availableRoles.map(r => <option key={r} value={r} style={{ color: ROLE_COLORS[r] }}>{r.replace('_', ' ')}</option>)}
                     </select>
                     {busy === p.id && <span className="ml-2 text-xs text-ink-100/50">Saving…</span>}
                   </td>
@@ -383,6 +392,6 @@ function RolePill({ role }: { role: UserRole }) {
   const c = ROLE_COLORS[role];
   return (
     <span className="inline-block px-2.5 py-0.5 rounded-full text-xs font-semibold capitalize"
-          style={{ background: `${c}20`, border: `1px solid ${c}40`, color: c }}>{role}</span>
+          style={{ background: `${c}20`, border: `1px solid ${c}40`, color: c }}>{role.replace('_', ' ')}</span>
   );
 }

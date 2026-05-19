@@ -56,7 +56,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     session,
     profile,
     loading,
-    isAdmin: profile?.role === 'admin',
+    isAdmin: profile?.role === 'admin' || profile?.role === 'super_admin',
     async signInWithGoogle() {
       await supabase.auth.signInWithOAuth({
         provider: 'google',
