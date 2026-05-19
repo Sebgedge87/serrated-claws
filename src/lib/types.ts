@@ -85,6 +85,7 @@ export interface Member {
   notes: string | null;
   claimed_by: string | null;
   attending_event: boolean;
+  territory: string | null;
 }
 
 export interface Business {

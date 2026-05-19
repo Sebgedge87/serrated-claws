@@ -17,9 +17,10 @@ interface Props {
   onDeleteCharInventory?: (id: string) => Promise<void>;
   onUpsertSkill?: (skill: Omit<CharacterSkill, 'id'> & { id?: string }) => Promise<void>;
   onDeleteSkill?: (id: string) => Promise<void>;
+  onViewMember?: (m: Member) => void;
 }
 
-export function HouseTab({ house, data, search, isAdmin, onUpsert, onUnassign, onDelete, onUpsertCharInventory, onDeleteCharInventory, onUpsertSkill, onDeleteSkill }: Props) {
+export function HouseTab({ house, data, search, isAdmin, onUpsert, onUnassign, onDelete, onUpsertCharInventory, onDeleteCharInventory, onUpsertSkill, onDeleteSkill, onViewMember }: Props) {
   const [editing, setEditing] = useState<Member | null>(null);
   const c = house.primary_color ?? '#d4b46d';
 
@@ -53,7 +54,7 @@ export function HouseTab({ house, data, search, isAdmin, onUpsert, onUnassign, o
           <SectionHeader icon={<Icons.Crown size={16} />} title="Nobility" count={nobles.length} />
           <div className="grid gap-3.5 mb-8">
             {nobles.map(m => (
-              <MemberCard key={m.id} member={m} isAdmin={isAdmin} onEdit={setEditing} onUnassign={onUnassign} onDelete={onDelete} />
+              <MemberCard key={m.id} member={m} isAdmin={isAdmin} onEdit={setEditing} onUnassign={onUnassign} onDelete={onDelete} onViewSheet={onViewMember} />
             ))}
           </div>
         </>
@@ -64,7 +65,7 @@ export function HouseTab({ house, data, search, isAdmin, onUpsert, onUnassign, o
           <SectionHeader icon={<Icons.Users size={16} />} title="Members" count={regulars.length} />
           <div className="grid gap-3.5">
             {regulars.map(m => (
-              <MemberCard key={m.id} member={m} isAdmin={isAdmin} onEdit={setEditing} onUnassign={onUnassign} onDelete={onDelete} />
+              <MemberCard key={m.id} member={m} isAdmin={isAdmin} onEdit={setEditing} onUnassign={onUnassign} onDelete={onDelete} onViewSheet={onViewMember} />
             ))}
           </div>
         </>

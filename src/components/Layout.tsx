@@ -13,7 +13,11 @@ import { MagicItemsTab } from '@/tabs/MagicItemsTab';
 import { AdminTab } from '@/tabs/AdminTab';
 import { AddHouseModal } from '@/components/modals/AddHouseModal';
 import { AddPersonModal } from '@/components/modals/AddPersonModal';
+import { CharacterSheetPage } from '@/components/CharacterSheetPage';
 import { cx } from '@/lib/utils';
+import type { Member } from '@/lib/types';
+
+const WIKI_URL = 'https://www.profounddecisions.co.uk/empire-wiki/Skills';
 
 type TabId = 'overview' | 'unassigned' | 'covens' | 'functions' | 'businesses' | 'inventory' | 'admin' | string;
 
@@ -24,6 +28,7 @@ export function Layout() {
   const [search, setSearch] = useState('');
   const [showAddHouse, setShowAddHouse] = useState(false);
   const [showAddPerson, setShowAddPerson] = useState(false);
+  const [selectedMember, setSelectedMember] = useState<Member | null>(null);
 
   const filteredMembers = useMemo(() => {
     const q = search.trim().toLowerCase();
@@ -112,6 +117,22 @@ export function Layout() {
                 <div className="text-[10px] uppercase tracking-widest text-gold-300/80">{profile.role}</div>
               </div>
             )}
+            {profile?.member_id && (
+              <button
+                onClick={() => {
+                  const me = lance.data.members.find(m => m.id === profile.member_id);
+                  if (me) setSelectedMember(me);
+                }}
+                className="btn btn-ghost btn-sm"
+              >
+                <Icons.Users size={14} />
+                My Character
+              </button>
+            )}
+            <a href={WIKI_URL} target="_blank" rel="noopener noreferrer" className="btn btn-ghost btn-sm">
+              <Icons.BookOpen size={14} />
+              Empire Wiki
+            </a>
             <button onClick={signOut} className="btn btn-ghost btn-sm">
               <Icons.LogOut size={14} />
               Sign out
@@ -178,11 +199,27 @@ export function Layout() {
         {lance.loading && <div className="text-ink-100/60 text-center py-20">Loading roster…</div>}
         {lance.error && <ErrorBanner error={lance.error} />}
 
-        {!lance.loading && !lance.error && (
+        {!lance.loading && !lance.error && selectedMember && (
+          <CharacterSheetPage
+            member={selectedMember}
+            data={lance.data}
+            isAdmin={isAdmin}
+            canEdit={isAdmin || profile?.member_id === selectedMember.id}
+            wikiUrl={WIKI_URL}
+            onBack={() => setSelectedMember(null)}
+            onUpsertMember={lance.upsertMember}
+            onUpsertSkill={lance.upsertCharacterSkill}
+            onDeleteSkill={lance.deleteCharacterSkill}
+            onUpsertCharInventory={lance.upsertCharInventory}
+            onDeleteCharInventory={lance.deleteCharInventory}
+          />
+        )}
+
+        {!lance.loading && !lance.error && !selectedMember && (
           <>
             {activeTab === 'overview' && <OverviewTab data={lance.data} filteredMembers={filteredMembers} isAdmin={isAdmin} onNavigate={setActiveTab} />}
-            {activeHouse && <HouseTab house={activeHouse} data={lance.data} search={search} isAdmin={isAdmin} onUpsert={lance.upsertMember} onUnassign={lance.unassignMember} onDelete={lance.deleteMember} onUpsertCharInventory={lance.upsertCharInventory} onDeleteCharInventory={lance.deleteCharInventory} onUpsertSkill={lance.upsertCharacterSkill} onDeleteSkill={lance.deleteCharacterSkill} />}
-            {activeTab === 'unassigned' && <UnassignedTab data={lance.data} isAdmin={isAdmin} onUpsert={lance.upsertMember} onDelete={lance.deleteMember} onUpsertCharInventory={lance.upsertCharInventory} onDeleteCharInventory={lance.deleteCharInventory} onUpsertSkill={lance.upsertCharacterSkill} onDeleteSkill={lance.deleteCharacterSkill} />}
+            {activeHouse && <HouseTab house={activeHouse} data={lance.data} search={search} isAdmin={isAdmin} onUpsert={lance.upsertMember} onUnassign={lance.unassignMember} onDelete={lance.deleteMember} onUpsertCharInventory={lance.upsertCharInventory} onDeleteCharInventory={lance.deleteCharInventory} onUpsertSkill={lance.upsertCharacterSkill} onDeleteSkill={lance.deleteCharacterSkill} onViewMember={setSelectedMember} />}
+            {activeTab === 'unassigned' && <UnassignedTab data={lance.data} isAdmin={isAdmin} onUpsert={lance.upsertMember} onDelete={lance.deleteMember} onUpsertCharInventory={lance.upsertCharInventory} onDeleteCharInventory={lance.deleteCharInventory} onUpsertSkill={lance.upsertCharacterSkill} onDeleteSkill={lance.deleteCharacterSkill} onViewMember={setSelectedMember} />}
             {activeTab === 'covens' && <CovensTab data={lance.data} isAdmin={isAdmin} onUpsert={lance.upsertCoven} onDelete={lance.deleteCoven} />}
             {activeTab === 'functions' && <FunctionsTab data={lance.data} isAdmin={isAdmin} onUpsert={lance.upsertFunction} onDelete={lance.deleteFunction} />}
             {activeTab === 'businesses' && <BusinessesTab data={lance.data} isAdmin={isAdmin} onUpsert={lance.upsertBusiness} onDelete={lance.deleteBusiness} />}
