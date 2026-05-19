@@ -44,6 +44,7 @@ export function CreateCharacterScreen({ userId, onCreated, onClose }: Props) {
           is_noble: false,
           status: 'active',
           total_xp: form.total_xp,
+          claimed_by: userId,
         })
         .select()
         .single();
