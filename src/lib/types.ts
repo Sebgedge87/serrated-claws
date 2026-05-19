@@ -18,6 +18,15 @@ export interface CharInventoryItem {
   include_in_lance: boolean;
 }
 
+export interface CharacterSkill {
+  id: string;
+  member_id: string;
+  skill_name: string;
+  category: string;
+  rank: number;
+  notes: string | null;
+}
+
 export interface LanceSettings {
   id: string;
   name: string;
@@ -114,6 +123,7 @@ export interface LanceData {
   inventoryLog: InventoryLogEntry[];
   events: LanceEvent[];
   characterInventory: CharInventoryItem[];
+  characterSkills: CharacterSkill[];
   magicItemsStock: MagicItemStock[];
   craftingQueue: CraftingQueueItem[];
 }
