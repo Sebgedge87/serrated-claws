@@ -264,6 +264,7 @@ export function Layout() {
                 onClearInventoryLog={lance.clearInventoryLog}
                 onUpsertEvent={lance.upsertEvent}
                 onDeleteEvent={lance.deleteEvent}
+                onClearAttending={lance.clearAttending}
               />
             )}
           </>

@@ -13,14 +13,15 @@ interface Props {
   onUpsertSettings: (updates: { name?: string; motto?: string | null; description?: string | null }) => Promise<void>;
   onResetInventoryQty: () => Promise<void>;
   onClearInventoryLog: () => Promise<void>;
-  onUpsertEvent: (ev: Partial<LanceEvent> & { name: string; date: string }) => Promise<void>;
+  onUpsertEvent: (ev: Partial<LanceEvent> & { name: string; start_date: string }) => Promise<void>;
   onDeleteEvent: (id: string) => Promise<void>;
+  onClearAttending: () => Promise<void>;
 }
 
 const A = '#d4b46d';
 const ROLE_COLORS: Record<UserRole, string> = { super_admin: '#f0a040', admin: '#d4b46d', member: '#7eb0d4', viewer: '#9ca3af' };
 
-export function AdminTab({ data, profiles, settings, currentUserId, onUpdateProfile, onUpsertSettings, onResetInventoryQty, onClearInventoryLog, onUpsertEvent, onDeleteEvent }: Props) {
+export function AdminTab({ data, profiles, settings, currentUserId, onUpdateProfile, onUpsertSettings, onResetInventoryQty, onClearInventoryLog, onUpsertEvent, onDeleteEvent, onClearAttending }: Props) {
   const currentRole = profiles.find(p => p.id === currentUserId)?.role ?? 'admin';
   const isSuperAdmin = currentRole === 'super_admin';
 
@@ -40,7 +41,7 @@ export function AdminTab({ data, profiles, settings, currentUserId, onUpdateProf
       </div>
 
       <StatsSection data={data} profiles={profiles} />
-      <EventsSection events={data.events} data={data} onUpsert={onUpsertEvent} onDelete={onDeleteEvent} />
+      <EventsSection events={data.events} data={data} onUpsert={onUpsertEvent} onDelete={onDeleteEvent} onClearAttending={onClearAttending} />
       <SettingsSection settings={settings} onSave={onUpsertSettings} />
       <RolesSection profiles={profiles} data={data} currentUserId={currentUserId} currentRole={currentRole} onUpdateProfile={onUpdateProfile} />
       {isSuperAdmin && <DangerZone onResetInventoryQty={onResetInventoryQty} onClearInventoryLog={onClearInventoryLog} logCount={data.inventoryLog.length} />}
@@ -120,58 +121,103 @@ function StatCard({ label, value, sub, color }: { label: string; value: string |
 
 // ── Events ────────────────────────────────────────────────────────────────────
 
-function EventsSection({ events, data, onUpsert, onDelete }: { events: LanceEvent[]; data: LanceData; onUpsert: Props['onUpsertEvent']; onDelete: Props['onDeleteEvent'] }) {
+function EventsSection({ events, data, onUpsert, onDelete, onClearAttending }: { events: LanceEvent[]; data: LanceData; onUpsert: Props['onUpsertEvent']; onDelete: Props['onDeleteEvent']; onClearAttending: Props['onClearAttending'] }) {
   const [editing, setEditing] = useState<Partial<LanceEvent> | null>(null);
+  const { confirm, Dialog: ConfirmDialog } = useConfirm();
   const today = new Date(); today.setHours(0, 0, 0, 0);
-  const attending = data.members.filter(m => m.attending_event).length;
+  const attendingMembers = data.members.filter(m => m.attending_event);
+  const nextEvent = events.find(ev => !ev.cleared);
 
-  function exportAttending() {
-    const rows: string[][] = [['Character', 'Player', 'House', 'Function', 'Coven', 'Rank', 'Resource', 'Coin/Event', 'Tithe (10%)']];
-    const attending = data.members.filter(m => m.attending_event);
-    attending.sort((a, b) => {
-      const fa = a.function ?? ''; const fb = b.function ?? '';
-      if (fa !== fb) return fa.localeCompare(fb);
-      return a.name.localeCompare(b.name);
+  function fmtDate(d: string) {
+    return new Date(d).toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: '2-digit' });
+  }
+
+  function exportRoster() {
+    const eventName = nextEvent?.name ?? 'Event';
+    const lines: string[] = [`"Event Roster — ${eventName}"`, ''];
+    const sorted = [...attendingMembers].sort((a, b) => {
+      const fa = a.function ?? 'Unassigned'; const fb = b.function ?? 'Unassigned';
+      return fa !== fb ? fa.localeCompare(fb) : a.name.localeCompare(b.name);
     });
-    attending.forEach(m => {
-      const house = data.houses.find(h => h.id === m.house_id)?.name ?? 'Unassigned';
-      const rings = memberIncomeRings(m.rings_per_event, m.crowns_per_event, m.thrones_per_event);
-      const tithe = rings > 0 ? `${Math.round(rings * 0.1)} r` : '';
-      rows.push([m.name, m.player_name ?? '', house, m.function ?? '', m.coven ?? '', m.rank ?? '', m.resource ?? '', formatIncome(m.rings_per_event, m.crowns_per_event, m.thrones_per_event) ?? '', tithe]);
-    });
-    const csv = rows.map(r => r.map(c => `"${c.replace(/"/g, '""')}"`).join(',')).join('\n');
-    const blob = new Blob([csv], { type: 'text/csv' });
+    const byFunction = sorted.reduce<Record<string, typeof sorted>>((acc, m) => {
+      const fn = m.function ?? 'Unassigned';
+      (acc[fn] ??= []).push(m);
+      return acc;
+    }, {});
+    const header = ['Character', 'Player', 'House', 'Rank', 'Resource', 'Income', 'Tithe (10%)'];
+    for (const [fn, members] of Object.entries(byFunction)) {
+      lines.push(`"${fn}"`);
+      lines.push(header.map(h => `"${h}"`).join(','));
+      for (const m of members) {
+        const house = data.houses.find(h => h.id === m.house_id)?.name ?? 'Unassigned';
+        const rings = memberIncomeRings(m.rings_per_event, m.crowns_per_event, m.thrones_per_event);
+        const tithe = rings > 0 ? `${Math.round(rings * 0.1)}r` : '';
+        lines.push([m.name, m.player_name ?? '', house, m.rank ?? '', m.resource ?? '', formatIncome(m.rings_per_event, m.crowns_per_event, m.thrones_per_event) ?? '', tithe].map(c => `"${c}"`).join(','));
+      }
+      lines.push('');
+    }
+    const blob = new Blob([lines.join('\n')], { type: 'text/csv' });
     const a = document.createElement('a'); a.href = URL.createObjectURL(blob);
-    a.download = `attending-${new Date().toISOString().split('T')[0]}.csv`; a.click();
+    a.download = `roster-${eventName.toLowerCase().replace(/\s+/g, '-')}.csv`; a.click();
+  }
+
+  function exportResources() {
+    const lines: string[] = ['"Event Resources"', ''];
+    lines.push('"Inventory"');
+    lines.push(['"Item"', '"In Stock"', '"Required"', '"Shortfall"'].join(','));
+    for (const item of data.inventory.filter(i => i.current_qty > 0 || i.required_qty > 0)) {
+      const shortfall = Math.max(0, item.required_qty - item.current_qty);
+      lines.push([item.item, item.current_qty, item.required_qty, shortfall].map(v => `"${v}"`).join(','));
+    }
+    lines.push('');
+    lines.push('"Funds"');
+    lines.push(['"Denomination"', '"In Stock"'].join(','));
+    const invMap = Object.fromEntries(data.inventory.map(i => [i.item, i.current_qty]));
+    const r = invMap['Ring'] ?? 0;
+    const c = invMap['Crown'] ?? 0;
+    const t = invMap['Throne'] ?? 0;
+    lines.push(`"Rings","${r}"`);
+    lines.push(`"Crowns","${c}"`);
+    lines.push(`"Thrones","${t}"`);
+    lines.push(`"Total (in rings)","${r + c * 20 + t * 160}"`);
+    const blob = new Blob([lines.join('\n')], { type: 'text/csv' });
+    const a = document.createElement('a'); a.href = URL.createObjectURL(blob);
+    a.download = `resources-${new Date().toISOString().split('T')[0]}.csv`; a.click();
   }
 
   return (
     <section>
       <SectionHeading icon={<Icons.Package size={16} />} title="Events" />
       <div className="flex items-center gap-3 mb-4 flex-wrap">
-        <span className="text-sm text-ink-100/60">{attending} member{attending !== 1 ? 's' : ''} attending next event</span>
-        {attending > 0 && (
-          <button onClick={exportAttending} className="btn btn-secondary btn-sm">
-            <Icons.Download size={14} /> Export Attending CSV
+        <span className="text-sm text-ink-100/60">{attendingMembers.length} member{attendingMembers.length !== 1 ? 's' : ''} attending next event</span>
+        {attendingMembers.length > 0 && <>
+          <button onClick={exportRoster} className="btn btn-secondary btn-sm">
+            <Icons.Download size={14} /> Export Roster
           </button>
-        )}
-        <button onClick={() => setEditing({ name: '', date: '', sort_order: events.length })} className="btn btn-secondary btn-sm">
+          <button onClick={async () => { if (await confirm({ title: 'Clear all attending?', body: 'Sets attending_event = false for all members.', danger: false, confirmLabel: 'Clear' })) await onClearAttending(); }} className="btn btn-ghost btn-sm">
+            <Icons.Question size={14} /> Clear Attending
+          </button>
+        </>}
+        <button onClick={exportResources} className="btn btn-ghost btn-sm">
+          <Icons.Download size={14} /> Export Resources
+        </button>
+        <button onClick={() => setEditing({ name: '', start_date: '', end_date: null, sort_order: events.length })} className="btn btn-secondary btn-sm">
           <Icons.Plus size={14} /> Add Event
         </button>
       </div>
       <div className="grid grid-cols-[repeat(auto-fill,minmax(280px,1fr))] gap-3">
         {events.map(ev => {
-          const d = new Date(ev.date); d.setHours(12);
-          const dayAfter = new Date(ev.date); dayAfter.setDate(dayAfter.getDate() + 1); dayAfter.setHours(0);
-          const isPast = today >= dayAfter;
-          const isToday = !isPast && today >= d;
+          const start = new Date(ev.start_date); start.setHours(12);
+          const clearAfter = new Date(ev.end_date ?? ev.start_date); clearAfter.setDate(clearAfter.getDate() + 1); clearAfter.setHours(0);
+          const isPast = today >= clearAfter;
+          const isActive = !isPast && today >= start;
           return (
             <div key={ev.id} className="card p-4 flex items-center justify-between gap-3">
               <div>
                 <div className="font-semibold text-ink-100">{ev.name}</div>
                 <div className="text-xs text-ink-100/50 mt-0.5">
-                  {new Date(ev.date).toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: '2-digit' })}
-                  {isToday && <span className="ml-2 text-gold-300 font-semibold">Today</span>}
+                  {fmtDate(ev.start_date)}{ev.end_date ? ` – ${fmtDate(ev.end_date)}` : ''}
+                  {isActive && <span className="ml-2 text-gold-300 font-semibold">Active</span>}
                   {isPast && <span className="ml-2 text-ink-100/30">(past{ev.cleared ? ', cleared' : ''})</span>}
                 </div>
               </div>
@@ -179,7 +225,7 @@ function EventsSection({ events, data, onUpsert, onDelete }: { events: LanceEven
             </div>
           );
         })}
-        {events.length === 0 && <p className="text-sm text-ink-100/40 col-span-full">No events yet. Add up to 4 per year.</p>}
+        {events.length === 0 && <p className="text-sm text-ink-100/40 col-span-full">No events yet.</p>}
       </div>
       {editing !== null && (
         <EventModal
@@ -189,21 +235,23 @@ function EventsSection({ events, data, onUpsert, onDelete }: { events: LanceEven
           onDelete={editing.id ? async () => { await onDelete(editing.id!); setEditing(null); } : undefined}
         />
       )}
+      {ConfirmDialog}
     </section>
   );
 }
 
-function EventModal({ initial, onClose, onSave, onDelete }: { initial: Partial<LanceEvent>; onClose: () => void; onSave: (ev: Partial<LanceEvent> & { name: string; date: string }) => Promise<void>; onDelete?: () => Promise<void> }) {
+function EventModal({ initial, onClose, onSave, onDelete }: { initial: Partial<LanceEvent>; onClose: () => void; onSave: (ev: Partial<LanceEvent> & { name: string; start_date: string }) => Promise<void>; onDelete?: () => Promise<void> }) {
   const [name, setName] = useState(initial.name ?? '');
-  const [date, setDate] = useState(initial.date ? initial.date.slice(0, 10) : '');
+  const [startDate, setStartDate] = useState(initial.start_date ? initial.start_date.slice(0, 10) : '');
+  const [endDate, setEndDate] = useState(initial.end_date ? initial.end_date.slice(0, 10) : '');
   const [order, setOrder] = useState(initial.sort_order ?? 0);
   const [busy, setBusy] = useState(false);
   const { confirm, Dialog: ConfirmDialog } = useConfirm();
 
   async function save() {
-    if (!name.trim() || !date || busy) return;
+    if (!name.trim() || !startDate || busy) return;
     setBusy(true);
-    try { await onSave({ ...initial, name: name.trim(), date, sort_order: order }); } finally { setBusy(false); }
+    try { await onSave({ ...initial, name: name.trim(), start_date: startDate, end_date: endDate || null, sort_order: order }); } finally { setBusy(false); }
   }
 
   return (
@@ -215,9 +263,15 @@ function EventModal({ initial, onClose, onSave, onDelete }: { initial: Partial<L
           <label className="block text-xs text-ink-100/50 uppercase tracking-widest mb-1">Name</label>
           <input className="input w-full" value={name} onChange={e => setName(e.target.value)} placeholder="E1 — Spring Gathering" autoFocus />
         </div>
-        <div>
-          <label className="block text-xs text-ink-100/50 uppercase tracking-widest mb-1">Date</label>
-          <input type="date" className="input w-full" value={date} onChange={e => setDate(e.target.value)} />
+        <div className="grid grid-cols-2 gap-3">
+          <div>
+            <label className="block text-xs text-ink-100/50 uppercase tracking-widest mb-1">Start Date</label>
+            <input type="date" className="input w-full" value={startDate} onChange={e => setStartDate(e.target.value)} />
+          </div>
+          <div>
+            <label className="block text-xs text-ink-100/50 uppercase tracking-widest mb-1">End Date</label>
+            <input type="date" className="input w-full" value={endDate} min={startDate} onChange={e => setEndDate(e.target.value)} />
+          </div>
         </div>
         <div>
           <label className="block text-xs text-ink-100/50 uppercase tracking-widest mb-1">Sort Order</label>
@@ -229,7 +283,7 @@ function EventModal({ initial, onClose, onSave, onDelete }: { initial: Partial<L
           ) : <div />}
           <div className="flex gap-2">
             <button onClick={onClose} className="btn btn-ghost">Cancel</button>
-            <button onClick={save} disabled={!name.trim() || !date || busy} className="btn btn-primary">{busy ? 'Saving…' : 'Save'}</button>
+            <button onClick={save} disabled={!name.trim() || !startDate || busy} className="btn btn-primary">{busy ? 'Saving…' : 'Save'}</button>
           </div>
         </div>
       </div>
