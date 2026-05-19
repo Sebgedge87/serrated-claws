@@ -164,6 +164,7 @@ export function useLanceData() {
   }, [reload]);
 
   const deleteMember = useCallback(async (id: string) => {
+    await supabase.from('profiles').update({ member_id: null }).eq('member_id', id);
     const { error: err } = await supabase.from('members').delete().eq('id', id);
     if (err) throw new Error(err.message);
     await reload(true);
