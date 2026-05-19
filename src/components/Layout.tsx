@@ -104,7 +104,7 @@ export function Layout() {
               <Icons.Swords size={24} />
             </div>
             <div>
-              <h1 className="text-4xl font-display font-bold m-0 bg-gradient-to-b from-gold-50 to-gold-500 text-transparent bg-clip-text">
+              <h1 className="text-4xl font-display font-bold m-0 text-gold-300 select-none">
                 {lance.settings?.name ?? 'The Serrated Claws'}
               </h1>
               <p className="text-xs uppercase tracking-[0.15em] text-ink-100/50 mt-1">Lance Management System</p>
@@ -187,7 +187,7 @@ export function Layout() {
       {/* Tabs */}
       <nav className="px-12 flex gap-0.5 overflow-x-auto bg-ink-950/50 backdrop-blur border-b border-gold-500/15">
         {tabs.map(t => (
-          <button key={t.id} onClick={() => setActiveTab(t.id)} className={cx('tab-btn', activeTab === t.id && 'active')}>
+          <button key={t.id} onClick={() => { setActiveTab(t.id); setSelectedMember(null); }} className={cx('tab-btn', activeTab === t.id && 'active')}>
             <t.Icon size={16} />
             {t.label}
           </button>

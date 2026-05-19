@@ -3,7 +3,14 @@ export type SkillCategory = 'Combat' | 'Heroic' | 'Magic' | 'Artisan' | 'Physick
 export interface CatalogueSkill {
   name: string;
   category: SkillCategory;
+  xpCost: number;
   maxRank?: number;
+  /** undefined = single purchase only */
+  scaling?: '*' | '**';
+  /** This skill is the prerequisite for all others in its category */
+  isPrereq?: boolean;
+  /** Names of other skills that must be purchased first */
+  requires?: string[];
 }
 
 export const SKILL_CATEGORY_COLORS: Record<SkillCategory, { bg: string; text: string; border: string }> = {
@@ -23,64 +30,79 @@ export const SKILL_CATEGORY_ORDER: SkillCategory[] = [
 
 export const SKILLS_CATALOGUE: CatalogueSkill[] = [
   // ── Combat ──
-  { name: 'One Handed Weapon',  category: 'Combat' },
-  { name: 'Two Handed Weapon',  category: 'Combat' },
-  { name: 'Weapon and Shield',  category: 'Combat' },
-  { name: 'Spear',              category: 'Combat' },
-  { name: 'Polearm',            category: 'Combat' },
-  { name: 'Paired Weapons',     category: 'Combat' },
-  { name: 'Bow',                category: 'Combat' },
-  { name: 'Thrown Weapon',      category: 'Combat' },
-  { name: 'Ambidexterity',      category: 'Combat' },
-  { name: 'Weapon Master',      category: 'Combat' },
-  { name: 'Marksman',           category: 'Combat' },
-  { name: 'Shield',             category: 'Combat' },
-  { name: 'Fortitude',          category: 'Combat' },
-  { name: 'Endurance',          category: 'Combat', maxRank: 8 },
-  { name: 'Dreadnought',        category: 'Combat' },
-  { name: 'Sentinel',           category: 'Combat' },
-  { name: 'War Scout',          category: 'Combat' },
-  { name: 'Mend Armour',        category: 'Combat' },
-  { name: 'Battle Mage',        category: 'Combat' },
+  { name: 'One Handed Weapon',  category: 'Combat', xpCost: 1 },
+  { name: 'Two Handed Weapon',  category: 'Combat', xpCost: 1 },
+  { name: 'Weapon and Shield',  category: 'Combat', xpCost: 1 },
+  { name: 'Spear',              category: 'Combat', xpCost: 1 },
+  { name: 'Polearm',            category: 'Combat', xpCost: 1 },
+  { name: 'Paired Weapons',     category: 'Combat', xpCost: 1 },
+  { name: 'Bow',                category: 'Combat', xpCost: 1 },
+  { name: 'Thrown Weapon',      category: 'Combat', xpCost: 1 },
+  { name: 'Ambidexterity',      category: 'Combat', xpCost: 1 },
+  { name: 'Weapon Master',      category: 'Combat', xpCost: 2 },
+  { name: 'Marksman',           category: 'Combat', xpCost: 4 },
+  { name: 'Shield',             category: 'Combat', xpCost: 2 },
+  { name: 'Fortitude',          category: 'Combat', xpCost: 1, scaling: '*' },
+  { name: 'Endurance',          category: 'Combat', xpCost: 2, maxRank: 8, scaling: '*' },
+  { name: 'Dreadnought',        category: 'Combat', xpCost: 1 },
+  { name: 'Sentinel',           category: 'Combat', xpCost: 1 },
+  { name: 'War Scout',          category: 'Combat', xpCost: 1 },
+  { name: 'Mend Armour',        category: 'Combat', xpCost: 1 },
+  { name: 'Battle Mage',        category: 'Combat', xpCost: 2 },
   // ── Heroic ──
-  { name: 'Hero',               category: 'Heroic' },
-  { name: 'Extra Hero Points',  category: 'Heroic', maxRank: 4 },
-  { name: 'Stay With Me',       category: 'Heroic' },
-  { name: 'Get It Together',    category: 'Heroic' },
-  { name: 'Relentless',         category: 'Heroic' },
-  { name: 'Unstoppable',        category: 'Heroic' },
-  { name: 'Cleaving Strike',    category: 'Heroic' },
-  { name: 'Mortal Blow',        category: 'Heroic' },
-  { name: 'Mighty Strikedown',  category: 'Heroic' },
+  { name: 'Hero',               category: 'Heroic', xpCost: 2, isPrereq: true },
+  { name: 'Extra Hero Points',  category: 'Heroic', xpCost: 1, maxRank: 4, scaling: '*' },
+  { name: 'Stay With Me',       category: 'Heroic', xpCost: 1 },
+  { name: 'Get It Together',    category: 'Heroic', xpCost: 1 },
+  { name: 'Relentless',         category: 'Heroic', xpCost: 2 },
+  { name: 'Unstoppable',        category: 'Heroic', xpCost: 2 },
+  { name: 'Cleaving Strike',    category: 'Heroic', xpCost: 1 },
+  { name: 'Mortal Blow',        category: 'Heroic', xpCost: 1, requires: ['Weapon Master'] },
+  { name: 'Mighty Strikedown',  category: 'Heroic', xpCost: 1, requires: ['Weapon Master'] },
   // ── Magic ──
-  { name: 'Magician',           category: 'Magic' },
-  { name: 'Extra Mana',         category: 'Magic', maxRank: 6 },
-  { name: 'Extra Spell',        category: 'Magic', maxRank: 3 },
-  { name: 'Spring Lore',        category: 'Magic', maxRank: 3 },
-  { name: 'Summer Lore',        category: 'Magic', maxRank: 3 },
-  { name: 'Autumn Lore',        category: 'Magic', maxRank: 3 },
-  { name: 'Winter Lore',        category: 'Magic', maxRank: 3 },
-  { name: 'Day Lore',           category: 'Magic', maxRank: 3 },
-  { name: 'Night Lore',         category: 'Magic', maxRank: 3 },
-  { name: 'Extra Ritual',       category: 'Magic', maxRank: 3 },
+  { name: 'Magician',           category: 'Magic',  xpCost: 2, isPrereq: true },
+  { name: 'Extra Mana',         category: 'Magic',  xpCost: 1, maxRank: 6, scaling: '*' },
+  { name: 'Extra Spell',        category: 'Magic',  xpCost: 1, maxRank: 3, scaling: '**' },
+  { name: 'Spring Lore',        category: 'Magic',  xpCost: 1, maxRank: 3, scaling: '*' },
+  { name: 'Summer Lore',        category: 'Magic',  xpCost: 1, maxRank: 3, scaling: '*' },
+  { name: 'Autumn Lore',        category: 'Magic',  xpCost: 1, maxRank: 3, scaling: '*' },
+  { name: 'Winter Lore',        category: 'Magic',  xpCost: 1, maxRank: 3, scaling: '*' },
+  { name: 'Day Lore',           category: 'Magic',  xpCost: 1, maxRank: 3, scaling: '*' },
+  { name: 'Night Lore',         category: 'Magic',  xpCost: 1, maxRank: 3, scaling: '*' },
+  { name: 'Extra Ritual',       category: 'Magic',  xpCost: 1, maxRank: 3, scaling: '**' },
   // ── Artisan ──
-  { name: 'Artisan',            category: 'Artisan' },
-  { name: 'Extra Item',         category: 'Artisan', maxRank: 3 },
+  { name: 'Artisan',            category: 'Artisan', xpCost: 4, isPrereq: true },
+  { name: 'Extra Item',         category: 'Artisan', xpCost: 1, maxRank: 3, scaling: '**' },
   // ── Physick ──
-  { name: 'Chirurgeon',         category: 'Physick' },
-  { name: 'Physick',            category: 'Physick' },
-  { name: 'Apothecary',         category: 'Physick' },
-  { name: 'Extra Recipes',      category: 'Physick', maxRank: 3 },
+  { name: 'Chirurgeon',         category: 'Physick', xpCost: 1, isPrereq: true },
+  { name: 'Physick',            category: 'Physick', xpCost: 3 },
+  { name: 'Apothecary',         category: 'Physick', xpCost: 2 },
+  { name: 'Extra Recipes',      category: 'Physick', xpCost: 1, maxRank: 3, scaling: '**' },
   // ── Priest ──
-  { name: 'Dedication',         category: 'Priest' },
-  { name: 'Anointing',          category: 'Priest' },
-  { name: 'Consecration',       category: 'Priest' },
-  { name: 'Exorcism',           category: 'Priest' },
-  { name: 'Hallow',             category: 'Priest' },
-  { name: 'Excommunicate',      category: 'Priest' },
-  { name: 'Insight',            category: 'Priest' },
-  { name: 'Testimony',          category: 'Priest' },
+  { name: 'Dedication',         category: 'Priest',  xpCost: 2, isPrereq: true },
+  { name: 'Anointing',          category: 'Priest',  xpCost: 1 },
+  { name: 'Consecration',       category: 'Priest',  xpCost: 1 },
+  { name: 'Exorcism',           category: 'Priest',  xpCost: 1 },
+  { name: 'Hallow',             category: 'Priest',  xpCost: 1 },
+  { name: 'Excommunicate',      category: 'Priest',  xpCost: 1 },
+  { name: 'Insight',            category: 'Priest',  xpCost: 1 },
+  { name: 'Testimony',          category: 'Priest',  xpCost: 1 },
   // ── Leadership ──
-  { name: 'Military Commander', category: 'Leadership' },
-  { name: 'Seneschal',          category: 'Leadership' },
+  { name: 'Military Commander', category: 'Leadership', xpCost: 2 },
+  { name: 'Seneschal',          category: 'Leadership', xpCost: 2 },
 ];
+
+/** XP cost to buy a skill at a given rank (1-indexed, cumulative). */
+export function skillXpCost(skill: CatalogueSkill, rank: number): number {
+  if (rank <= 0) return 0;
+  if (!skill.scaling) return skill.xpCost; // single purchase
+  if (skill.scaling === '**') return rank * skill.xpCost; // flat per rank
+  // '*' = cost increases by 1 each purchase: rank1=base, rank2=base+1, ...
+  // total = sum(base + i) for i in 0..rank-1 = rank*base + rank*(rank-1)/2
+  return rank * skill.xpCost + (rank * (rank - 1)) / 2;
+}
+
+/** XP cost of one additional rank on top of existing ones. */
+export function nextRankXpCost(skill: CatalogueSkill, currentRank: number): number {
+  return skillXpCost(skill, currentRank + 1) - skillXpCost(skill, currentRank);
+}
