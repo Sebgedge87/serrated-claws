@@ -29,7 +29,9 @@ export function AddPersonModal({ data, initial, onClose, onSave, onUpsertCharInv
     hp: null,
     mp: null,
     resource: null,
-    coin_per_event: null,
+    rings_per_event: null as number | null,
+    crowns_per_event: null as number | null,
+    thrones_per_event: null as number | null,
     attending_event: false,
     coven: null,
     notes: null,
@@ -106,9 +108,22 @@ export function AddPersonModal({ data, initial, onClose, onSave, onUpsertCharInv
         <Field label="Resource">
           <input className="input" placeholder="Military Unit, Mana Site…" value={form.resource ?? ''} onChange={e => set('resource', e.target.value || null)} />
         </Field>
-        <Field label="Coin per Event">
-          <input className="input" placeholder="18 r, 4 crowns" value={form.coin_per_event ?? ''} onChange={e => set('coin_per_event', e.target.value || null)} />
-        </Field>
+        <Field label="Income per Event" optional>
+        <div className="grid grid-cols-3 gap-2">
+          <div>
+            <label className="text-[10px] text-ink-100/40 block mb-0.5">Rings</label>
+            <input type="number" min={0} className="input" placeholder="0" value={form.rings_per_event ?? ''} onChange={e => set('rings_per_event', e.target.value ? parseInt(e.target.value) : null)} />
+          </div>
+          <div>
+            <label className="text-[10px] text-ink-100/40 block mb-0.5">Crowns</label>
+            <input type="number" min={0} className="input" placeholder="0" value={form.crowns_per_event ?? ''} onChange={e => set('crowns_per_event', e.target.value ? parseInt(e.target.value) : null)} />
+          </div>
+          <div>
+            <label className="text-[10px] text-ink-100/40 block mb-0.5">Thrones</label>
+            <input type="number" min={0} className="input" placeholder="0" value={form.thrones_per_event ?? ''} onChange={e => set('thrones_per_event', e.target.value ? parseInt(e.target.value) : null)} />
+          </div>
+        </div>
+      </Field>
         <Field label="Coven">
           <select className="input" value={form.coven ?? ''} onChange={e => set('coven', e.target.value || null)}>
             <option value="">None</option>

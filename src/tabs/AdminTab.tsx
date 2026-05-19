@@ -2,8 +2,7 @@ import { useState } from 'react';
 import type { LanceData, LanceEvent, LanceSettings, Profile, UserRole } from '@/lib/types';
 import { useConfirm } from '@/components/ConfirmDialog';
 import { Icons } from '@/components/Icons';
-import { initials } from '@/lib/utils';
-import { parseCoinToRings } from '@/lib/utils';
+import { initials, memberIncomeRings, formatIncome } from '@/lib/utils';
 
 interface Props {
   data: LanceData;
@@ -136,9 +135,9 @@ function EventsSection({ events, data, onUpsert, onDelete }: { events: LanceEven
     });
     attending.forEach(m => {
       const house = data.houses.find(h => h.id === m.house_id)?.name ?? 'Unassigned';
-      const rings = parseCoinToRings(m.coin_per_event);
+      const rings = memberIncomeRings(m.rings_per_event, m.crowns_per_event, m.thrones_per_event);
       const tithe = rings > 0 ? `${Math.round(rings * 0.1)} r` : '';
-      rows.push([m.name, m.player_name ?? '', house, m.function ?? '', m.coven ?? '', m.rank ?? '', m.resource ?? '', m.coin_per_event ?? '', tithe]);
+      rows.push([m.name, m.player_name ?? '', house, m.function ?? '', m.coven ?? '', m.rank ?? '', m.resource ?? '', formatIncome(m.rings_per_event, m.crowns_per_event, m.thrones_per_event) ?? '', tithe]);
     });
     const csv = rows.map(r => r.map(c => `"${c.replace(/"/g, '""')}"`).join(',')).join('\n');
     const blob = new Blob([csv], { type: 'text/csv' });

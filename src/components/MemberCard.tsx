@@ -2,7 +2,7 @@ import type { Member } from '@/lib/types';
 import { Icons } from '@/components/Icons';
 import { StatField } from '@/components/StatField';
 import { useConfirm } from '@/components/ConfirmDialog';
-import { initials, cx } from '@/lib/utils';
+import { initials, cx, formatIncome } from '@/lib/utils';
 
 interface Props {
   member: Member;
@@ -97,7 +97,9 @@ export function MemberCard({ member, isAdmin, canEditSelf, onEdit, onUnassign, o
           {member.hp != null && <StatField icon={Icons.Heart} label="HP" value={member.hp} color="#ff7a7a" />}
           {member.mp != null && <StatField icon={Icons.Zap} label="MP" value={member.mp} color="#7eb0ff" />}
           {member.resource && <StatField icon={Icons.Gem} label="Resource" value={member.resource} color="#7ed4ae" />}
-          {member.coin_per_event && <StatField icon={Icons.Coins} label="Coin / Event" value={member.coin_per_event} color="#e0c66d" />}
+          {formatIncome(member.rings_per_event, member.crowns_per_event, member.thrones_per_event) && (
+            <StatField icon={Icons.Coins} label="Income / Event" value={formatIncome(member.rings_per_event, member.crowns_per_event, member.thrones_per_event)!} color="#e0c66d" />
+          )}
         </div>
         {member.notes && (
           <div className="mt-3.5 px-3.5 py-3 bg-black/25 rounded-lg border-l-[3px] border-gold-500/40 text-sm leading-relaxed">

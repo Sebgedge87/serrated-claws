@@ -61,10 +61,10 @@ export function Layout() {
     const lines: string[] = [];
 
     // Members
-    lines.push(['House', 'Name', 'Player', 'Rank', 'Function', 'Military Role', 'Noble', 'Status', 'Attending', 'HP', 'MP', 'Resource', 'Coin/Event', 'Coven', 'Notes'].map(q).join(','));
+    lines.push(['House', 'Name', 'Player', 'Rank', 'Function', 'Military Role', 'Noble', 'Status', 'Attending', 'HP', 'MP', 'Resource', 'Rings/Event', 'Crowns/Event', 'Thrones/Event', 'Coven', 'Notes'].map(q).join(','));
     lance.data.members.forEach(m => {
       const house = lance.data.houses.find(h => h.id === m.house_id)?.name ?? 'Unassigned';
-      lines.push([house, m.name, m.player_name ?? '', m.rank ?? '', m.function ?? '', m.military_function ?? '', m.is_noble ? 'Y' : 'N', m.status, m.attending_event ? 'Y' : 'N', m.hp ?? '', m.mp ?? '', m.resource ?? '', m.coin_per_event ?? '', m.coven ?? '', m.notes ?? ''].map(q).join(','));
+      lines.push([house, m.name, m.player_name ?? '', m.rank ?? '', m.function ?? '', m.military_function ?? '', m.is_noble ? 'Y' : 'N', m.status, m.attending_event ? 'Y' : 'N', m.hp ?? '', m.mp ?? '', m.resource ?? '', m.rings_per_event ?? '', m.crowns_per_event ?? '', m.thrones_per_event ?? '', m.coven ?? '', m.notes ?? ''].map(q).join(','));
     });
 
     // Blank row + inventory header

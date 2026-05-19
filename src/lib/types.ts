@@ -91,7 +91,9 @@ export interface Member {
   hp: number | null;
   mp: number | null;
   resource: string | null;
-  coin_per_event: string | null;
+  rings_per_event: number | null;
+  crowns_per_event: number | null;
+  thrones_per_event: number | null;
   coven: string | null;
   notes: string | null;
   claimed_by: string | null;
