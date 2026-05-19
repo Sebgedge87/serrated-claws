@@ -513,7 +513,18 @@ function CatalogueView({
   const [search, setSearch] = useState('');
   const [tierFilter, setTierFilter] = useState<'all' | ItemTier>('all');
   const [formGroup, setFormGroup] = useState<'all' | 'weapon' | 'armour' | 'talisman'>('all');
+  const [nationFilter, setNationFilter] = useState<string>('all');
   const [expanded, setExpanded] = useState<string | null>(null);
+
+  const nations = useMemo(() => {
+    const set = new Set<string>();
+    for (const item of MAGIC_ITEMS_CATALOGUE) {
+      if (item.nations !== 'all') {
+        for (const n of item.nations) set.add(n);
+      }
+    }
+    return ['all', ...Array.from(set).sort()];
+  }, []);
 
   const filtered = useMemo(() => {
     const q = search.toLowerCase();
@@ -522,10 +533,14 @@ function CatalogueView({
       if (formGroup === 'weapon' && !item.form.startsWith('weapon')) return false;
       if (formGroup === 'armour' && item.form !== 'armour') return false;
       if (formGroup === 'talisman' && !item.form.startsWith('talisman') && item.form !== 'standard') return false;
+      if (nationFilter !== 'all') {
+        if (item.nations === 'all') return false;
+        if (!item.nations.includes(nationFilter)) return false;
+      }
       if (q && !item.name.toLowerCase().includes(q) && !item.effect.toLowerCase().includes(q)) return false;
       return true;
     });
-  }, [search, tierFilter, formGroup]);
+  }, [search, tierFilter, formGroup, nationFilter]);
 
   const byTier = useMemo(() => {
     const map = new Map<ItemTier, CatalogueItem[]>();
@@ -584,6 +599,26 @@ function CatalogueView({
                 }}
               >
                 {fg === 'all' ? 'All Forms' : fg.charAt(0).toUpperCase() + fg.slice(1)}
+              </button>
+            );
+          })}
+        </div>
+        <div className="flex gap-1 flex-wrap">
+          {nations.map(n => {
+            const active = nationFilter === n;
+            return (
+              <button
+                key={n}
+                onClick={() => setNationFilter(n)}
+                className="px-3 py-2 text-xs font-medium rounded-lg border transition-all"
+                style={{
+                  background: active ? `${ACCENT}22` : 'transparent',
+                  color: active ? ACCENT : 'rgba(232,230,227,0.5)',
+                  borderColor: active ? `${ACCENT}50` : 'rgba(201,169,97,0.15)',
+                  fontWeight: active ? 600 : 500
+                }}
+              >
+                {n === 'all' ? 'All Nations' : n}
               </button>
             );
           })}
