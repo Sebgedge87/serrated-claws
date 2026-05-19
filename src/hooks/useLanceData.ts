@@ -3,12 +3,14 @@ import { supabase } from '@/lib/supabase';
 import type {
   Business,
   CharInventoryItem,
+  CraftingQueueItem,
   Coven,
   Func,
   House,
   LanceData,
   LanceEvent,
   LanceSettings,
+  MagicItemStock,
   Member,
   Profile,
   UserRole
@@ -30,7 +32,9 @@ export function useLanceData() {
     inventory: [],
     inventoryLog: [],
     events: [],
-    characterInventory: []
+    characterInventory: [],
+    magicItemsStock: [],
+    craftingQueue: []
   });
   const [profiles, setProfiles] = useState<Profile[]>([]);
   const [settings, setSettings] = useState<LanceSettings | null>(null);
@@ -41,7 +45,7 @@ export function useLanceData() {
     if (!silent) setLoading(true);
     setError(null);
     try {
-      const [houses, members, covens, fns, biz, bizOwners, inv, invLog, profs, evts, charInv] = await Promise.all([
+      const [houses, members, covens, fns, biz, bizOwners, inv, invLog, profs, evts, charInv, magicStock, craftingQ] = await Promise.all([
         supabase.from('houses').select('*').order('sort_order'),
         supabase.from('members').select('*').order('is_noble', { ascending: false }).order('name'),
         supabase.from('covens').select('*'),
@@ -52,7 +56,9 @@ export function useLanceData() {
         supabase.from('inventory_log').select('*').order('ts', { ascending: false }).limit(50),
         supabase.from('profiles').select('*').order('email'),
         supabase.from('events').select('*').order('sort_order'),
-        supabase.from('character_inventory').select('*')
+        supabase.from('character_inventory').select('*'),
+        supabase.from('magic_items_stock').select('*').order('created_at', { ascending: false }),
+        supabase.from('crafting_queue').select('*').order('created_at', { ascending: false })
       ]);
 
       const businesses: Business[] = (biz.data ?? []).map(b => ({
@@ -71,7 +77,9 @@ export function useLanceData() {
         inventory: (inv.data ?? []),
         inventoryLog: (invLog.data ?? []),
         events: (evts.data ?? []) as LanceEvent[],
-        characterInventory: (charInv.data ?? []) as CharInventoryItem[]
+        characterInventory: (charInv.data ?? []) as CharInventoryItem[],
+        magicItemsStock: (magicStock.data ?? []) as MagicItemStock[],
+        craftingQueue: (craftingQ.data ?? []) as CraftingQueueItem[]
       });
       setProfiles((profs.data ?? []) as Profile[]);
 
@@ -245,6 +253,32 @@ export function useLanceData() {
     await reload(true);
   }, [reload]);
 
+  // ---- Magic Items Stock ----
+  const upsertMagicItemStock = useCallback(async (item: Partial<MagicItemStock> & { item_name: string; tier: string; form: string }) => {
+    const { error } = await supabase.from('magic_items_stock').upsert(item);
+    if (error) throw new Error(error.message);
+    await reload(true);
+  }, [reload]);
+
+  const deleteMagicItemStock = useCallback(async (id: string) => {
+    const { error } = await supabase.from('magic_items_stock').delete().eq('id', id);
+    if (error) throw new Error(error.message);
+    await reload(true);
+  }, [reload]);
+
+  // ---- Crafting Queue ----
+  const upsertCraftingQueueItem = useCallback(async (item: Partial<CraftingQueueItem> & { item_name: string; tier: string }) => {
+    const { error } = await supabase.from('crafting_queue').upsert(item);
+    if (error) throw new Error(error.message);
+    await reload(true);
+  }, [reload]);
+
+  const deleteCraftingQueueItem = useCallback(async (id: string) => {
+    const { error } = await supabase.from('crafting_queue').delete().eq('id', id);
+    if (error) throw new Error(error.message);
+    await reload(true);
+  }, [reload]);
+
   // ---- Danger Zone ----
   const resetInventoryQty = useCallback(async () => {
     const { error: err } = await supabase.from('inventory').update({ current_qty: 0 }).not('item', 'is', null);
@@ -301,6 +335,10 @@ export function useLanceData() {
     upsertEvent,
     deleteEvent,
     upsertCharInventory,
-    deleteCharInventory
+    deleteCharInventory,
+    upsertMagicItemStock,
+    deleteMagicItemStock,
+    upsertCraftingQueueItem,
+    deleteCraftingQueueItem
   };
 }

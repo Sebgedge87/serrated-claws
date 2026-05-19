@@ -155,7 +155,7 @@ serrated-claws/
 ## 6. Extending
 
 - **Realtime sync** — wrap `useLanceData` with `supabase.channel(...).on('postgres_changes', …)` to push updates from other browsers.
-- **Magic Items tracker** — add a `magic_items` table and a new tab; the schema/UI pattern is in `HouseTab` / `BusinessesTab`.
+- **Magic Items tracker** — implemented; see `src/tabs/MagicItemsTab.tsx` and `supabase/migrations/magic_items.sql`.
 - **Combat encounters** — wire a `combat_log` table + tab; reuse `MemberCard` for participants.
 - **Member self-claim** — admin assigns a member to a profile via `profiles.member_id`; the existing RLS policy already grants them edit rights on that row.
 
@@ -163,7 +163,7 @@ serrated-claws/
 
 ## 7. Known gaps / next steps
 
-- Magic Items tab — schema spot exists but no UI yet (port from Empire LARP "Named Magic Items" sheet).
+- Magic Items — stock tracking, crafting queue with material shortfall detection, full item catalogue.
 - Downtime Planner tab — schema spot reserved.
 - Member self-claim flow — admin-only via SQL right now; a proper "Claim character" button would be a nice addition.
 - Realtime — currently fetch-on-mount; multi-admin edits need a refresh.
