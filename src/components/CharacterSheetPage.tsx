@@ -568,58 +568,156 @@ function SkillsSection({
       )}
 
       {adding && (
-        <div className="bg-ink-800/30 rounded-lg p-3 space-y-2 mt-2 border border-gold-500/10">
-          <div className="grid grid-cols-[1fr_auto] gap-2 items-end">
-            <div>
-              <label className="text-[10px] uppercase tracking-widest text-ink-100/40 block mb-1">Skill</label>
-              <select
-                autoFocus
-                className="input text-sm"
-                value={newSkill.skill_name}
-                onChange={e => {
-                  const name = e.target.value;
-                  const found = SKILLS_CATALOGUE.find(s => s.name === name);
-                  setNewSkill(n => ({ ...n, skill_name: name, category: found?.category ?? n.category }));
-                }}
-              >
-                <option value="">— choose skill —</option>
-                {activeCategory === 'All'
-                  ? SKILL_CATEGORY_ORDER.map(cat => {
-                      const catSkills = SKILLS_CATALOGUE.filter(s => s.category === cat);
-                      if (!catSkills.length) return null;
-                      return (
-                        <optgroup key={cat} label={cat}>
-                          {catSkills.map(s => <option key={s.name} value={s.name}>{s.name}{s.maxRank ? ` (max ${s.maxRank})` : ''}</option>)}
-                        </optgroup>
-                      );
-                    })
-                  : SKILLS_CATALOGUE
-                      .filter(s => s.category === activeCategory)
-                      .map(s => <option key={s.name} value={s.name}>{s.name}{s.maxRank ? ` (max ${s.maxRank})` : ''}</option>)
-                }
-              </select>
-            </div>
-            <div>
-              <label className="text-[10px] uppercase tracking-widest text-ink-100/40 block mb-1">Rank</label>
-              <input
-                type="number"
-                min={1}
-                max={newSkill.skill_name ? (SKILLS_CATALOGUE.find(s => s.name === newSkill.skill_name)?.maxRank ?? 10) : 10}
-                className="input text-sm w-20"
-                value={newSkill.rank}
-                onChange={e => setNewSkill(n => ({ ...n, rank: Math.max(1, parseInt(e.target.value) || 1) }))}
-              />
-            </div>
-          </div>
+        <SkillPicker
+          activeCategory={activeCategory}
+          newSkill={newSkill}
+          setNewSkill={setNewSkill}
+          busy={busy}
+          onAdd={addSkill}
+          onCancel={() => setAdding(false)}
+        />
+      )}
+    </div>
+  );
+}
 
-          <div className="flex justify-end gap-2">
-            <button onClick={() => setAdding(false)} className="btn btn-ghost btn-sm text-xs">Cancel</button>
-            <button onClick={addSkill} disabled={!newSkill.skill_name.trim() || busy} className="btn btn-primary btn-sm text-xs">
-              {busy ? 'Adding…' : 'Add Skill'}
+// ── Skill Picker ─────────────────────────────────────────────────────────────
+
+function SkillPicker({
+  activeCategory,
+  newSkill,
+  setNewSkill,
+  busy,
+  onAdd,
+  onCancel,
+}: {
+  activeCategory: CategoryFilter;
+  newSkill: { skill_name: string; category: SkillCategory; rank: number };
+  setNewSkill: (updater: (n: { skill_name: string; category: SkillCategory; rank: number }) => { skill_name: string; category: SkillCategory; rank: number }) => void;
+  busy: boolean;
+  onAdd: () => void;
+  onCancel: () => void;
+}) {
+  const [query, setQuery] = useState('');
+  const [open, setOpen] = useState(false);
+
+  const filtered = useMemo(() => {
+    const base = activeCategory === 'All'
+      ? SKILLS_CATALOGUE
+      : SKILLS_CATALOGUE.filter(s => s.category === activeCategory);
+    if (!query.trim()) return base;
+    const q = query.toLowerCase();
+    return base.filter(s => s.name.toLowerCase().includes(q));
+  }, [activeCategory, query]);
+
+  const selectedEntry = SKILLS_CATALOGUE.find(s => s.name === newSkill.skill_name);
+  const colors = selectedEntry ? SKILL_CATEGORY_COLORS[selectedEntry.category] : null;
+
+  function pick(s: typeof SKILLS_CATALOGUE[number]) {
+    setNewSkill(n => ({ ...n, skill_name: s.name, category: s.category }));
+    setQuery('');
+    setOpen(false);
+  }
+
+  return (
+    <div className="bg-ink-800/30 rounded-lg p-3 space-y-2 mt-2 border border-gold-500/10">
+      <div className="grid grid-cols-[1fr_auto] gap-2 items-end">
+        <div>
+          <label className="text-[10px] uppercase tracking-widest text-ink-100/40 block mb-1">Skill</label>
+          <div className="relative">
+            <button
+              type="button"
+              className={cx('input text-sm w-full text-left flex items-center justify-between gap-2', open && 'border-gold-300')}
+              onClick={() => setOpen(o => !o)}
+            >
+              {newSkill.skill_name
+                ? <span className="flex items-center gap-2">
+                    {colors && <span className="w-2 h-2 rounded-full flex-shrink-0" style={{ background: colors.text }} />}
+                    {newSkill.skill_name}
+                    {selectedEntry?.maxRank && <span className="text-[10px] text-ink-100/40">max {selectedEntry.maxRank}</span>}
+                  </span>
+                : <span className="text-ink-100/40">— choose skill —</span>
+              }
+              <Icons.ChevronDown size={14} className="text-ink-100/40 flex-shrink-0" />
             </button>
+
+            {open && (
+              <div className="absolute top-full left-0 right-0 z-20 mt-1 bg-ink-800 border border-gold-500/25 rounded-lg shadow-lift overflow-hidden">
+                <div className="p-2 border-b border-gold-500/15">
+                  <input
+                    autoFocus
+                    className="input text-sm w-full py-1.5"
+                    placeholder="Search skills…"
+                    value={query}
+                    onChange={e => setQuery(e.target.value)}
+                    onKeyDown={e => {
+                      if (e.key === 'Enter' && filtered.length === 1) pick(filtered[0]);
+                      if (e.key === 'Escape') { setOpen(false); setQuery(''); }
+                    }}
+                  />
+                </div>
+                <div className="max-h-56 overflow-y-auto">
+                  {filtered.length === 0 && (
+                    <div className="px-3 py-3 text-xs text-ink-100/40 text-center">No skills match</div>
+                  )}
+                  {activeCategory === 'All'
+                    ? SKILL_CATEGORY_ORDER.map(cat => {
+                        const catSkills = filtered.filter(s => s.category === cat);
+                        if (!catSkills.length) return null;
+                        const catColors = SKILL_CATEGORY_COLORS[cat];
+                        return (
+                          <div key={cat}>
+                            <div className="px-3 py-1 text-[10px] uppercase tracking-widest font-semibold sticky top-0 bg-ink-800"
+                              style={{ color: catColors.text }}>
+                              {cat}
+                            </div>
+                            {catSkills.map(s => (
+                              <button
+                                key={s.name}
+                                className="w-full text-left px-3 py-2 text-sm hover:bg-gold-500/10 flex items-center justify-between gap-2 transition-colors"
+                                onClick={() => pick(s)}
+                              >
+                                <span className="text-ink-100">{s.name}</span>
+                                {s.maxRank && <span className="text-[10px] text-ink-100/40 flex-shrink-0">max {s.maxRank}</span>}
+                              </button>
+                            ))}
+                          </div>
+                        );
+                      })
+                    : filtered.map(s => (
+                        <button
+                          key={s.name}
+                          className="w-full text-left px-3 py-2 text-sm hover:bg-gold-500/10 flex items-center justify-between gap-2 transition-colors"
+                          onClick={() => pick(s)}
+                        >
+                          <span className="text-ink-100">{s.name}</span>
+                          {s.maxRank && <span className="text-[10px] text-ink-100/40 flex-shrink-0">max {s.maxRank}</span>}
+                        </button>
+                      ))
+                  }
+                </div>
+              </div>
+            )}
           </div>
         </div>
-      )}
+        <div>
+          <label className="text-[10px] uppercase tracking-widest text-ink-100/40 block mb-1">Rank</label>
+          <input
+            type="number"
+            min={1}
+            max={selectedEntry?.maxRank ?? 10}
+            className="input text-sm w-20"
+            value={newSkill.rank}
+            onChange={e => setNewSkill(n => ({ ...n, rank: Math.max(1, parseInt(e.target.value) || 1) }))}
+          />
+        </div>
+      </div>
+      <div className="flex justify-end gap-2">
+        <button onClick={onCancel} className="btn btn-ghost btn-sm text-xs">Cancel</button>
+        <button onClick={onAdd} disabled={!newSkill.skill_name.trim() || busy} className="btn btn-primary btn-sm text-xs">
+          {busy ? 'Adding…' : 'Add Skill'}
+        </button>
+      </div>
     </div>
   );
 }

@@ -104,7 +104,7 @@ export function Layout() {
               <Icons.Swords size={24} />
             </div>
             <div>
-              <h1 className="text-4xl font-display font-bold m-0 bg-gradient-to-b from-gold-50 to-gold-500 text-transparent bg-clip-text">
+              <h1 className="text-4xl font-display font-bold m-0 text-gold-300 select-none">
                 {lance.settings?.name ?? 'The Serrated Claws'}
               </h1>
               <p className="text-xs uppercase tracking-[0.15em] text-ink-100/50 mt-1">Lance Management System</p>
