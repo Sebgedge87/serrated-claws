@@ -187,7 +187,7 @@ export function Layout() {
       {/* Tabs */}
       <nav className="px-12 flex gap-0.5 overflow-x-auto bg-ink-950/50 backdrop-blur border-b border-gold-500/15">
         {tabs.map(t => (
-          <button key={t.id} onClick={() => setActiveTab(t.id)} className={cx('tab-btn', activeTab === t.id && 'active')}>
+          <button key={t.id} onClick={() => { setActiveTab(t.id); setSelectedMember(null); }} className={cx('tab-btn', activeTab === t.id && 'active')}>
             <t.Icon size={16} />
             {t.label}
           </button>
