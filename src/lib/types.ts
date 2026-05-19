@@ -69,14 +69,6 @@ export interface CovenRitual {
   notes: string | null;
 }
 
-export interface RitualCatalogueEntry {
-  id: string;
-  name: string;
-  magnitude: number;
-  realm: string | null;
-  description: string | null;
-}
-
 export interface Func {
   id: string;
   name: string;
@@ -147,7 +139,6 @@ export interface LanceData {
   magicItemsStock: MagicItemStock[];
   craftingQueue: CraftingQueueItem[];
   covenRituals: CovenRitual[];
-  ritualCatalogue: RitualCatalogueEntry[];
 }
 
 export interface MagicItemStock {

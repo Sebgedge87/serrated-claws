@@ -259,8 +259,6 @@ export function Layout() {
                 onClearInventoryLog={lance.clearInventoryLog}
                 onUpsertEvent={lance.upsertEvent}
                 onDeleteEvent={lance.deleteEvent}
-                onUpsertRitualCatalogueEntry={lance.upsertRitualCatalogueEntry}
-                onDeleteRitualCatalogueEntry={lance.deleteRitualCatalogueEntry}
               />
             )}
           </>

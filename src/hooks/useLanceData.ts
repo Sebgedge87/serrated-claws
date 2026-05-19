@@ -15,7 +15,6 @@ import type {
   MagicItemStock,
   Member,
   Profile,
-  RitualCatalogueEntry,
   UserRole
 } from '@/lib/types';
 
@@ -39,8 +38,7 @@ export function useLanceData() {
     characterSkills: [],
     magicItemsStock: [],
     craftingQueue: [],
-    covenRituals: [],
-    ritualCatalogue: []
+    covenRituals: []
   });
   const [profiles, setProfiles] = useState<Profile[]>([]);
   const [settings, setSettings] = useState<LanceSettings | null>(null);
@@ -51,7 +49,7 @@ export function useLanceData() {
     if (!silent) setLoading(true);
     setError(null);
     try {
-      const [houses, members, covens, fns, biz, bizOwners, inv, invLog, profs, evts, charInv, charSkills, magicStock, craftingQ, covenRituals, ritualCatalogue] = await Promise.all([
+      const [houses, members, covens, fns, biz, bizOwners, inv, invLog, profs, evts, charInv, charSkills, magicStock, craftingQ, covenRituals] = await Promise.all([
         supabase.from('houses').select('*').order('sort_order'),
         supabase.from('members').select('*').order('is_noble', { ascending: false }).order('name'),
         supabase.from('covens').select('*'),
@@ -66,8 +64,7 @@ export function useLanceData() {
         supabase.from('character_skills').select('*'),
         supabase.from('magic_items_stock').select('*').order('created_at', { ascending: false }),
         supabase.from('crafting_queue').select('*').order('created_at', { ascending: false }),
-        supabase.from('coven_rituals').select('*'),
-        supabase.from('ritual_catalogue').select('*').order('realm').order('name')
+        supabase.from('coven_rituals').select('*')
       ]);
 
       const businesses: Business[] = (biz.data ?? []).map(b => ({
@@ -90,8 +87,7 @@ export function useLanceData() {
         characterSkills: (charSkills.data ?? []) as CharacterSkill[],
         magicItemsStock: (magicStock.data ?? []) as MagicItemStock[],
         craftingQueue: (craftingQ.data ?? []) as CraftingQueueItem[],
-        covenRituals: (covenRituals.data ?? []) as CovenRitual[],
-        ritualCatalogue: (ritualCatalogue.data ?? []) as RitualCatalogueEntry[]
+        covenRituals: (covenRituals.data ?? []) as CovenRitual[]
       });
       setProfiles((profs.data ?? []) as Profile[]);
 
@@ -308,19 +304,6 @@ export function useLanceData() {
     await reload(true);
   }, [reload]);
 
-  // ---- Ritual Catalogue ----
-  const upsertRitualCatalogueEntry = useCallback(async (entry: Omit<RitualCatalogueEntry, 'id'> & { id?: string }) => {
-    const { error: err } = await supabase.from('ritual_catalogue').upsert(entry);
-    if (err) throw new Error(err.message);
-    await reload(true);
-  }, [reload]);
-
-  const deleteRitualCatalogueEntry = useCallback(async (id: string) => {
-    const { error: err } = await supabase.from('ritual_catalogue').delete().eq('id', id);
-    if (err) throw new Error(err.message);
-    await reload(true);
-  }, [reload]);
-
   // ---- Coven Rituals ----
   const upsertCovenRitual = useCallback(async (ritual: Omit<CovenRitual, 'id'> & { id?: string }) => {
     const { error: err } = await supabase.from('coven_rituals').upsert(ritual);
@@ -405,8 +388,6 @@ export function useLanceData() {
     deleteCraftingQueueItem,
     upsertCovenRitual,
     deleteCovenRitual,
-    updateCovenMana,
-    upsertRitualCatalogueEntry,
-    deleteRitualCatalogueEntry
+    updateCovenMana
   };
 }
