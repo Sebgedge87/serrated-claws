@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import type { LanceData, LanceEvent, LanceSettings, Profile, UserRole } from '@/lib/types';
+import type { LanceData, LanceEvent, LanceSettings, Profile, RitualCatalogueEntry, UserRole } from '@/lib/types';
 import { Icons } from '@/components/Icons';
 import { initials } from '@/lib/utils';
 import { parseCoinToRings } from '@/lib/utils';
@@ -15,12 +15,14 @@ interface Props {
   onClearInventoryLog: () => Promise<void>;
   onUpsertEvent: (ev: Partial<LanceEvent> & { name: string; date: string }) => Promise<void>;
   onDeleteEvent: (id: string) => Promise<void>;
+  onUpsertRitualCatalogueEntry: (e: Omit<RitualCatalogueEntry, 'id'> & { id?: string }) => Promise<void>;
+  onDeleteRitualCatalogueEntry: (id: string) => Promise<void>;
 }
 
 const A = '#d4b46d';
 const ROLE_COLORS: Record<UserRole, string> = { super_admin: '#f0a040', admin: '#d4b46d', member: '#7eb0d4', viewer: '#9ca3af' };
 
-export function AdminTab({ data, profiles, settings, currentUserId, onUpdateProfile, onUpsertSettings, onResetInventoryQty, onClearInventoryLog, onUpsertEvent, onDeleteEvent }: Props) {
+export function AdminTab({ data, profiles, settings, currentUserId, onUpdateProfile, onUpsertSettings, onResetInventoryQty, onClearInventoryLog, onUpsertEvent, onDeleteEvent, onUpsertRitualCatalogueEntry, onDeleteRitualCatalogueEntry }: Props) {
   const currentRole = profiles.find(p => p.id === currentUserId)?.role ?? 'admin';
   const isSuperAdmin = currentRole === 'super_admin';
 
@@ -41,6 +43,7 @@ export function AdminTab({ data, profiles, settings, currentUserId, onUpdateProf
 
       <StatsSection data={data} profiles={profiles} />
       <EventsSection events={data.events} data={data} onUpsert={onUpsertEvent} onDelete={onDeleteEvent} />
+      <RitualCatalogueSection catalogue={data.ritualCatalogue} onUpsert={onUpsertRitualCatalogueEntry} onDelete={onDeleteRitualCatalogueEntry} />
       <SettingsSection settings={settings} onSave={onUpsertSettings} />
       <RolesSection profiles={profiles} data={data} currentUserId={currentUserId} currentRole={currentRole} onUpdateProfile={onUpdateProfile} />
       {isSuperAdmin && <DangerZone onResetInventoryQty={onResetInventoryQty} onClearInventoryLog={onClearInventoryLog} logCount={data.inventoryLog.length} />}
@@ -426,6 +429,118 @@ function RolesSection({ profiles, data, currentUserId, currentRole, onUpdateProf
           </tbody>
         </table>
       </div>
+    </section>
+  );
+}
+
+// ── Ritual Catalogue ─────────────────────────────────────────────────────────
+
+const REALMS = ['Autumn', 'Day', 'Night', 'Spring', 'Summer', 'Winter', 'Magnitude'];
+
+function RitualCatalogueSection({ catalogue, onUpsert, onDelete }: {
+  catalogue: RitualCatalogueEntry[];
+  onUpsert: (e: Omit<RitualCatalogueEntry, 'id'> & { id?: string }) => Promise<void>;
+  onDelete: (id: string) => Promise<void>;
+}) {
+  const [adding, setAdding] = useState(false);
+  const [form, setForm] = useState({ name: '', magnitude: 2, realm: '', description: '' });
+  const [busy, setBusy] = useState(false);
+  const [search, setSearch] = useState('');
+
+  const filtered = search.trim()
+    ? catalogue.filter(r => r.name.toLowerCase().includes(search.toLowerCase()) || (r.realm ?? '').toLowerCase().includes(search.toLowerCase()))
+    : catalogue;
+
+  async function save() {
+    if (!form.name.trim() || busy) return;
+    setBusy(true);
+    try {
+      await onUpsert({ name: form.name.trim(), magnitude: form.magnitude, realm: form.realm || null, description: form.description.trim() || null });
+      setForm({ name: '', magnitude: 2, realm: '', description: '' });
+      setAdding(false);
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  const grouped = filtered.reduce<Record<string, RitualCatalogueEntry[]>>((acc, r) => {
+    const key = r.realm ?? 'Unknown';
+    (acc[key] ??= []).push(r);
+    return acc;
+  }, {});
+
+  return (
+    <section>
+      <SectionHeading icon={<Icons.Sparkles size={16} />} title="Ritual Catalogue" color="#b56eb5" />
+      <div className="flex gap-3 mb-4">
+        <input
+          className="input flex-1"
+          placeholder="Search rituals…"
+          value={search}
+          onChange={e => setSearch(e.target.value)}
+        />
+        <button onClick={() => setAdding(a => !a)} className="btn btn-secondary btn-sm">
+          <Icons.Plus size={14} /> Add Ritual
+        </button>
+      </div>
+
+      {adding && (
+        <div className="card p-4 mb-4 border border-purple-500/20">
+          <div className="grid grid-cols-2 gap-3 mb-3">
+            <div className="col-span-2">
+              <label className="text-[10px] uppercase tracking-widest text-ink-100/50 font-semibold block mb-1">Name</label>
+              <input className="input" autoFocus placeholder="e.g. Twist of Morvalt" value={form.name} onChange={e => setForm(f => ({ ...f, name: e.target.value }))} />
+            </div>
+            <div>
+              <label className="text-[10px] uppercase tracking-widest text-ink-100/50 font-semibold block mb-1">Magnitude</label>
+              <input type="number" min={1} className="input" value={form.magnitude} onChange={e => setForm(f => ({ ...f, magnitude: parseInt(e.target.value) || 1 }))} />
+            </div>
+            <div>
+              <label className="text-[10px] uppercase tracking-widest text-ink-100/50 font-semibold block mb-1">Realm</label>
+              <select className="input" value={form.realm} onChange={e => setForm(f => ({ ...f, realm: e.target.value }))}>
+                <option value="">Unknown</option>
+                {REALMS.map(r => <option key={r} value={r}>{r}</option>)}
+              </select>
+            </div>
+            <div className="col-span-2">
+              <label className="text-[10px] uppercase tracking-widest text-ink-100/50 font-semibold block mb-1">Description</label>
+              <input className="input" placeholder="Optional description…" value={form.description} onChange={e => setForm(f => ({ ...f, description: e.target.value }))} />
+            </div>
+          </div>
+          <div className="flex gap-2 justify-end">
+            <button onClick={() => setAdding(false)} className="btn btn-ghost btn-sm">Cancel</button>
+            <button onClick={save} disabled={!form.name.trim() || busy} className="btn btn-primary btn-sm">{busy ? 'Saving…' : 'Add to Catalogue'}</button>
+          </div>
+        </div>
+      )}
+
+      {Object.keys(grouped).length === 0 ? (
+        <p className="text-ink-100/40 text-sm py-6 text-center">No rituals in catalogue yet.</p>
+      ) : (
+        <div className="space-y-4">
+          {Object.entries(grouped).sort(([a], [b]) => a.localeCompare(b)).map(([realm, rituals]) => (
+            <div key={realm}>
+              <div className="text-[10px] uppercase tracking-widest text-purple-400/70 font-semibold mb-2">{realm}</div>
+              <div className="space-y-1">
+                {rituals.map(r => (
+                  <div key={r.id} className="flex items-center justify-between gap-3 px-3 py-2 rounded-lg bg-ink-800/40 hover:bg-ink-800/60">
+                    <div className="flex items-center gap-3 min-w-0">
+                      <span className="text-sm font-mono font-bold text-purple-400 w-6 text-right flex-shrink-0">{r.magnitude}</span>
+                      <div className="min-w-0">
+                        <div className="text-sm font-medium text-ink-100">{r.name}</div>
+                        {r.description && <div className="text-xs text-ink-100/50 truncate">{r.description}</div>}
+                      </div>
+                    </div>
+                    <button onClick={() => { if (confirm(`Remove "${r.name}" from catalogue?`)) onDelete(r.id); }} className="btn btn-ghost btn-sm text-red-400/50 hover:text-red-400 flex-shrink-0 p-1">
+                      <Icons.Trash size={13} />
+                    </button>
+                  </div>
+                ))}
+              </div>
+            </div>
+          ))}
+        </div>
+      )}
     </section>
   );
 }

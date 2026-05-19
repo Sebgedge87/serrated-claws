@@ -1,5 +1,5 @@
-import { useState } from 'react';
-import type { Coven, CovenRitual, LanceData } from '@/lib/types';
+import { useMemo, useState } from 'react';
+import type { Coven, CovenRitual, LanceData, RitualCatalogueEntry } from '@/lib/types';
 import { Icons } from '@/components/Icons';
 import { Modal, Field } from '@/components/Modal';
 import { initials } from '@/lib/utils';
@@ -16,7 +16,6 @@ interface Props {
 
 const A = '#b56eb5';
 
-const REALMS = ['Autumn', 'Day', 'Night', 'Spring', 'Summer', 'Winter', 'Magnitude'];
 
 export function CovensTab({ data, isAdmin, onUpsert, onDelete, onUpsertRitual, onDeleteRitual, onUpdateMana }: Props) {
   const [selected, setSelected] = useState<string | null>(null);
@@ -276,6 +275,7 @@ function CovenDetail({
       {addingRitual && (
         <RitualModal
           covenId={coven.id}
+          catalogue={data.ritualCatalogue}
           onClose={() => setAddingRitual(false)}
           onSave={async r => { await onUpsertRitual(r); setAddingRitual(false); }}
         />
@@ -361,44 +361,115 @@ function CovenModal({ initial, onClose, onSave }: { initial: Partial<Coven>; onC
   );
 }
 
-function RitualModal({ covenId, onClose, onSave }: {
+function RitualModal({ covenId, catalogue, onClose, onSave }: {
   covenId: string;
+  catalogue: RitualCatalogueEntry[];
   onClose: () => void;
   onSave: (r: Omit<CovenRitual, 'id'>) => Promise<void>;
 }) {
-  const [form, setForm] = useState<Omit<CovenRitual, 'id'>>({
-    coven_id: covenId,
-    ritual_name: '',
-    magnitude: 2,
-    realm: null,
-    notes: null
-  });
+  const [search, setSearch] = useState('');
+  const [selected, setSelected] = useState<RitualCatalogueEntry | null>(null);
+  const [notes, setNotes] = useState('');
   const [busy, setBusy] = useState(false);
 
-  async function save() {
-    if (!form.ritual_name.trim() || busy) return;
-    setBusy(true);
-    try { await onSave({ ...form, ritual_name: form.ritual_name.trim() }); } finally { setBusy(false); }
+  const filtered = useMemo(() => {
+    const q = search.trim().toLowerCase();
+    if (!q) return catalogue;
+    return catalogue.filter(r =>
+      r.name.toLowerCase().includes(q) ||
+      (r.realm ?? '').toLowerCase().includes(q)
+    );
+  }, [catalogue, search]);
+
+  function pick(entry: RitualCatalogueEntry) {
+    setSelected(entry);
+    setSearch(entry.name);
   }
+
+  function clear() {
+    setSelected(null);
+    setSearch('');
+    setNotes('');
+  }
+
+  async function save() {
+    if (!selected || busy) return;
+    setBusy(true);
+    try {
+      await onSave({
+        coven_id: covenId,
+        ritual_name: selected.name,
+        magnitude: selected.magnitude,
+        realm: selected.realm,
+        notes: notes.trim() || null
+      });
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  const showDropdown = !selected && search.length > 0 && filtered.length > 0;
 
   return (
     <Modal onClose={onClose} title="Add Ritual" icon={<Icons.Sparkles size={20} />} accent="#b56eb5"
-      footer={<><button onClick={onClose} className="btn btn-ghost">Cancel</button><button onClick={save} disabled={busy || !form.ritual_name.trim()} className="btn btn-primary">{busy ? 'Adding…' : 'Add Ritual'}</button></>}>
-      <Field label="Ritual Name">
-        <input className="input" autoFocus value={form.ritual_name} onChange={e => setForm(f => ({ ...f, ritual_name: e.target.value }))} placeholder="e.g. Twist of Morvalt" />
-      </Field>
-      <Field label="Magnitude">
-        <input type="number" min={1} className="input" value={form.magnitude} onChange={e => setForm(f => ({ ...f, magnitude: parseInt(e.target.value) || 1 }))} />
-      </Field>
-      <Field label="Realm" optional>
-        <select className="input" value={form.realm ?? ''} onChange={e => setForm(f => ({ ...f, realm: e.target.value || null }))}>
-          <option value="">Unknown</option>
-          {REALMS.map(r => <option key={r} value={r}>{r}</option>)}
-        </select>
-      </Field>
-      <Field label="Notes" optional>
-        <input className="input" value={form.notes ?? ''} onChange={e => setForm(f => ({ ...f, notes: e.target.value || null }))} placeholder="Any notes…" />
-      </Field>
+      footer={<><button onClick={onClose} className="btn btn-ghost">Cancel</button><button onClick={save} disabled={busy || !selected} className="btn btn-primary">{busy ? 'Adding…' : 'Add Ritual'}</button></>}>
+
+      {catalogue.length === 0 ? (
+        <p className="text-ink-100/50 text-sm text-center py-4">No rituals in the catalogue yet. Ask an admin to add them via the Admin tab.</p>
+      ) : (
+        <>
+          <Field label="Search Ritual">
+            <div className="relative">
+              <input
+                className="input pr-8"
+                autoFocus
+                placeholder="Type to search…"
+                value={search}
+                onChange={e => { setSearch(e.target.value); if (selected) setSelected(null); }}
+              />
+              {selected && (
+                <button onClick={clear} className="absolute right-2 top-1/2 -translate-y-1/2 text-ink-100/40 hover:text-ink-100">✕</button>
+              )}
+            </div>
+            {showDropdown && (
+              <div className="border border-gold-500/20 rounded-lg mt-1 max-h-48 overflow-y-auto bg-ink-900 shadow-xl">
+                {filtered.map(r => (
+                  <button
+                    key={r.id}
+                    onClick={() => pick(r)}
+                    className="w-full text-left px-3 py-2 hover:bg-ink-800/60 flex items-center justify-between gap-2 border-b border-gold-500/10 last:border-0"
+                  >
+                    <div>
+                      <div className="text-sm font-medium text-ink-100">{r.name}</div>
+                      {r.realm && <div className="text-[11px] text-ink-100/50">{r.realm}</div>}
+                    </div>
+                    <div className="text-sm font-mono font-bold flex-shrink-0" style={{ color: A }}>
+                      {r.magnitude}
+                    </div>
+                  </button>
+                ))}
+              </div>
+            )}
+          </Field>
+
+          {selected && (
+            <div className="rounded-lg px-4 py-3 mb-2" style={{ background: `${A}12`, border: `1px solid ${A}30` }}>
+              <div className="flex items-center justify-between">
+                <div>
+                  <div className="font-semibold text-ink-100">{selected.name}</div>
+                  <div className="text-xs text-ink-100/50">{selected.realm ?? 'No realm'}</div>
+                  {selected.description && <div className="text-xs text-ink-100/60 mt-1">{selected.description}</div>}
+                </div>
+                <div className="text-2xl font-display font-bold" style={{ color: A }}>{selected.magnitude}</div>
+              </div>
+            </div>
+          )}
+
+          <Field label="Notes" optional>
+            <input className="input" value={notes} onChange={e => setNotes(e.target.value)} placeholder="Any notes for this coven's casting…" disabled={!selected} />
+          </Field>
+        </>
+      )}
     </Modal>
   );
 }
