@@ -13,11 +13,19 @@ function Gate() {
     );
   }
   if (!session) return <SignIn />;
-  if (profile && profile.member_id === null && profile.role === 'member') {
+  const skipKey = user ? `skip_create_char_${user.id}` : null;
+  const skipped = skipKey ? localStorage.getItem(skipKey) === '1' : false;
+  if (profile && profile.member_id === null && profile.role !== 'viewer' && !skipped) {
+    const canSkip = profile.role === 'admin' || profile.role === 'super_admin';
     return (
       <CreateCharacterScreen
         userId={user!.id}
+        canSkip={canSkip}
         onCreated={() => window.location.reload()}
+        onSkip={() => {
+          if (skipKey) localStorage.setItem(skipKey, '1');
+          window.location.reload();
+        }}
       />
     );
   }

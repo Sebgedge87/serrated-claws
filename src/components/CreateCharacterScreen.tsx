@@ -5,10 +5,12 @@ import type { House } from '@/lib/types';
 
 interface Props {
   userId: string;
+  canSkip?: boolean;
   onCreated: () => void;
+  onSkip?: () => void;
 }
 
-export function CreateCharacterScreen({ userId, onCreated }: Props) {
+export function CreateCharacterScreen({ userId, canSkip, onCreated, onSkip }: Props) {
   const [houses, setHouses] = useState<House[]>([]);
   const [form, setForm] = useState({
     name: '',
@@ -146,6 +148,16 @@ export function CreateCharacterScreen({ userId, onCreated }: Props) {
               <Icons.Plus size={16} />
               {busy ? 'Creating character…' : 'Create Character'}
             </button>
+
+            {canSkip && onSkip && (
+              <button
+                type="button"
+                onClick={onSkip}
+                className="btn btn-ghost w-full justify-center text-ink-100/50"
+              >
+                Continue without a character
+              </button>
+            )}
           </form>
         </div>
       </div>
