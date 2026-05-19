@@ -114,6 +114,36 @@ export interface LanceData {
   inventoryLog: InventoryLogEntry[];
   events: LanceEvent[];
   characterInventory: CharInventoryItem[];
+  magicItemsStock: MagicItemStock[];
+  craftingQueue: CraftingQueueItem[];
+}
+
+export interface MagicItemStock {
+  id: string;
+  item_name: string;
+  tier: string;
+  form: string;
+  bonded_to: string | null;
+  status: 'available' | 'bonded' | 'reserved' | 'expired';
+  created_at_event: string | null;
+  expires_after_event: string | null;
+  notes: string | null;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface CraftingQueueItem {
+  id: string;
+  item_name: string;
+  tier: string;
+  crafter_id: string | null;
+  recipient_id: string | null;
+  status: 'planned' | 'materials-sourced' | 'in-progress' | 'complete' | 'cancelled';
+  materials_required: Record<string, number>;
+  notes: string | null;
+  target_event: string | null;
+  created_at: string;
+  updated_at: string;
 }
 
 /** Empire LARP catalogue reference data — used for inventory dropdowns. */
