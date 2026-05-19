@@ -5,6 +5,7 @@ import type { CatalogueEntry, CatalogueType } from '@/lib/types';
 import { Icons } from '@/components/Icons';
 import { TIER_LABELS } from '@/lib/magicItemsCatalogue';
 import type { ItemTier } from '@/lib/magicItemsCatalogue';
+import { StockModal } from '@/components/modals/StockModal';
 
 const TIER_PILL_COLORS: Record<ItemTier, { bg: string; text: string; border: string }> = {
   apprentice: { bg: 'rgba(212,180,109,0.15)', text: '#d4b46d', border: 'rgba(212,180,109,0.4)' },
@@ -27,6 +28,8 @@ interface Props {
   isAdmin: boolean;
   onSetInventory: (item: string, current: number, required: number) => Promise<void>;
   onLogInventory: (item: string, amount: number, direction: 'In' | 'Out' | 'Adjustment', notes?: string) => Promise<void>;
+  onUpsertStock: (item: Partial<MagicItemStock> & { item_name: string; tier: string; form: string }) => Promise<void>;
+  onDeleteStock: (id: string) => Promise<void>;
 }
 
 const TYPE_ICONS: Record<CatalogueType, typeof Icons.Package> = {
@@ -40,7 +43,7 @@ const TYPE_ICONS: Record<CatalogueType, typeof Icons.Package> = {
   'Magic Item': Icons.Wand
 };
 
-export function InventoryTab({ data, isAdmin, onSetInventory, onLogInventory }: Props) {
+export function InventoryTab({ data, isAdmin, onSetInventory, onLogInventory, onUpsertStock, onDeleteStock }: Props) {
   const [typeFilter, setTypeFilter] = useState<'All' | CatalogueType>('All');
   const [search, setSearch] = useState('');
   const [showAll, setShowAll] = useState(true);
@@ -215,7 +218,7 @@ export function InventoryTab({ data, isAdmin, onSetInventory, onLogInventory }: 
       {filtered.length === 0 && <p className="text-center py-16 text-ink-100/50">No items match your filters</p>}
 
       {/* Magic Items Stock section */}
-      <MagicItemsSection data={data} />
+      <MagicItemsSection data={data} isAdmin={isAdmin} onUpsertStock={onUpsertStock} onDeleteStock={onDeleteStock} />
 
       {data.inventoryLog.length > 0 && (
         <div className="mt-10">
@@ -252,8 +255,19 @@ export function InventoryTab({ data, isAdmin, onSetInventory, onLogInventory }: 
   );
 }
 
-function MagicItemsSection({ data }: { data: LanceData }) {
+function MagicItemsSection({
+  data,
+  isAdmin,
+  onUpsertStock,
+  onDeleteStock
+}: {
+  data: LanceData;
+  isAdmin: boolean;
+  onUpsertStock: (item: Partial<MagicItemStock> & { item_name: string; tier: string; form: string }) => Promise<void>;
+  onDeleteStock: (id: string) => Promise<void>;
+}) {
   const memberMap = useMemo(() => Object.fromEntries(data.members.map(m => [m.id, m.name])), [data.members]);
+  const [modal, setModal] = useState<{ open: boolean; initial?: Partial<MagicItemStock> }>({ open: false });
   const items = data.magicItemsStock;
 
   return (
@@ -265,6 +279,12 @@ function MagicItemsSection({ data }: { data: LanceData }) {
         <h3 className="text-sm uppercase tracking-widest font-bold m-0 font-sans" style={{ color: ACCENT }}>Magic Items</h3>
         <div className="flex-1 h-px" style={{ background: `linear-gradient(90deg, ${ACCENT}50, transparent)` }} />
         <span className="text-xs text-ink-100/50">{items.length}</span>
+        {isAdmin && (
+          <button onClick={() => setModal({ open: true })} className="btn btn-primary btn-sm" style={{ background: `linear-gradient(180deg, ${ACCENT}cc, ${ACCENT}99)` }}>
+            <Icons.Plus size={14} />
+            Add Item
+          </button>
+        )}
       </div>
 
       {items.length === 0 ? (
@@ -281,6 +301,7 @@ function MagicItemsSection({ data }: { data: LanceData }) {
                 <Th>Status</Th>
                 <Th>Created</Th>
                 <Th>Expires</Th>
+                {isAdmin && <Th center>Actions</Th>}
               </tr>
             </thead>
             <tbody>
@@ -307,12 +328,38 @@ function MagicItemsSection({ data }: { data: LanceData }) {
                     </td>
                     <td className="px-3 py-2.5 text-xs text-ink-100/50">{item.created_at_event ?? '—'}</td>
                     <td className="px-3 py-2.5 text-xs text-ink-100/50">{item.expires_after_event ?? '—'}</td>
+                    {isAdmin && (
+                      <td className="px-3 py-2.5">
+                        <div className="flex gap-1 justify-center">
+                          <button onClick={() => setModal({ open: true, initial: item })} className="btn btn-ghost btn-sm">
+                            <Icons.Edit size={13} />
+                          </button>
+                          <button
+                            onClick={async () => {
+                              if (confirm(`Remove "${item.item_name}" from the armoury?`)) await onDeleteStock(item.id);
+                            }}
+                            className="btn btn-danger btn-sm"
+                          >
+                            <Icons.Trash size={13} />
+                          </button>
+                        </div>
+                      </td>
+                    )}
                   </tr>
                 );
               })}
             </tbody>
           </table>
         </div>
+      )}
+
+      {modal.open && (
+        <StockModal
+          data={data}
+          initial={modal.initial}
+          onClose={() => setModal({ open: false })}
+          onSave={async item => { await onUpsertStock(item); setModal({ open: false }); }}
+        />
       )}
     </div>
   );

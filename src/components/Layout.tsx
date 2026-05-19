@@ -186,7 +186,7 @@ export function Layout() {
             {activeTab === 'covens' && <CovensTab data={lance.data} isAdmin={isAdmin} onUpsert={lance.upsertCoven} onDelete={lance.deleteCoven} />}
             {activeTab === 'functions' && <FunctionsTab data={lance.data} isAdmin={isAdmin} onUpsert={lance.upsertFunction} onDelete={lance.deleteFunction} />}
             {activeTab === 'businesses' && <BusinessesTab data={lance.data} isAdmin={isAdmin} onUpsert={lance.upsertBusiness} onDelete={lance.deleteBusiness} />}
-            {activeTab === 'inventory' && <InventoryTab data={lance.data} isAdmin={isAdmin} onSetInventory={lance.setInventory} onLogInventory={lance.logInventory} />}
+            {activeTab === 'inventory' && <InventoryTab data={lance.data} isAdmin={isAdmin} onSetInventory={lance.setInventory} onLogInventory={lance.logInventory} onUpsertStock={lance.upsertMagicItemStock} onDeleteStock={lance.deleteMagicItemStock} />}
             {activeTab === 'magic-items' && (
               <MagicItemsTab
                 data={lance.data}
