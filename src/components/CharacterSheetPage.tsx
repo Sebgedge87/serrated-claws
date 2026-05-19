@@ -234,7 +234,7 @@ function HeroSection({
       <div className="h-[3px]" style={{ background: `linear-gradient(90deg, ${accent}, ${accent}40 60%, transparent)` }} />
       <div className="px-6 py-5 flex flex-wrap items-start justify-between gap-4">
         <div>
-          <h2 className="text-3xl font-display font-bold m-0 bg-gradient-to-b from-gold-50 to-gold-500 text-transparent bg-clip-text">
+          <h2 className="text-3xl font-display font-bold m-0 text-gold-300 select-none">
             {member.name}
           </h2>
           <div className="flex flex-wrap items-center gap-2 mt-2">
@@ -279,6 +279,9 @@ function StatsCard({
 }) {
   const [editingXp, setEditingXp] = useState(false);
   const [xpInput, setXpInput] = useState(String(member.total_xp ?? 8));
+  const [editingStats, setEditingStats] = useState(false);
+  const [statsForm, setStatsForm] = useState({ hp: member.hp ?? '', mp: member.mp ?? '', coin_per_event: member.coin_per_event ?? '' });
+  const [statsBusy, setStatsBusy] = useState(false);
 
   const totalXp = member.total_xp ?? 8;
   const xpSpent = skills.reduce((sum, sk) => {
@@ -292,6 +295,22 @@ function StatsCard({
     const val = parseInt(xpInput) || 8;
     await onUpsertMember({ ...member, total_xp: val, name: member.name });
     setEditingXp(false);
+  }
+
+  async function saveStats() {
+    setStatsBusy(true);
+    try {
+      await onUpsertMember({
+        ...member,
+        name: member.name,
+        hp: statsForm.hp !== '' ? Number(statsForm.hp) : null,
+        mp: statsForm.mp !== '' ? Number(statsForm.mp) : null,
+        coin_per_event: statsForm.coin_per_event.trim() || null,
+      });
+      setEditingStats(false);
+    } finally {
+      setStatsBusy(false);
+    }
   }
 
   return (
@@ -345,49 +364,75 @@ function StatsCard({
         )}
       </div>
 
-      <div className="text-[10px] uppercase tracking-widest text-ink-100/50 font-semibold mb-3">Stats</div>
-      <div className="space-y-2">
-        {member.hp != null && (
-          <div className="flex items-center justify-between">
-            <span className="text-xs text-ink-100/60 flex items-center gap-1.5">
-              <Icons.Heart size={12} className="text-red-400" /> HP
-            </span>
-            <span className="text-sm font-mono font-bold text-red-400">{member.hp}</span>
-          </div>
-        )}
-        {member.mp != null && (
-          <div className="flex items-center justify-between">
-            <span className="text-xs text-ink-100/60 flex items-center gap-1.5">
-              <Icons.Zap size={12} className="text-blue-400" /> MP
-            </span>
-            <span className="text-sm font-mono font-bold text-blue-400">{member.mp}</span>
-          </div>
-        )}
-        {member.coin_per_event && (
-          <div className="flex items-center justify-between">
-            <span className="text-xs text-ink-100/60 flex items-center gap-1.5">
-              <Icons.Coins size={12} className="text-gold-300" /> Coin / Event
-            </span>
-            <span className="text-sm font-mono font-bold text-gold-300">{member.coin_per_event}</span>
-          </div>
-        )}
-        {member.coven && (
-          <div className="flex items-center justify-between">
-            <span className="text-xs text-ink-100/60 flex items-center gap-1.5">
-              <Icons.Sparkles size={12} className="text-purple-400" /> Coven
-            </span>
-            <span className="text-sm text-ink-100">{member.coven}</span>
-          </div>
-        )}
-        {member.military_function && (
-          <div className="flex items-center justify-between">
-            <span className="text-xs text-ink-100/60 flex items-center gap-1.5">
-              <Icons.Shield size={12} /> Military Role
-            </span>
-            <span className="text-sm text-ink-100">{member.military_function}</span>
-          </div>
+      <div className="flex items-center justify-between mb-3">
+        <div className="text-[10px] uppercase tracking-widest text-ink-100/50 font-semibold">Stats</div>
+        {canEdit && !editingStats && (
+          <button onClick={() => { setStatsForm({ hp: member.hp ?? '', mp: member.mp ?? '', coin_per_event: member.coin_per_event ?? '' }); setEditingStats(true); }} className="text-[10px] text-ink-100/40 hover:text-gold-300 transition-colors">
+            edit
+          </button>
         )}
       </div>
+
+      {editingStats ? (
+        <div className="space-y-2">
+          <div className="grid grid-cols-2 gap-2">
+            <div>
+              <label className="text-[10px] uppercase tracking-widest text-ink-100/40 block mb-1 flex items-center gap-1"><Icons.Heart size={10} className="text-red-400" /> HP</label>
+              <input type="number" min={0} className="input text-sm py-1" value={statsForm.hp} onChange={e => setStatsForm(f => ({ ...f, hp: e.target.value }))} />
+            </div>
+            <div>
+              <label className="text-[10px] uppercase tracking-widest text-ink-100/40 block mb-1 flex items-center gap-1"><Icons.Zap size={10} className="text-blue-400" /> MP</label>
+              <input type="number" min={0} className="input text-sm py-1" value={statsForm.mp} onChange={e => setStatsForm(f => ({ ...f, mp: e.target.value }))} />
+            </div>
+          </div>
+          <div>
+            <label className="text-[10px] uppercase tracking-widest text-ink-100/40 block mb-1 flex items-center gap-1"><Icons.Coins size={10} className="text-gold-300" /> Income / Event</label>
+            <input className="input text-sm py-1 w-full" placeholder="e.g. 18 rings" value={statsForm.coin_per_event} onChange={e => setStatsForm(f => ({ ...f, coin_per_event: e.target.value }))} />
+          </div>
+          <div className="flex gap-2 justify-end pt-1">
+            <button onClick={() => setEditingStats(false)} className="btn btn-ghost btn-sm text-xs">Cancel</button>
+            <button onClick={saveStats} disabled={statsBusy} className="btn btn-primary btn-sm text-xs">
+              {statsBusy ? 'Saving…' : 'Save'}
+            </button>
+          </div>
+        </div>
+      ) : (
+        <div className="space-y-2">
+          {member.hp != null && (
+            <div className="flex items-center justify-between">
+              <span className="text-xs text-ink-100/60 flex items-center gap-1.5"><Icons.Heart size={12} className="text-red-400" /> HP</span>
+              <span className="text-sm font-mono font-bold text-red-400">{member.hp}</span>
+            </div>
+          )}
+          {member.mp != null && (
+            <div className="flex items-center justify-between">
+              <span className="text-xs text-ink-100/60 flex items-center gap-1.5"><Icons.Zap size={12} className="text-blue-400" /> MP</span>
+              <span className="text-sm font-mono font-bold text-blue-400">{member.mp}</span>
+            </div>
+          )}
+          {member.coin_per_event && (
+            <div className="flex items-center justify-between">
+              <span className="text-xs text-ink-100/60 flex items-center gap-1.5"><Icons.Coins size={12} className="text-gold-300" /> Income / Event</span>
+              <span className="text-sm font-mono font-bold text-gold-300">{member.coin_per_event}</span>
+            </div>
+          )}
+          {!member.hp && !member.mp && !member.coin_per_event && canEdit && (
+            <p className="text-xs text-ink-100/30 text-center py-1">No stats set · click edit</p>
+          )}
+          {member.coven && (
+            <div className="flex items-center justify-between">
+              <span className="text-xs text-ink-100/60 flex items-center gap-1.5"><Icons.Sparkles size={12} className="text-purple-400" /> Coven</span>
+              <span className="text-sm text-ink-100">{member.coven}</span>
+            </div>
+          )}
+          {member.military_function && (
+            <div className="flex items-center justify-between">
+              <span className="text-xs text-ink-100/60 flex items-center gap-1.5"><Icons.Shield size={12} /> Military Role</span>
+              <span className="text-sm text-ink-100">{member.military_function}</span>
+            </div>
+          )}
+        </div>
+      )}
     </div>
   );
 }
