@@ -97,7 +97,6 @@ export function InventoryTab({
   const [stockModal, setStockModal] = useState<{ open: boolean; initial?: Partial<MagicItemStock>; prefill?: CatalogueItem }>({ open: false });
   const [queueModal, setQueueModal] = useState<{ open: boolean; initial?: Partial<CraftingQueueItem>; prefill?: CatalogueItem }>({ open: false });
 
-  const totalTracked = EMPIRE_CATALOGUE.filter(i => i.track).length;
   const withStock = data.inventory.filter(v => v.current_qty > 0).length;
   const shortfalls = data.inventory.filter(v => v.required_qty > v.current_qty).length;
 
