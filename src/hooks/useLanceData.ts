@@ -4,6 +4,7 @@ import type {
   Business,
   CharInventoryItem,
   CharacterSkill,
+  CharacterSpell,
   CovenRitual,
   CraftingQueueItem,
   Coven,
@@ -36,6 +37,7 @@ export function useLanceData() {
     events: [],
     characterInventory: [],
     characterSkills: [],
+    characterSpells: [],
     magicItemsStock: [],
     craftingQueue: [],
     covenRituals: []
@@ -49,7 +51,7 @@ export function useLanceData() {
     if (!silent) setLoading(true);
     setError(null);
     try {
-      const [houses, members, covens, fns, biz, bizOwners, inv, invLog, profs, evts, charInv, charSkills, magicStock, craftingQ, covenRituals] = await Promise.all([
+      const [houses, members, covens, fns, biz, bizOwners, inv, invLog, profs, evts, charInv, charSkills, charSpells, magicStock, craftingQ, covenRituals] = await Promise.all([
         supabase.from('houses').select('*').order('sort_order'),
         supabase.from('members').select('*').order('is_noble', { ascending: false }).order('name'),
         supabase.from('covens').select('*'),
@@ -62,6 +64,7 @@ export function useLanceData() {
         supabase.from('events').select('*').order('sort_order'),
         supabase.from('character_inventory').select('*'),
         supabase.from('character_skills').select('*'),
+        supabase.from('character_spells').select('*'),
         supabase.from('magic_items_stock').select('*').order('created_at', { ascending: false }),
         supabase.from('crafting_queue').select('*').order('created_at', { ascending: false }),
         supabase.from('coven_rituals').select('*')
@@ -85,6 +88,7 @@ export function useLanceData() {
         events: (evts.data ?? []) as LanceEvent[],
         characterInventory: (charInv.data ?? []) as CharInventoryItem[],
         characterSkills: (charSkills.data ?? []) as CharacterSkill[],
+        characterSpells: (charSpells.data ?? []) as CharacterSpell[],
         magicItemsStock: (magicStock.data ?? []) as MagicItemStock[],
         craftingQueue: (craftingQ.data ?? []) as CraftingQueueItem[],
         covenRituals: (covenRituals.data ?? []) as CovenRitual[]
@@ -277,6 +281,19 @@ export function useLanceData() {
     await reload(true);
   }, [reload]);
 
+  // ---- Character Spells ----
+  const upsertCharacterSpell = useCallback(async (spell: Omit<CharacterSpell, 'id'> & { id?: string }) => {
+    const { error: err } = await supabase.from('character_spells').upsert(spell);
+    if (err) throw new Error(err.message);
+    await reload(true);
+  }, [reload]);
+
+  const deleteCharacterSpell = useCallback(async (id: string) => {
+    const { error: err } = await supabase.from('character_spells').delete().eq('id', id);
+    if (err) throw new Error(err.message);
+    await reload(true);
+  }, [reload]);
+
   // ---- Lance Settings ----
   const upsertSettings = useCallback(async (updates: Partial<Omit<LanceSettings, 'id'>>) => {
     const { error: err } = await supabase.from('lance_settings').upsert({ id: 'default', ...updates });
@@ -389,6 +406,8 @@ export function useLanceData() {
     deleteCharInventory,
     upsertCharacterSkill,
     deleteCharacterSkill,
+    upsertCharacterSpell,
+    deleteCharacterSpell,
     upsertMagicItemStock,
     deleteMagicItemStock,
     upsertCraftingQueueItem,

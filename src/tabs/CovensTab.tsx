@@ -15,14 +15,13 @@ interface Props {
   onDelete: (id: string) => Promise<void>;
   onUpsertRitual: (r: Omit<CovenRitual, 'id'> & { id?: string }) => Promise<void>;
   onDeleteRitual: (id: string) => Promise<void>;
-  onUpdateMana: (covenId: string, mana: number) => Promise<void>;
 }
 
 const A = '#b56eb5';
 const DOMAINS: RitualRealm[] = ['Spring', 'Summer', 'Autumn', 'Winter', 'Day', 'Night'];
 
 
-export function CovensTab({ data, isAdmin, onUpsert, onDelete, onUpsertRitual, onDeleteRitual, onUpdateMana }: Props) {
+export function CovensTab({ data, isAdmin, onUpsert, onDelete, onUpsertRitual, onDeleteRitual }: Props) {
   const [selected, setSelected] = useState<string | null>(null);
   const [editing, setEditing] = useState<Partial<Coven> | null>(null);
   const { confirm, Dialog: ConfirmDialog } = useConfirm();
@@ -46,7 +45,6 @@ export function CovensTab({ data, isAdmin, onUpsert, onDelete, onUpsertRitual, o
           }}
           onUpsertRitual={onUpsertRitual}
           onDeleteRitual={onDeleteRitual}
-          onUpdateMana={onUpdateMana}
           confirm={confirm}
         />
         {ConfirmDialog}
@@ -124,7 +122,7 @@ export function CovensTab({ data, isAdmin, onUpsert, onDelete, onUpsertRitual, o
 // ── Coven Detail ──────────────────────────────────────────────────────────────
 
 function CovenDetail({
-  coven, data, isAdmin, onBack, onUpsert, onDelete, onUpsertRitual, onDeleteRitual, onUpdateMana, confirm
+  coven, data, isAdmin, onBack, onUpsert, onDelete, onUpsertRitual, onDeleteRitual, confirm
 }: {
   coven: Coven;
   data: LanceData;
@@ -134,27 +132,18 @@ function CovenDetail({
   onDelete: () => void;
   onUpsertRitual: (r: Omit<CovenRitual, 'id'> & { id?: string }) => Promise<void>;
   onDeleteRitual: (id: string) => Promise<void>;
-  onUpdateMana: (covenId: string, mana: number) => Promise<void>;
   confirm: (opts: { title: string; body?: string; danger?: boolean; confirmLabel?: string }) => Promise<boolean>;
 }) {
   const [addingRitual, setAddingRitual] = useState(false);
   const [editingRitual, setEditingRitual] = useState<CovenRitual | null>(null);
   const [editingCoven, setEditingCoven] = useState(false);
-  const [editingMana, setEditingMana] = useState(false);
-  const [manaInput, setManaInput] = useState(String(coven.mana_available));
 
   const members = data.members.filter(m => m.coven === coven.id);
   const rituals = data.covenRituals.filter(r => r.coven_id === coven.id);
   const totalRequired = rituals.reduce((s, r) => s + r.magnitude, 0);
-  const manaHave = coven.mana_available;
+  const manaHave = members.reduce((sum, m) => sum + (m.mp ?? 0), 0);
   const manaNeeded = Math.max(0, totalRequired - manaHave);
   const surplus = manaHave - totalRequired;
-
-  async function saveMana() {
-    const val = parseInt(manaInput) || 0;
-    await onUpdateMana(coven.id, val);
-    setEditingMana(false);
-  }
 
   return (
     <div className="animate-fade-in">
@@ -201,18 +190,7 @@ function CovenDetail({
         </div>
         <div className="grid grid-cols-4 gap-3 mb-4">
           <ManaStatBox label="Required" value={totalRequired} color="#e8a870" />
-          <ManaStatBox
-            label="Have"
-            value={manaHave}
-            color={A}
-            editable={isAdmin}
-            editing={editingMana}
-            inputValue={manaInput}
-            onStartEdit={() => { setManaInput(String(manaHave)); setEditingMana(true); }}
-            onInput={setManaInput}
-            onSave={saveMana}
-            onCancel={() => setEditingMana(false)}
-          />
+          <ManaStatBox label="Have" value={manaHave} color={A} />
           <ManaStatBox label="Needed" value={manaNeeded} color={manaNeeded > 0 ? '#e87070' : '#6ad47e'} />
           <ManaStatBox label="Surplus" value={surplus} color={surplus >= 0 ? '#6ad47e' : '#e87070'} />
         </div>
@@ -238,7 +216,7 @@ function CovenDetail({
           <h3 className="text-xs uppercase tracking-widest font-bold m-0" style={{ color: A }}>Rituals · {rituals.length}</h3>
           <div className="flex-1 h-px" style={{ background: `linear-gradient(90deg, ${A}40, transparent)` }} />
           {rituals.length > 0 && (
-            <button onClick={() => exportRitualsPdf(coven.name, coven.domain, rituals, coven.mana_available)} className="btn btn-ghost btn-sm text-xs" style={{ color: A }}>
+            <button onClick={() => exportRitualsPdf(coven.name, coven.domain, rituals, manaHave)} className="btn btn-ghost btn-sm text-xs" style={{ color: A }}>
               <Icons.Download size={12} /> Export PDF
             </button>
           )}
@@ -480,26 +458,31 @@ function RitualModal({ covenId, domain, initial, onClose, onSave }: {
   function pick(entry: typeof RITUALS_CATALOGUE[number]) { setSelected(entry); }
   function clear() { setSelected(null); setSearch(''); }
 
+  // In edit mode we already have the ritual data from `initial`, no re-selection needed
+  const canSave = isEdit ? !busy : (!busy && !!selected);
+  const ritualName = selected?.name ?? initial?.ritual_name ?? '';
+  const ritualRealm = selected?.realm ?? initial?.realm ?? null;
+
   async function save() {
-    if (!selected || busy) return;
+    if (!canSave || !ritualName) return;
     setBusy(true);
     try {
       await onSave({
         coven_id: covenId,
-        ritual_name: selected.name,
+        ritual_name: ritualName,
         magnitude,
-        realm: selected.realm,
+        realm: ritualRealm,
         notes: notes.trim() || null,
         wording: wording.trim() || null,
       });
     } finally { setBusy(false); }
   }
 
-  const realmColor = selected ? REALM_COLORS[selected.realm as RitualRealm]?.text : A;
+  const realmColor = ritualRealm ? REALM_COLORS[ritualRealm as RitualRealm]?.text : A;
 
   return (
     <Modal onClose={onClose} title={isEdit ? 'Edit Ritual' : 'Add Ritual'} icon={<Icons.Sparkles size={20} />} accent="#b56eb5" width="lg"
-      footer={<><button onClick={onClose} className="btn btn-ghost">Cancel</button><button onClick={save} disabled={busy || !selected} className="btn btn-primary">{busy ? 'Saving…' : isEdit ? 'Save' : 'Add Ritual'}</button></>}>
+      footer={<><button onClick={onClose} className="btn btn-ghost">Cancel</button><button onClick={save} disabled={!canSave} className="btn btn-primary">{busy ? 'Saving…' : isEdit ? 'Save' : 'Add Ritual'}</button></>}>
 
       {!isEdit && (
         <Field label="Search">
@@ -513,12 +496,12 @@ function RitualModal({ covenId, domain, initial, onClose, onSave }: {
         </Field>
       )}
 
-      {selected ? (
+      {(isEdit || selected) ? (
         <div className="rounded-lg px-4 py-3 flex items-start justify-between gap-3" style={{ background: `${realmColor}12`, border: `1px solid ${realmColor}30` }}>
           <div>
-            <div className="font-semibold text-ink-100">{selected.name}</div>
-            <div className="text-xs mb-1" style={{ color: realmColor }}>{selected.realm}</div>
-            <div className="text-xs text-ink-100/60 leading-relaxed">{selected.effect}</div>
+            <div className="font-semibold text-ink-100">{ritualName}</div>
+            {ritualRealm && <div className="text-xs mb-1" style={{ color: realmColor }}>{ritualRealm}</div>}
+            {selected?.effect && <div className="text-xs text-ink-100/60 leading-relaxed">{selected.effect}</div>}
           </div>
           {!isEdit && <button onClick={clear} className="text-ink-100/40 hover:text-ink-100 flex-shrink-0 mt-0.5">✕</button>}
         </div>
@@ -551,12 +534,12 @@ function RitualModal({ covenId, domain, initial, onClose, onSave }: {
       <Field label="Casting Wording" optional>
         <textarea rows={4} className="input resize-y font-mono text-sm"
           placeholder="Record the exact wording used when casting this ritual…"
-          value={wording} onChange={e => setWording(e.target.value)} disabled={!selected} />
+          value={wording} onChange={e => setWording(e.target.value)} disabled={!isEdit && !selected} />
       </Field>
 
       <Field label="Notes" optional>
         <input className="input" value={notes} onChange={e => setNotes(e.target.value)}
-          placeholder="Any coven notes…" disabled={!selected} />
+          placeholder="Any coven notes…" disabled={!isEdit && !selected} />
       </Field>
     </Modal>
   );

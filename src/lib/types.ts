@@ -28,6 +28,15 @@ export interface CharacterSkill {
   notes: string | null;
 }
 
+export interface CharacterSpell {
+  id: string;
+  member_id: string;
+  spell_name: string;
+  school: string;
+  magnitude: number;
+  notes: string | null;
+}
+
 export interface LanceSettings {
   id: string;
   name: string;
@@ -141,6 +150,7 @@ export interface LanceData {
   events: LanceEvent[];
   characterInventory: CharInventoryItem[];
   characterSkills: CharacterSkill[];
+  characterSpells: CharacterSpell[];
   magicItemsStock: MagicItemStock[];
   craftingQueue: CraftingQueueItem[];
   covenRituals: CovenRitual[];
