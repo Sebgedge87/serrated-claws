@@ -80,7 +80,7 @@ export function FunctionsTab({ data, isAdmin, onUpsert, onDelete }: Props) {
           {members.length === 0 && <p className="text-ink-100/40 text-sm py-8 col-span-full">No members assigned to this function.</p>}
         </div>
 
-        {editing && <FnModal initial={editing} onClose={() => setEditing(null)} onSave={async f => { await onUpsert({ ...f, id: fn.id, name: f.name! }); setEditing(null); }} />}
+        {editing && <FnModal members={data.members} initial={editing} onClose={() => setEditing(null)} onSave={async f => { await onUpsert({ ...f, id: fn.id, name: f.name! }); setEditing(null); }} />}
       </div>
     );
   }
@@ -131,6 +131,7 @@ export function FunctionsTab({ data, isAdmin, onUpsert, onDelete }: Props) {
 
       {editing !== null && (
         <FnModal
+          members={data.members}
           initial={editing}
           onClose={() => setEditing(null)}
           onSave={async f => {
@@ -145,7 +146,7 @@ export function FunctionsTab({ data, isAdmin, onUpsert, onDelete }: Props) {
   );
 }
 
-function FnModal({ initial, onClose, onSave }: { initial: Partial<Func>; onClose: () => void; onSave: (f: Partial<Func>) => Promise<void> }) {
+function FnModal({ members, initial, onClose, onSave }: { members: LanceData['members']; initial: Partial<Func>; onClose: () => void; onSave: (f: Partial<Func>) => Promise<void> }) {
   const [form, setForm] = useState(initial);
   const [busy, setBusy] = useState(false);
 
@@ -155,11 +156,18 @@ function FnModal({ initial, onClose, onSave }: { initial: Partial<Func>; onClose
     try { await onSave(form); } finally { setBusy(false); }
   }
 
+  const activeMembers = members.filter(m => m.status === 'active').sort((a, b) => a.name.localeCompare(b.name));
+
   return (
     <Modal onClose={onClose} title={initial.id ? 'Edit Function' : 'New Function'} icon={<Icons.Swords size={20} />}
       footer={<><button onClick={onClose} className="btn btn-ghost">Cancel</button><button onClick={save} disabled={busy || !form.name?.trim()} className="btn btn-primary">{busy ? 'Saving…' : initial.id ? 'Save' : 'Create'}</button></>}>
       <Field label="Name"><input className="input" value={form.name ?? ''} onChange={e => setForm({ ...form, name: e.target.value })} autoFocus /></Field>
-      <Field label="Leader" optional><input className="input" value={form.leader ?? ''} onChange={e => setForm({ ...form, leader: e.target.value || null })} /></Field>
+      <Field label="Leader" optional>
+        <select className="input" value={form.leader ?? ''} onChange={e => setForm({ ...form, leader: e.target.value || null })}>
+          <option value="">— None —</option>
+          {activeMembers.map(m => <option key={m.id} value={m.name}>{m.name}</option>)}
+        </select>
+      </Field>
       <Field label="Description" optional><textarea rows={3} className="input resize-y" value={form.description ?? ''} onChange={e => setForm({ ...form, description: e.target.value || null })} /></Field>
     </Modal>
   );

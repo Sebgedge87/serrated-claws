@@ -272,21 +272,32 @@ export async function exportResourcesPdf(data: LanceData) {
   for (const [denom, qty] of [['Rings', r], ['Crowns', c], ['Thrones', t]] as [string, number][]) {
     y = tableRow(doc, [{ value: denom, ...FUND_COLS[0] }, { value: String(qty), ...FUND_COLS[1] }], y);
   }
-  // Total line
+  // Total line — push text down 6mm then draw rule 5mm above baseline
+  y += 6;
   doc.setLineDashPattern([], 0);
   doc.setDrawColor(...RULE);
   doc.setLineWidth(0.2);
-  doc.line(INNER, y - 1, INNER + 94, y - 1);
+  doc.line(INNER, y - 5, INNER + 94, y - 5);
   y = tableRow(doc, [
     { value: 'Total in rings', x: INNER, w: 60 },
     { value: String(totalRings), x: INNER + 61, w: 30, align: 'right' },
   ], y, 'bold');
   y += 6;
 
-  // Inventory — exclude currency items already shown in treasury
-  const invItems = data.inventory.filter(i =>
-    !CURRENCY_ITEMS.has(i.item) && (i.current_qty > 0 || i.required_qty > 0)
-  );
+  // Inventory — exclude currency items; merge case-insensitive duplicates
+  const invMerged = new Map<string, { item: string; current_qty: number; required_qty: number }>();
+  for (const i of data.inventory) {
+    if (CURRENCY_ITEMS.has(i.item)) continue;
+    const key = i.item.toLowerCase();
+    const existing = invMerged.get(key);
+    if (existing) {
+      existing.current_qty += i.current_qty;
+      existing.required_qty += i.required_qty;
+    } else {
+      invMerged.set(key, { item: i.item, current_qty: i.current_qty, required_qty: i.required_qty });
+    }
+  }
+  const invItems = [...invMerged.values()].filter(i => i.current_qty > 0 || i.required_qty > 0);
 
   if (invItems.length > 0) {
     y = checkPage(doc, y, 22);
@@ -352,7 +363,9 @@ export async function exportRitualsPdf(
     const wordingLines = r.wording ? doc.splitTextToSize(r.wording, CONTENT_W - 22) : [];
     const wordingTextH = wordingLines.length > 0 ? wordingLines.length * 5 + 2 : 0;
     const boxH = Math.max(28, wordingTextH + 14);
-    y = checkPage(doc, y, 22 + boxH);
+    const descLines = r.notes ? doc.splitTextToSize(r.notes, CONTENT_W - 4) : [];
+    const descH = descLines.length > 0 ? descLines.length * 5 + 7 : 0;
+    y = checkPage(doc, y, 22 + descH + boxH);
 
     // Ritual header row
     doc.setLineDashPattern([], 0);
@@ -382,11 +395,19 @@ export async function exportRitualsPdf(
     y += 3;
 
     if (r.notes) {
+      const descLines = doc.splitTextToSize(r.notes, CONTENT_W - 4);
       doc.setFont('times', 'italic');
-      doc.setFontSize(8);
+      doc.setFontSize(7.5);
       doc.setTextColor(...INK_LIGHT);
-      doc.text(r.notes, INNER, y);
-      y += 5;
+      doc.text('Description:', INNER, y);
+      doc.setFont('times', 'normal');
+      doc.setFontSize(9);
+      doc.setTextColor(...INK_MID);
+      for (const line of descLines) {
+        doc.text(line, INNER + 22, y);
+        y += 5;
+      }
+      y += 2;
     }
 
     // Wording box
