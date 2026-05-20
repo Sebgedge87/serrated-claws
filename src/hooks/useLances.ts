@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useState } from 'react';
 import { supabase } from '@/lib/supabase';
-import type { Lance, LanceMembership, UserRole } from '@/lib/types';
+import type { Lance, LanceMembership } from '@/lib/types';
 
 export interface MembershipWithLance extends LanceMembership {
   lance: Lance;
@@ -43,23 +43,16 @@ export function useLances(userId: string | null) {
   const currentLance = currentMembership?.lance ?? null;
 
   const createLance = useCallback(async (name: string, motto?: string) => {
-    const { data, error } = await supabase.from('lances').insert({ name, motto: motto ?? null }).select().single();
+    const { data, error } = await supabase.rpc('create_lance', { p_name: name, p_motto: motto ?? null });
     if (error) throw new Error(error.message);
-    // Add creator as admin
-    if (data && userId) {
-      await supabase.from('lance_memberships').insert({
-        lance_id: data.id,
-        profile_id: userId,
-        role: 'admin' as UserRole,
-        member_id: null
-      });
-      // Reload memberships
+    const lance = data as { id: string } | null;
+    if (lance && userId) {
       const { data: ms } = await supabase
         .from('lance_memberships')
         .select('*, lance:lances(*), profile:profiles(email, display_name)')
         .eq('profile_id', userId);
       setMemberships((ms ?? []) as MembershipWithLance[]);
-      setCurrentLanceId(data.id);
+      setCurrentLanceId(lance.id);
     }
   }, [userId]);
 
