@@ -1,4 +1,29 @@
-export const TERRITORIES = ['Astolat', 'Semmerholm', 'The Barrens', 'Weirwater', 'Casinea', 'Miaren', 'Mournwold', 'Upwold', 'Kahraman', 'Madruga', 'Segura', 'Feroz', 'Bregasland', 'Hahnmark', 'Kallavesa', 'Sermersuaq', 'Bastion', 'Reikos', 'Holberg', 'Sarvos', 'Tassato', 'Temeschwar', 'Zenith', 'Lustri', 'Proceris'] as const;
+export const ALL_TERRITORIES = ['Astolat', 'Semmerholm', 'The Barrens', 'Weirwater', 'Casinea', 'Miaren', 'Mournwold', 'Upwold', 'Kahraman', 'Madruga', 'Segura', 'Feroz', 'Bregasland', 'Hahnmark', 'Kallavesa', 'Sermersuaq', 'Bastion', 'Reikos', 'Holberg', 'Sarvos', 'Tassato', 'Temeschwar', 'Zenith', 'Lustri', 'Proceris'] as const;
+export type Territory = typeof ALL_TERRITORIES[number];
+
+// Keep backward compat alias
+export const TERRITORIES = ALL_TERRITORIES;
+
+// Fleets require coastal/maritime access
+const COASTAL: Territory[] = ['Madruga', 'Feroz', 'Segura', 'Sarvos', 'Tassato', 'Temeschwar', 'Holberg', 'Kallavesa', 'Sermersuaq', 'Bregasland'];
+
+// Mana Sites are most concentrated in Urizen but exist elsewhere
+const MANA_TERRITORIES: Territory[] = ['Zenith', 'Lustri', 'Proceris', 'Miaren', 'Hahnmark', 'Reikos', 'Casinea', 'Weirwater', 'Astolat', 'Semmerholm', 'Upwold'];
+
+// Forests require wooded territories
+const FOREST_TERRITORIES: Territory[] = ['Miaren', 'Upwold', 'Mournwold', 'Weirwater', 'Astolat', 'Sermersuaq', 'Hahnmark', 'Reikos', 'Casinea', 'The Barrens'];
+
+// Mines require upland/mountainous territories
+const MINE_TERRITORIES: Territory[] = ['Kahraman', 'Hahnmark', 'Mournwold', 'Holberg', 'Temeschwar', 'The Barrens', 'Semmerholm', 'Proceris', 'Zenith'];
+
+export function territoriesForResource(type: ResourceType | null): Territory[] {
+  if (!type) return [...ALL_TERRITORIES];
+  if (type === 'Fleet')      return COASTAL;
+  if (type === 'Mana Site')  return MANA_TERRITORIES;
+  if (type === 'Forest')     return FOREST_TERRITORIES;
+  if (type === 'Mine')       return MINE_TERRITORIES;
+  return [...ALL_TERRITORIES]; // Farm, Business, Congregation, Herb Garden, Military Unit
+}
 
 export const RESOURCE_TYPES = ['Business', 'Congregation', 'Farm', 'Fleet', 'Herb Garden', 'Mana Site', 'Military Unit', 'Forest', 'Mine'] as const;
 
