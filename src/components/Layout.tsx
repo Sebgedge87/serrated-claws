@@ -341,6 +341,7 @@ export function Layout() {
         <div className="fixed inset-0 z-50 bg-ink-950/90 backdrop-blur-sm overflow-y-auto">
           <CreateCharacterScreen
             userId={user.id}
+            lanceId={lances.currentLanceId!}
             onCreated={() => window.location.reload()}
             onClose={() => setShowCreateCharacter(false)}
           />
