@@ -198,6 +198,7 @@ function StockView({
   onDelete: (id: string) => Promise<void>;
 }) {
   const memberMap = useMemo(() => Object.fromEntries(data.members.map(m => [m.id, m.name])), [data.members]);
+  const eventMap = useMemo(() => Object.fromEntries(data.events.map(e => [e.id, e.name])), [data.events]);
   const { confirm, Dialog: ConfirmDialog } = useConfirm();
 
   return (
@@ -258,8 +259,8 @@ function StockView({
                         {item.status}
                       </span>
                     </td>
-                    <td className="px-4 py-3 text-xs text-ink-100/60">{item.created_at_event ?? '—'}</td>
-                    <td className="px-4 py-3 text-xs text-ink-100/60">{item.expires_after_event ?? '—'}</td>
+                    <td className="px-4 py-3 text-xs text-ink-100/60">{item.created_at_event ? (eventMap[item.created_at_event] ?? '—') : '—'}</td>
+                    <td className="px-4 py-3 text-xs text-ink-100/60">{item.expires_after_event ? (eventMap[item.expires_after_event] ?? '—') : '—'}</td>
                     {isAdmin && (
                       <td className="px-4 py-3">
                         <div className="flex gap-1 justify-center">
@@ -306,6 +307,7 @@ function QueueView({
   onDelete: (id: string) => Promise<void>;
 }) {
   const memberMap = useMemo(() => Object.fromEntries(data.members.map(m => [m.id, m.name])), [data.members]);
+  const eventMap = useMemo(() => Object.fromEntries(data.events.map(e => [e.id, e.name])), [data.events]);
   const invMap = useMemo(() => Object.fromEntries(data.inventory.map(i => [i.item, i.current_qty])), [data.inventory]);
 
   const activeQueue = data.craftingQueue.filter(q => !['complete', 'cancelled'].includes(q.status));
@@ -402,6 +404,7 @@ function QueueView({
                       key={item.id}
                       item={item}
                       memberMap={memberMap}
+                      eventMap={eventMap}
                       invMap={invMap}
                       matKeyToInventoryName={matKeyToInventoryName}
                       isAdmin={isAdmin}
@@ -422,6 +425,7 @@ function QueueView({
 function QueueCard({
   item,
   memberMap,
+  eventMap,
   invMap,
   matKeyToInventoryName,
   isAdmin,
@@ -430,6 +434,7 @@ function QueueCard({
 }: {
   item: CraftingQueueItem;
   memberMap: Record<string, string>;
+  eventMap: Record<string, string>;
   invMap: Record<string, number>;
   matKeyToInventoryName: Record<string, string>;
   isAdmin: boolean;
@@ -476,7 +481,7 @@ function QueueCard({
         {item.target_event && (
           <>
             <span className="text-ink-100/30">·</span>
-            <span className="text-xs">Target: {item.target_event}</span>
+            <span className="text-xs">Target: {eventMap[item.target_event!] ?? item.target_event}</span>
           </>
         )}
       </div>
@@ -920,7 +925,12 @@ function QueueModal({
         </Field>
 
         <Field label="Target Event" optional>
-          <input className="input" placeholder="E3 386YE" value={form.target_event ?? ''} onChange={e => set('target_event', e.target.value || null)} />
+          <select className="input" value={form.target_event ?? ''} onChange={e => set('target_event', e.target.value || null)}>
+            <option value="">— None —</option>
+            {[...data.events].sort((a, b) => b.sort_order - a.sort_order).map(ev => (
+              <option key={ev.id} value={ev.id}>{ev.name}</option>
+            ))}
+          </select>
         </Field>
 
         <Field label="Materials Required (auto-filled from catalogue)" span="full">

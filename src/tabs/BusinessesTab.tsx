@@ -8,13 +8,14 @@ import { initials } from '@/lib/utils';
 interface Props {
   data: LanceData;
   isAdmin: boolean;
+  canManageBusiness: (id: string) => boolean;
   onUpsert: (b: Partial<Business> & { id: string; name: string }) => Promise<void>;
   onDelete: (id: string) => Promise<void>;
 }
 
 const A = '#7eb0d4';
 
-export function BusinessesTab({ data, isAdmin, onUpsert, onDelete }: Props) {
+export function BusinessesTab({ data, isAdmin, canManageBusiness, onUpsert, onDelete }: Props) {
   const [selected, setSelected] = useState<string | null>(null);
   const [editing, setEditing] = useState<Partial<Business> | null>(null);
   const { confirm, Dialog: ConfirmDialog } = useConfirm();
@@ -27,12 +28,14 @@ export function BusinessesTab({ data, isAdmin, onUpsert, onDelete }: Props) {
       <div className="animate-fade-in">
         <div className="flex items-center justify-between mb-6">
           <button onClick={() => setSelected(null)} className="btn btn-ghost btn-sm">← Back to Businesses</button>
-          {isAdmin && (
+          {canManageBusiness(biz.id) && (
             <div className="flex gap-2">
               <button onClick={() => setEditing(biz)} className="btn btn-secondary btn-sm"><Icons.Edit size={13} /> Edit</button>
-              <button onClick={async () => { if (await confirm({ title: `Delete ${biz.name}?`, danger: true })) { await onDelete(biz.id); setSelected(null); } }} className="btn btn-danger btn-sm">
-                <Icons.Trash size={13} /> Delete
-              </button>
+              {isAdmin && (
+                <button onClick={async () => { if (await confirm({ title: `Delete ${biz.name}?`, danger: true })) { await onDelete(biz.id); setSelected(null); } }} className="btn btn-danger btn-sm">
+                  <Icons.Trash size={13} /> Delete
+                </button>
+              )}
             </div>
           )}
         </div>
@@ -152,8 +155,15 @@ function BizModal({ data, initial, onClose, onSave }: { data: LanceData; initial
   const [form, setForm] = useState<Partial<Business> & { owners: string[] }>({ owners: [], ...initial });
   const [busy, setBusy] = useState(false);
 
-  function toggleOwner(id: string) {
-    setForm(f => ({ ...f, owners: f.owners.includes(id) ? f.owners.filter(o => o !== id) : [...f.owners, id] }));
+  const sortedMembers = [...data.members].filter(m => m.status === 'active').sort((a, b) => a.name.localeCompare(b.name));
+  const selectedOwners = form.owners.map(id => data.members.find(m => m.id === id)).filter(Boolean);
+  const unselected = sortedMembers.filter(m => !form.owners.includes(m.id));
+
+  function addOwner(id: string) {
+    if (id) setForm(f => ({ ...f, owners: [...f.owners, id] }));
+  }
+  function removeOwner(id: string) {
+    setForm(f => ({ ...f, owners: f.owners.filter(o => o !== id) }));
   }
 
   async function save() {
@@ -171,15 +181,28 @@ function BizModal({ data, initial, onClose, onSave }: { data: LanceData; initial
       <Field label="Resources" optional><textarea rows={2} className="input resize-y" value={form.resources ?? ''} onChange={e => setForm({ ...form, resources: e.target.value || null })} /></Field>
       <Field label="Notes" optional><textarea rows={2} className="input resize-y" value={form.notes ?? ''} onChange={e => setForm({ ...form, notes: e.target.value || null })} /></Field>
       <Field label="Owners">
-        <div className="max-h-48 overflow-auto bg-black/30 border border-gold-500/15 rounded-lg p-2 space-y-1">
-          {data.members.map(m => (
-            <label key={m.id} className="flex items-center gap-2.5 px-2 py-1.5 rounded cursor-pointer hover:bg-gold-500/5">
-              <input type="checkbox" checked={form.owners.includes(m.id)} onChange={() => toggleOwner(m.id)} className="w-4 h-4 accent-gold-300" />
-              <span className="text-sm">{m.name}</span>
-              <span className="text-xs text-ink-100/50">· {data.houses.find(h => h.id === m.house_id)?.name ?? 'Unassigned'}</span>
-            </label>
+        {selectedOwners.length > 0 && (
+          <div className="flex flex-wrap gap-1.5 mb-2">
+            {selectedOwners.map(o => o && (
+              <span key={o.id} className="flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-medium"
+                style={{ background: `${A}20`, border: `1px solid ${A}40`, color: A }}>
+                {o.name}
+                <button type="button" onClick={() => removeOwner(o.id)} className="hover:text-red-400 transition-colors ml-0.5">×</button>
+              </span>
+            ))}
+          </div>
+        )}
+        <select
+          className="input"
+          value=""
+          onChange={e => { addOwner(e.target.value); e.target.value = ''; }}
+          disabled={unselected.length === 0}
+        >
+          <option value="">{unselected.length === 0 ? 'All members added' : '+ Add owner…'}</option>
+          {unselected.map(m => (
+            <option key={m.id} value={m.id}>{m.name} · {data.houses.find(h => h.id === m.house_id)?.name ?? 'Unassigned'}</option>
           ))}
-        </div>
+        </select>
       </Field>
     </Modal>
   );

@@ -12,10 +12,10 @@ import type {
   House,
   LanceData,
   LanceEvent,
+  LanceMembership,
   LanceSettings,
   MagicItemStock,
   Member,
-  Profile,
   UserRole
 } from '@/lib/types';
 
@@ -25,7 +25,7 @@ import type {
  *
  * Could be upgraded to Supabase Realtime later — kept simple for now.
  */
-export function useLanceData() {
+export function useLanceData(lanceId: string | null) {
   const [data, setData] = useState<LanceData>({
     houses: [],
     members: [],
@@ -42,31 +42,32 @@ export function useLanceData() {
     craftingQueue: [],
     covenRituals: []
   });
-  const [profiles, setProfiles] = useState<Profile[]>([]);
+  const [memberships, setMemberships] = useState<LanceMembership[]>([]);
   const [settings, setSettings] = useState<LanceSettings | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
   const reload = useCallback(async (silent = false) => {
+    if (!lanceId) return;
     if (!silent) setLoading(true);
     setError(null);
     try {
-      const [houses, members, covens, fns, biz, bizOwners, inv, invLog, profs, evts, charInv, charSkills, charSpells, magicStock, craftingQ, covenRituals] = await Promise.all([
-        supabase.from('houses').select('*').order('sort_order'),
-        supabase.from('members').select('*').order('is_noble', { ascending: false }).order('name'),
-        supabase.from('covens').select('*'),
-        supabase.from('functions').select('*'),
-        supabase.from('businesses').select('*'),
+      const [houses, members, covens, fns, biz, bizOwners, inv, invLog, ms, evts, charInv, charSkills, charSpells, magicStock, craftingQ, covenRituals] = await Promise.all([
+        supabase.from('houses').select('*').eq('lance_id', lanceId).order('sort_order'),
+        supabase.from('members').select('*').eq('lance_id', lanceId).order('is_noble', { ascending: false }).order('name'),
+        supabase.from('covens').select('*').eq('lance_id', lanceId),
+        supabase.from('functions').select('*').eq('lance_id', lanceId),
+        supabase.from('businesses').select('*').eq('lance_id', lanceId),
         supabase.from('business_owners').select('*'),
-        supabase.from('inventory').select('*'),
-        supabase.from('inventory_log').select('*').order('ts', { ascending: false }).limit(50),
-        supabase.from('profiles').select('*').order('email'),
-        supabase.from('events').select('*').order('sort_order'),
+        supabase.from('inventory').select('*').eq('lance_id', lanceId),
+        supabase.from('inventory_log').select('*').eq('lance_id', lanceId).order('ts', { ascending: false }).limit(50),
+        supabase.from('lance_memberships').select('*, profile:profiles(id, email, display_name)').eq('lance_id', lanceId),
+        supabase.from('events').select('*').eq('lance_id', lanceId).order('sort_order'),
         supabase.from('character_inventory').select('*'),
         supabase.from('character_skills').select('*'),
         supabase.from('character_spells').select('*'),
-        supabase.from('magic_items_stock').select('*').order('created_at', { ascending: false }),
-        supabase.from('crafting_queue').select('*').order('created_at', { ascending: false }),
+        supabase.from('magic_items_stock').select('*').eq('lance_id', lanceId).order('created_at', { ascending: false }),
+        supabase.from('crafting_queue').select('*').eq('lance_id', lanceId).order('created_at', { ascending: false }),
         supabase.from('coven_rituals').select('*')
       ]);
 
@@ -93,8 +94,7 @@ export function useLanceData() {
         craftingQueue: (craftingQ.data ?? []) as CraftingQueueItem[],
         covenRituals: (covenRituals.data ?? []) as CovenRitual[]
       });
-      setProfiles((profs.data ?? []) as Profile[]);
-
+      setMemberships((ms.data ?? []) as LanceMembership[]);
 
       // Auto-clear attending_event flags the day after each event ends
       const today = new Date(); today.setHours(0, 0, 0, 0);
@@ -103,16 +103,20 @@ export function useLanceData() {
           const clearAfter = new Date(ev.end_date ?? ev.start_date);
           clearAfter.setDate(clearAfter.getDate() + 1);
           if (today >= clearAfter) {
-            await supabase.from('members').update({ attending_event: false }).eq('attending_event', true);
+            await supabase.from('members').update({ attending_event: false }).eq('attending_event', true).eq('lance_id', lanceId);
             await supabase.from('events').update({ cleared: true }).eq('id', ev.id);
           }
         }
       }
 
-      // lance_settings may not exist yet on existing installs — degrade gracefully
+      // Fetch settings from lances table
       try {
-        const { data: settingsData } = await supabase.from('lance_settings').select('*').eq('id', 'default').single();
-        setSettings((settingsData as LanceSettings) ?? null);
+        const { data: lanceData } = await supabase.from('lances').select('*').eq('id', lanceId).single();
+        if (lanceData) {
+          setSettings({ id: lanceData.id, name: lanceData.name, motto: lanceData.motto ?? null, description: lanceData.description ?? null });
+        } else {
+          setSettings(null);
+        }
       } catch {
         setSettings(null);
       }
@@ -121,18 +125,22 @@ export function useLanceData() {
     } finally {
       setLoading(false);
     }
-  }, []);
+  }, [lanceId]);
 
   useEffect(() => {
+    if (!lanceId) {
+      setLoading(false);
+      return;
+    }
     reload();
-  }, [reload]);
+  }, [lanceId, reload]);
 
   // ---- Houses ----
   const upsertHouse = useCallback(async (house: Partial<House> & { id: string; name: string }) => {
-    const { error: err } = await supabase.from('houses').upsert(house);
+    const { error: err } = await supabase.from('houses').upsert({ ...house, lance_id: lanceId });
     if (err) throw new Error(err.message);
     await reload(true);
-  }, [reload]);
+  }, [lanceId, reload]);
 
   const deleteHouse = useCallback(async (id: string) => {
     const { error: err } = await supabase.from('houses').delete().eq('id', id);
@@ -147,25 +155,33 @@ export function useLanceData() {
     const newResource = member.resource ?? null;
 
     // Strip attending_event on new inserts — let the DB default handle it
-    // (avoids schema cache errors on fresh deployments where the column may not yet be cached)
-    const payload = member.id ? member : (({ attending_event: _ae, ...rest }) => rest)(member as Member);
-    const { error: err } = await supabase.from('members').upsert(payload);
+    const rawPayload = member.id
+      ? { ...member, lance_id: lanceId }
+      : (({ attending_event: _ae, ...rest }) => ({ ...rest, lance_id: lanceId }))(member as Member);
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const { error: err } = await supabase.from('members').upsert(rawPayload as any);
     if (err) throw new Error(err.message);
 
     // Sync inventory when resource changes
     if (oldResource !== newResource) {
       if (oldResource) {
         const existing = data.inventory.find(i => i.item === oldResource);
-        await supabase.from('inventory').upsert({ item: oldResource, current_qty: Math.max(0, (existing?.current_qty ?? 0) - 1), required_qty: existing?.required_qty ?? 0 });
+        await supabase.from('inventory').upsert(
+          { lance_id: lanceId, item: oldResource, current_qty: Math.max(0, (existing?.current_qty ?? 0) - 1), required_qty: existing?.required_qty ?? 0 },
+          { onConflict: 'lance_id,item' }
+        );
       }
       if (newResource) {
         const existing = data.inventory.find(i => i.item === newResource);
-        await supabase.from('inventory').upsert({ item: newResource, current_qty: (existing?.current_qty ?? 0) + 1, required_qty: existing?.required_qty ?? 0 });
+        await supabase.from('inventory').upsert(
+          { lance_id: lanceId, item: newResource, current_qty: (existing?.current_qty ?? 0) + 1, required_qty: existing?.required_qty ?? 0 },
+          { onConflict: 'lance_id,item' }
+        );
       }
     }
 
     await reload(true);
-  }, [data.members, data.inventory, reload]);
+  }, [lanceId, data.members, data.inventory, reload]);
 
   /** Soft-remove: unassign from house rather than delete (admin-only delete is also available). */
   const unassignMember = useCallback(async (id: string) => {
@@ -175,7 +191,7 @@ export function useLanceData() {
   }, [reload]);
 
   const deleteMember = useCallback(async (id: string) => {
-    await supabase.from('profiles').update({ member_id: null }).eq('member_id', id);
+    await supabase.from('lance_memberships').update({ member_id: null }).eq('member_id', id);
     const { error: err } = await supabase.from('members').delete().eq('id', id);
     if (err) throw new Error(err.message);
     await reload(true);
@@ -184,7 +200,7 @@ export function useLanceData() {
   // ---- Businesses ----
   const upsertBusiness = useCallback(async (biz: Partial<Business> & { id: string; name: string }) => {
     const { owners, ...rest } = biz;
-    const { error: err } = await supabase.from('businesses').upsert(rest);
+    const { error: err } = await supabase.from('businesses').upsert({ ...rest, lance_id: lanceId });
     if (err) throw new Error(err.message);
 
     if (owners) {
@@ -194,14 +210,14 @@ export function useLanceData() {
       }
     }
     await reload(true);
-  }, [reload]);
+  }, [lanceId, reload]);
 
   // ---- Covens ----
   const upsertCoven = useCallback(async (coven: Partial<Coven> & { id: string; name: string }) => {
-    const { error: err } = await supabase.from('covens').upsert(coven);
+    const { error: err } = await supabase.from('covens').upsert({ ...coven, lance_id: lanceId });
     if (err) throw new Error(err.message);
     await reload(true);
-  }, [reload]);
+  }, [lanceId, reload]);
 
   const deleteCoven = useCallback(async (id: string) => {
     const { error: err } = await supabase.from('covens').delete().eq('id', id);
@@ -211,10 +227,10 @@ export function useLanceData() {
 
   // ---- Functions ----
   const upsertFunction = useCallback(async (fn: Partial<Func> & { id: string; name: string }) => {
-    const { error: err } = await supabase.from('functions').upsert(fn);
+    const { error: err } = await supabase.from('functions').upsert({ ...fn, lance_id: lanceId });
     if (err) throw new Error(err.message);
     await reload(true);
-  }, [reload]);
+  }, [lanceId, reload]);
 
   const deleteFunction = useCallback(async (id: string) => {
     const { error: err } = await supabase.from('functions').delete().eq('id', id);
@@ -229,25 +245,42 @@ export function useLanceData() {
     await reload(true);
   }, [reload]);
 
-  // ---- Profiles ----
+  // ---- Memberships / Profiles ----
   const upsertProfile = useCallback(async (id: string, updates: { role?: UserRole; member_id?: string | null; display_name?: string | null }) => {
-    const { error: err } = await supabase.from('profiles').update(updates).eq('id', id);
-    if (err) throw new Error(err.message);
+    if (updates.display_name !== undefined) {
+      await supabase.from('profiles').update({ display_name: updates.display_name }).eq('id', id);
+    }
+    const membershipUpdate: Record<string, unknown> = {};
+    if (updates.role !== undefined) membershipUpdate.role = updates.role;
+    if (updates.member_id !== undefined) membershipUpdate.member_id = updates.member_id;
+    if (Object.keys(membershipUpdate).length > 0) {
+      await supabase.from('lance_memberships')
+        .upsert({ lance_id: lanceId, profile_id: id, ...membershipUpdate }, { onConflict: 'lance_id,profile_id' });
+    }
     await reload(true);
-  }, [reload]);
+  }, [lanceId, reload]);
+
+  const addMembership = useCallback(async (profileId: string, role: UserRole = 'member') => {
+    const { error } = await supabase.from('lance_memberships').upsert(
+      { lance_id: lanceId, profile_id: profileId, role },
+      { onConflict: 'lance_id,profile_id' }
+    );
+    if (error) throw new Error(error.message);
+    await reload(true);
+  }, [lanceId, reload]);
 
   // ---- Events ----
   const upsertEvent = useCallback(async (ev: Partial<LanceEvent> & { name: string; start_date: string }) => {
-    const { error: err } = await supabase.from('events').upsert({ ...ev, cleared: ev.cleared ?? false });
+    const { error: err } = await supabase.from('events').upsert({ ...ev, cleared: ev.cleared ?? false, lance_id: lanceId });
     if (err) throw new Error(err.message);
     await reload(true);
-  }, [reload]);
+  }, [lanceId, reload]);
 
   const clearAttending = useCallback(async () => {
-    const { error: err } = await supabase.from('members').update({ attending_event: false }).eq('attending_event', true);
+    const { error: err } = await supabase.from('members').update({ attending_event: false }).eq('attending_event', true).eq('lance_id', lanceId);
     if (err) throw new Error(err.message);
     await reload(true);
-  }, [reload]);
+  }, [lanceId, reload]);
 
   const deleteEvent = useCallback(async (id: string) => {
     const { error: err } = await supabase.from('events').delete().eq('id', id);
@@ -296,17 +329,18 @@ export function useLanceData() {
 
   // ---- Lance Settings ----
   const upsertSettings = useCallback(async (updates: Partial<Omit<LanceSettings, 'id'>>) => {
-    const { error: err } = await supabase.from('lance_settings').upsert({ id: 'default', ...updates });
+    if (!lanceId) return;
+    const { error: err } = await supabase.from('lances').update(updates).eq('id', lanceId);
     if (err) throw new Error(err.message);
     await reload(true);
-  }, [reload]);
+  }, [lanceId, reload]);
 
   // ---- Magic Items Stock ----
   const upsertMagicItemStock = useCallback(async (item: Partial<MagicItemStock> & { item_name: string; tier: string; form: string }) => {
-    const { error } = await supabase.from('magic_items_stock').upsert(item);
+    const { error } = await supabase.from('magic_items_stock').upsert({ ...item, lance_id: lanceId });
     if (error) throw new Error(error.message);
     await reload(true);
-  }, [reload]);
+  }, [lanceId, reload]);
 
   const deleteMagicItemStock = useCallback(async (id: string) => {
     const { error } = await supabase.from('magic_items_stock').delete().eq('id', id);
@@ -316,10 +350,10 @@ export function useLanceData() {
 
   // ---- Crafting Queue ----
   const upsertCraftingQueueItem = useCallback(async (item: Partial<CraftingQueueItem> & { item_name: string; tier: string }) => {
-    const { error } = await supabase.from('crafting_queue').upsert(item);
+    const { error } = await supabase.from('crafting_queue').upsert({ ...item, lance_id: lanceId });
     if (error) throw new Error(error.message);
     await reload(true);
-  }, [reload]);
+  }, [lanceId, reload]);
 
   const deleteCraftingQueueItem = useCallback(async (id: string) => {
     const { error } = await supabase.from('crafting_queue').delete().eq('id', id);
@@ -348,36 +382,42 @@ export function useLanceData() {
 
   // ---- Danger Zone ----
   const resetInventoryQty = useCallback(async () => {
-    const { error: err } = await supabase.from('inventory').update({ current_qty: 0 }).not('item', 'is', null);
+    const { error: err } = await supabase.from('inventory').update({ current_qty: 0 }).eq('lance_id', lanceId).not('item', 'is', null);
     if (err) throw new Error(err.message);
     await reload(true);
-  }, [reload]);
+  }, [lanceId, reload]);
 
   const clearInventoryLog = useCallback(async () => {
-    const { error: err } = await supabase.from('inventory_log').delete().not('id', 'is', null);
+    const { error: err } = await supabase.from('inventory_log').delete().eq('lance_id', lanceId).not('id', 'is', null);
     if (err) throw new Error(err.message);
     await reload(true);
-  }, [reload]);
+  }, [lanceId, reload]);
 
   // ---- Inventory ----
   const setInventory = useCallback(async (item: string, current_qty: number, required_qty: number) => {
-    const { error: err } = await supabase.from('inventory').upsert({ item, current_qty, required_qty });
+    const { error: err } = await supabase.from('inventory').upsert(
+      { lance_id: lanceId, item, current_qty, required_qty },
+      { onConflict: 'lance_id,item' }
+    );
     if (err) throw new Error(err.message);
     await reload(true);
-  }, [reload]);
+  }, [lanceId, reload]);
 
   const logInventory = useCallback(async (item: string, amount: number, direction: 'In' | 'Out' | 'Adjustment', notes?: string) => {
     const delta = direction === 'In' ? amount : direction === 'Out' ? -amount : 0;
     const existing = data.inventory.find(i => i.item === item);
     const nextQty = Math.max(0, (existing?.current_qty ?? 0) + delta);
-    await supabase.from('inventory').upsert({ item, current_qty: nextQty, required_qty: existing?.required_qty ?? 0 });
-    await supabase.from('inventory_log').insert({ item, amount, direction, notes: notes ?? null });
+    await supabase.from('inventory').upsert(
+      { lance_id: lanceId, item, current_qty: nextQty, required_qty: existing?.required_qty ?? 0 },
+      { onConflict: 'lance_id,item' }
+    );
+    await supabase.from('inventory_log').insert({ lance_id: lanceId, item, amount, direction, notes: notes ?? null });
     await reload(true);
-  }, [data.inventory, reload]);
+  }, [lanceId, data.inventory, reload]);
 
   return {
     data,
-    profiles,
+    memberships,
     settings,
     loading,
     error,
@@ -397,6 +437,7 @@ export function useLanceData() {
     logInventory,
     upsertProfile,
     upsertSettings,
+    addMembership,
     resetInventoryQty,
     clearInventoryLog,
     upsertEvent,

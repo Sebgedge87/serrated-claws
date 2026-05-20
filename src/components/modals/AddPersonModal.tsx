@@ -177,6 +177,7 @@ export function AddPersonModal({ data, initial, onClose, onSave, onUpsertCharInv
           memberId={initial.id}
           queue={data.craftingQueue}
           members={data.members}
+          events={data.events}
         />
       )}
     </Modal>
@@ -513,11 +514,14 @@ function CraftingSection({
   memberId,
   queue,
   members,
+  events,
 }: {
   memberId: string;
   queue: CraftingQueueItem[];
   members: { id: string; name: string }[];
+  events: { id: string; name: string }[];
 }) {
+  const eventMap = Object.fromEntries(events.map(e => [e.id, e.name]));
   const crafting = queue.filter(q => q.crafter_id === memberId && q.status !== 'complete' && q.status !== 'cancelled');
   if (crafting.length === 0) return null;
 
@@ -537,7 +541,7 @@ function CraftingSection({
                 <span className="text-sm text-ink-100">{item.item_name}</span>
                 <span className="text-xs text-ink-100/50 ml-2 capitalize">{item.tier}</span>
                 {recipient && <span className="text-xs text-ink-100/40 ml-2">→ {recipient.name}</span>}
-                {item.target_event && <span className="text-xs text-ink-100/30 ml-2">by {item.target_event}</span>}
+                {item.target_event && <span className="text-xs text-ink-100/30 ml-2">by {eventMap[item.target_event] ?? item.target_event}</span>}
               </div>
               <span
                 className="text-[10px] px-2 py-0.5 rounded-full border flex-shrink-0"

@@ -207,3 +207,21 @@ export type CatalogueType =
   | 'Carded / Consumable Item'
   | 'Vis'
   | 'Magic Item';
+
+export interface Lance {
+  id: string;
+  name: string;
+  motto: string | null;
+  description: string | null;
+  created_at: string;
+}
+
+export interface LanceMembership {
+  id: string;
+  lance_id: string;
+  profile_id: string;
+  role: UserRole;
+  member_id: string | null;
+  // joined fields when fetched with profile
+  profile?: { email: string | null; display_name: string | null };
+}
