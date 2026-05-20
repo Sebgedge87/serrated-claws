@@ -15,14 +15,13 @@ interface Props {
   onDelete: (id: string) => Promise<void>;
   onUpsertRitual: (r: Omit<CovenRitual, 'id'> & { id?: string }) => Promise<void>;
   onDeleteRitual: (id: string) => Promise<void>;
-  onUpdateMana: (covenId: string, mana: number) => Promise<void>;
 }
 
 const A = '#b56eb5';
 const DOMAINS: RitualRealm[] = ['Spring', 'Summer', 'Autumn', 'Winter', 'Day', 'Night'];
 
 
-export function CovensTab({ data, isAdmin, onUpsert, onDelete, onUpsertRitual, onDeleteRitual, onUpdateMana }: Props) {
+export function CovensTab({ data, isAdmin, onUpsert, onDelete, onUpsertRitual, onDeleteRitual }: Props) {
   const [selected, setSelected] = useState<string | null>(null);
   const [editing, setEditing] = useState<Partial<Coven> | null>(null);
   const { confirm, Dialog: ConfirmDialog } = useConfirm();
@@ -46,7 +45,6 @@ export function CovensTab({ data, isAdmin, onUpsert, onDelete, onUpsertRitual, o
           }}
           onUpsertRitual={onUpsertRitual}
           onDeleteRitual={onDeleteRitual}
-          onUpdateMana={onUpdateMana}
           confirm={confirm}
         />
         {ConfirmDialog}
@@ -124,7 +122,7 @@ export function CovensTab({ data, isAdmin, onUpsert, onDelete, onUpsertRitual, o
 // ── Coven Detail ──────────────────────────────────────────────────────────────
 
 function CovenDetail({
-  coven, data, isAdmin, onBack, onUpsert, onDelete, onUpsertRitual, onDeleteRitual, onUpdateMana, confirm
+  coven, data, isAdmin, onBack, onUpsert, onDelete, onUpsertRitual, onDeleteRitual, confirm
 }: {
   coven: Coven;
   data: LanceData;
@@ -134,27 +132,18 @@ function CovenDetail({
   onDelete: () => void;
   onUpsertRitual: (r: Omit<CovenRitual, 'id'> & { id?: string }) => Promise<void>;
   onDeleteRitual: (id: string) => Promise<void>;
-  onUpdateMana: (covenId: string, mana: number) => Promise<void>;
   confirm: (opts: { title: string; body?: string; danger?: boolean; confirmLabel?: string }) => Promise<boolean>;
 }) {
   const [addingRitual, setAddingRitual] = useState(false);
   const [editingRitual, setEditingRitual] = useState<CovenRitual | null>(null);
   const [editingCoven, setEditingCoven] = useState(false);
-  const [editingMana, setEditingMana] = useState(false);
-  const [manaInput, setManaInput] = useState(String(coven.mana_available));
 
   const members = data.members.filter(m => m.coven === coven.id);
   const rituals = data.covenRituals.filter(r => r.coven_id === coven.id);
   const totalRequired = rituals.reduce((s, r) => s + r.magnitude, 0);
-  const manaHave = coven.mana_available;
+  const manaHave = members.reduce((sum, m) => sum + (m.mp ?? 0), 0);
   const manaNeeded = Math.max(0, totalRequired - manaHave);
   const surplus = manaHave - totalRequired;
-
-  async function saveMana() {
-    const val = parseInt(manaInput) || 0;
-    await onUpdateMana(coven.id, val);
-    setEditingMana(false);
-  }
 
   return (
     <div className="animate-fade-in">
@@ -201,18 +190,7 @@ function CovenDetail({
         </div>
         <div className="grid grid-cols-4 gap-3 mb-4">
           <ManaStatBox label="Required" value={totalRequired} color="#e8a870" />
-          <ManaStatBox
-            label="Have"
-            value={manaHave}
-            color={A}
-            editable={isAdmin}
-            editing={editingMana}
-            inputValue={manaInput}
-            onStartEdit={() => { setManaInput(String(manaHave)); setEditingMana(true); }}
-            onInput={setManaInput}
-            onSave={saveMana}
-            onCancel={() => setEditingMana(false)}
-          />
+          <ManaStatBox label="Have" value={manaHave} color={A} />
           <ManaStatBox label="Needed" value={manaNeeded} color={manaNeeded > 0 ? '#e87070' : '#6ad47e'} />
           <ManaStatBox label="Surplus" value={surplus} color={surplus >= 0 ? '#6ad47e' : '#e87070'} />
         </div>
@@ -238,7 +216,7 @@ function CovenDetail({
           <h3 className="text-xs uppercase tracking-widest font-bold m-0" style={{ color: A }}>Rituals · {rituals.length}</h3>
           <div className="flex-1 h-px" style={{ background: `linear-gradient(90deg, ${A}40, transparent)` }} />
           {rituals.length > 0 && (
-            <button onClick={() => exportRitualsPdf(coven.name, coven.domain, rituals, coven.mana_available)} className="btn btn-ghost btn-sm text-xs" style={{ color: A }}>
+            <button onClick={() => exportRitualsPdf(coven.name, coven.domain, rituals, manaHave)} className="btn btn-ghost btn-sm text-xs" style={{ color: A }}>
               <Icons.Download size={12} /> Export PDF
             </button>
           )}
