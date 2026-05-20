@@ -904,8 +904,9 @@ function SkillsSection({
                 return (
                   <div
                     key={sk.id}
-                    className="flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-medium border"
+                    className="flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-medium border cursor-default"
                     style={{ background: colors.bg, color: colors.text, borderColor: colors.border }}
+                    title={catalogueEntry?.description}
                   >
                     <span>{sk.skill_name}</span>
                     {sk.rank > 1 && (
@@ -1137,13 +1138,18 @@ function SkillPicker({
       </div>
       <div className="flex items-center justify-between">
         {selectedEntry ? (
-          <div className="text-xs flex items-center gap-2">
-            <span className={cx('font-semibold', canAfford ? 'text-gold-300' : 'text-red-400')}>
-              {thisCost}xp {canAfford ? '' : '— not enough XP'}
-            </span>
-            {selectedEntry.scaling === '*' && <span className="text-ink-100/40">+1/rank</span>}
-            {selectedEntry.scaling === '**' && <span className="text-ink-100/40">flat/rank</span>}
-            {selectedEntry.requires?.length && <span className="text-ink-100/40">req: {selectedEntry.requires.join(', ')}</span>}
+          <div className="text-xs space-y-0.5">
+            {selectedEntry.description && (
+              <p className="text-ink-100/60 leading-snug">{selectedEntry.description}</p>
+            )}
+            <div className="flex items-center gap-2">
+              <span className={cx('font-semibold', canAfford ? 'text-gold-300' : 'text-red-400')}>
+                {thisCost}xp {canAfford ? '' : '— not enough XP'}
+              </span>
+              {selectedEntry.scaling === '*' && <span className="text-ink-100/40">+1xp/rank</span>}
+              {selectedEntry.scaling === '**' && <span className="text-ink-100/40">flat/rank</span>}
+              {selectedEntry.requires?.length && <span className="text-ink-100/40">req: {selectedEntry.requires.join(', ')}</span>}
+            </div>
           </div>
         ) : <span />}
         <button
