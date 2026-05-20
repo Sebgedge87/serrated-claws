@@ -214,6 +214,7 @@ export interface Lance {
   motto: string | null;
   description: string | null;
   created_at: string;
+  invite_code: string;
 }
 
 export interface LanceMembership {
