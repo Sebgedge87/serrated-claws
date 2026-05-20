@@ -5,11 +5,12 @@ import type { House } from '@/lib/types';
 
 interface Props {
   userId: string;
+  lanceId: string;
   onCreated: () => void;
   onClose?: () => void;
 }
 
-export function CreateCharacterScreen({ userId, onCreated, onClose }: Props) {
+export function CreateCharacterScreen({ userId, lanceId, onCreated, onClose }: Props) {
   const [houses, setHouses] = useState<House[]>([]);
   const [form, setForm] = useState({
     name: '',
@@ -22,10 +23,10 @@ export function CreateCharacterScreen({ userId, onCreated, onClose }: Props) {
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
-    supabase.from('houses').select('*').order('sort_order').then(({ data }) => {
+    supabase.from('houses').select('*').eq('lance_id', lanceId).order('sort_order').then(({ data }) => {
       if (data) setHouses(data as House[]);
     });
-  }, []);
+  }, [lanceId]);
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
@@ -45,18 +46,21 @@ export function CreateCharacterScreen({ userId, onCreated, onClose }: Props) {
           status: 'active',
           total_xp: form.total_xp,
           claimed_by: userId,
+          lance_id: lanceId,
         })
         .select()
         .single();
 
       if (memberErr) throw new Error(memberErr.message);
 
-      const { error: profileErr } = await supabase
-        .from('profiles')
-        .update({ member_id: member.id })
-        .eq('id', userId);
+      const [{ error: profileErr }, { error: membershipErr }] = await Promise.all([
+        supabase.from('profiles').update({ member_id: member.id }).eq('id', userId),
+        supabase.from('lance_memberships').update({ member_id: member.id })
+          .eq('lance_id', lanceId).eq('profile_id', userId),
+      ]);
 
       if (profileErr) throw new Error(profileErr.message);
+      if (membershipErr) throw new Error(membershipErr.message);
 
       onCreated();
     } catch (err) {
