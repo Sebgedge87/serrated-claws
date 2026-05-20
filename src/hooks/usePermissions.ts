@@ -1,6 +1,5 @@
 import { useMemo } from 'react';
-import type { LanceData } from '@/lib/types';
-import type { Profile } from '@/lib/types';
+import type { LanceData, LanceMembership } from '@/lib/types';
 
 export interface Permissions {
   isAdmin: boolean;
@@ -20,13 +19,14 @@ export interface Permissions {
   canManageHouse: (houseId: string) => boolean;
 }
 
-export function usePermissions(profile: Profile | null, data: LanceData): Permissions {
+export function usePermissions(membership: LanceMembership | null, data: LanceData): Permissions {
   return useMemo(() => {
-    const role = profile?.role ?? 'viewer';
+    const role = membership?.role ?? 'viewer';
     const isAdmin = role === 'admin' || role === 'super_admin';
     const isSuperAdmin = role === 'super_admin';
-    const myMember = profile?.member_id
-      ? data.members.find(m => m.id === profile.member_id) ?? null
+    const myMemberId = membership?.member_id ?? null;
+    const myMember = myMemberId
+      ? data.members.find(m => m.id === myMemberId) ?? null
       : null;
 
     function canManageCoven(covenId: string): boolean {
@@ -68,5 +68,5 @@ export function usePermissions(profile: Profile | null, data: LanceData): Permis
       canManageBusiness,
       canManageHouse,
     };
-  }, [profile, data]);
+  }, [membership, data]);
 }

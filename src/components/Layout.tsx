@@ -1,9 +1,11 @@
 import { useMemo, useState } from 'react';
 import { useAuth } from '@/hooks/useAuth';
 import { useLanceData } from '@/hooks/useLanceData';
+import { useLances } from '@/hooks/useLances';
 import { usePermissions } from '@/hooks/usePermissions';
 import { Icons } from '@/components/Icons';
 import { useConfirm } from '@/components/ConfirmDialog';
+import { LanceGate } from '@/components/LanceGate';
 import { OverviewTab } from '@/tabs/OverviewTab';
 import { HouseTab } from '@/tabs/HouseTab';
 import { UnassignedTab } from '@/tabs/UnassignedTab';
@@ -25,9 +27,11 @@ const WIKI_URL = 'https://www.profounddecisions.co.uk/empire-wiki/Skills';
 type TabId = 'overview' | 'unassigned' | 'covens' | 'functions' | 'businesses' | 'inventory' | 'admin' | string;
 
 export function Layout() {
-  const { user, profile, isAdmin, signOut } = useAuth();
-  const lance = useLanceData();
-  const perms = usePermissions(profile, lance.data);
+  const { user, profile, signOut } = useAuth();
+  const lances = useLances(user?.id ?? null);
+  const lance = useLanceData(lances.currentLanceId);
+  const perms = usePermissions(lances.currentMembership, lance.data);
+  const isAdmin = lances.currentMembership?.role === 'admin' || lances.currentMembership?.role === 'super_admin' || profile?.role === 'super_admin';
   const [activeTab, setActiveTab] = useState<TabId>('overview');
   const [search, setSearch] = useState('');
   const [showAddHouse, setShowAddHouse] = useState(false);
@@ -96,6 +100,23 @@ export function Layout() {
 
   const activeHouse = lance.data.houses.find(h => h.id === activeTab);
 
+  // Show LanceGate if no lance is selected or user has no memberships
+  const gate = !lances.loading && (lances.memberships.length === 0 || (!lances.currentLanceId && lances.memberships.length > 1));
+
+  if (gate || lances.loading) {
+    return (
+      <LanceGate
+        memberships={lances.memberships}
+        loading={lances.loading}
+        currentLanceId={lances.currentLanceId}
+        onSelect={lances.setCurrentLanceId}
+        onCreate={lances.createLance}
+      />
+    );
+  }
+
+  const currentMembership = lances.currentMembership;
+
   return (
     <div className="min-h-screen">
       {/* Header */}
@@ -111,22 +132,34 @@ export function Layout() {
             </div>
             <div>
               <h1 className="text-4xl font-display font-bold m-0 text-gold-300 select-none">
-                {lance.settings?.name ?? 'The Serrated Claws'}
+                {lance.settings?.name ?? lances.currentLance?.name ?? 'The Serrated Claws'}
               </h1>
               <p className="text-xs uppercase tracking-[0.15em] text-ink-100/50 mt-1">Lance Management System</p>
             </div>
           </div>
           <div className="flex items-center gap-3">
+            {/* Lance switcher for users with multiple lances */}
+            {lances.memberships.length > 1 && (
+              <select
+                value={lances.currentLanceId ?? ''}
+                onChange={e => lances.setCurrentLanceId(e.target.value)}
+                className="px-2.5 py-1.5 bg-black/40 border border-gold-500/15 rounded text-sm text-gold-300 cursor-pointer"
+              >
+                {lances.memberships.map(m => (
+                  <option key={m.lance_id} value={m.lance_id}>{m.lance.name}</option>
+                ))}
+              </select>
+            )}
             {profile && (
               <div className="text-right hidden sm:block">
                 <div className="text-sm text-ink-100">{profile.display_name ?? user?.email}</div>
-                <div className="text-[10px] uppercase tracking-widest text-gold-300/80">{profile.role}</div>
+                <div className="text-[10px] uppercase tracking-widest text-gold-300/80">{currentMembership?.role ?? profile.role}</div>
               </div>
             )}
-            {profile?.member_id ? (
+            {currentMembership?.member_id ? (
               <button
                 onClick={() => {
-                  const me = lance.data.members.find(m => m.id === profile.member_id);
+                  const me = lance.data.members.find(m => m.id === currentMembership.member_id);
                   if (me) setSelectedMember(me);
                 }}
                 className="btn btn-ghost btn-sm"
@@ -231,8 +264,8 @@ export function Layout() {
             member={liveMember}
             data={lance.data}
             isAdmin={isAdmin}
-            canEdit={isAdmin || profile?.member_id === liveMember.id}
-            isOwn={profile?.member_id === liveMember.id}
+            canEdit={isAdmin || currentMembership?.member_id === liveMember.id}
+            isOwn={currentMembership?.member_id === liveMember.id}
             wikiUrl={WIKI_URL}
             onBack={() => setSelectedMember(null)}
             onUpsertMember={lance.upsertMember}
@@ -268,7 +301,7 @@ export function Layout() {
             {activeTab === 'admin' && isAdmin && (
               <AdminTab
                 data={lance.data}
-                profiles={lance.profiles}
+                memberships={lance.memberships}
                 settings={lance.settings}
                 currentUserId={user!.id}
                 onUpdateProfile={lance.upsertProfile}

@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import type { LanceData, LanceEvent, LanceSettings, Profile, UserRole } from '@/lib/types';
+import type { LanceData, LanceEvent, LanceMembership, LanceSettings, UserRole } from '@/lib/types';
 import { useConfirm } from '@/components/ConfirmDialog';
 import { Icons } from '@/components/Icons';
 import { initials } from '@/lib/utils';
@@ -7,7 +7,7 @@ import { exportRosterPdf, exportResourcesPdf } from '@/lib/parchmentPdf';
 
 interface Props {
   data: LanceData;
-  profiles: Profile[];
+  memberships: LanceMembership[];
   settings: LanceSettings | null;
   currentUserId: string;
   onUpdateProfile: (id: string, updates: { role?: UserRole; member_id?: string | null; display_name?: string | null }) => Promise<void>;
@@ -22,8 +22,8 @@ interface Props {
 const A = '#d4b46d';
 const ROLE_COLORS: Record<UserRole, string> = { super_admin: '#f0a040', admin: '#d4b46d', member: '#7eb0d4', viewer: '#9ca3af' };
 
-export function AdminTab({ data, profiles, settings, currentUserId, onUpdateProfile, onUpsertSettings, onResetInventoryQty, onClearInventoryLog, onUpsertEvent, onDeleteEvent, onClearAttending }: Props) {
-  const currentRole = profiles.find(p => p.id === currentUserId)?.role ?? 'admin';
+export function AdminTab({ data, memberships, settings, currentUserId, onUpdateProfile, onUpsertSettings, onResetInventoryQty, onClearInventoryLog, onUpsertEvent, onDeleteEvent, onClearAttending }: Props) {
+  const currentRole = memberships.find(m => m.profile_id === currentUserId)?.role ?? 'admin';
   const isSuperAdmin = currentRole === 'super_admin';
 
   return (
@@ -41,10 +41,10 @@ export function AdminTab({ data, profiles, settings, currentUserId, onUpdateProf
         </div>
       </div>
 
-      <StatsSection data={data} profiles={profiles} />
+      <StatsSection data={data} memberships={memberships} />
       <EventsSection events={data.events} data={data} onUpsert={onUpsertEvent} onDelete={onDeleteEvent} onClearAttending={onClearAttending} />
       <SettingsSection settings={settings} onSave={onUpsertSettings} />
-      <RolesSection profiles={profiles} data={data} currentUserId={currentUserId} currentRole={currentRole} onUpdateProfile={onUpdateProfile} />
+      <RolesSection memberships={memberships} data={data} currentUserId={currentUserId} currentRole={currentRole} onUpdateProfile={onUpdateProfile} />
       {isSuperAdmin && <DangerZone onResetInventoryQty={onResetInventoryQty} onClearInventoryLog={onClearInventoryLog} logCount={data.inventoryLog.length} />}
     </div>
   );
@@ -52,14 +52,14 @@ export function AdminTab({ data, profiles, settings, currentUserId, onUpdateProf
 
 // ── Stats ─────────────────────────────────────────────────────────────────────
 
-function StatsSection({ data, profiles }: { data: LanceData; profiles: Profile[] }) {
+function StatsSection({ data, memberships }: { data: LanceData; memberships: LanceMembership[] }) {
   const active = data.members.filter(m => m.status === 'active').length;
   const inactive = data.members.filter(m => m.status === 'inactive').length;
   const kia = data.members.filter(m => m.status === 'KIA').length;
   const shortfalls = data.inventory.filter(v => v.required_qty > v.current_qty).length;
-  const adminCount = profiles.filter(p => p.role === 'admin').length;
-  const memberCount = profiles.filter(p => p.role === 'member').length;
-  const viewerCount = profiles.filter(p => p.role === 'viewer').length;
+  const adminCount = memberships.filter(m => m.role === 'admin').length;
+  const memberCount = memberships.filter(m => m.role === 'member').length;
+  const viewerCount = memberships.filter(m => m.role === 'viewer').length;
 
   const houseRows = data.houses.map(h => ({
     name: h.name,
@@ -74,7 +74,7 @@ function StatsSection({ data, profiles }: { data: LanceData; profiles: Profile[]
       <div className="grid grid-cols-[repeat(auto-fill,minmax(200px,1fr))] gap-4 mb-6">
         <StatCard label="Total Members" value={data.members.length} sub={`${active} active · ${inactive} inactive · ${kia} KIA`} color={A} />
         <StatCard label="Houses" value={data.houses.length} sub={`${unassigned} unassigned member${unassigned !== 1 ? 's' : ''}`} color="#7eb0d4" />
-        <StatCard label="User Accounts" value={profiles.length} sub={`${adminCount} admin · ${memberCount} member · ${viewerCount} viewer`} color="#b56eb5" />
+        <StatCard label="User Accounts" value={memberships.length} sub={`${adminCount} admin · ${memberCount} member · ${viewerCount} viewer`} color="#b56eb5" />
         <StatCard label="Inventory" value={data.inventory.filter(v => v.current_qty > 0).length + ' held'} sub={shortfalls > 0 ? `${shortfalls} shortfall${shortfalls !== 1 ? 's' : ''}` : 'No shortfalls'} color={shortfalls > 0 ? '#f87171' : '#6dd47e'} />
       </div>
 
@@ -310,12 +310,12 @@ function SettingsSection({ settings, onSave }: { settings: LanceSettings | null;
 
 // ── Roles ─────────────────────────────────────────────────────────────────────
 
-function RolesSection({ profiles, data, currentUserId, currentRole, onUpdateProfile }: { profiles: Profile[]; data: LanceData; currentUserId: string; currentRole: UserRole; onUpdateProfile: Props['onUpdateProfile'] }) {
+function RolesSection({ memberships, data, currentUserId, currentRole, onUpdateProfile }: { memberships: LanceMembership[]; data: LanceData; currentUserId: string; currentRole: UserRole; onUpdateProfile: Props['onUpdateProfile'] }) {
   const [busy, setBusy] = useState<string | null>(null);
   const isSuperAdmin = currentRole === 'super_admin';
-  const adminCount = profiles.filter(p => p.role === 'admin' || p.role === 'super_admin').length;
+  const adminCount = memberships.filter(m => m.role === 'admin' || m.role === 'super_admin').length;
   const availableRoles: UserRole[] = isSuperAdmin ? ['super_admin', 'admin', 'member', 'viewer'] : ['admin', 'member', 'viewer'];
-  const claimedMemberIds = new Set(profiles.filter(p => p.member_id).map(p => p.member_id!));
+  const claimedMemberIds = new Set(memberships.filter(m => m.member_id).map(m => m.member_id!));
 
   async function setRole(id: string, role: UserRole) {
     setBusy(id);
@@ -328,7 +328,7 @@ function RolesSection({ profiles, data, currentUserId, currentRole, onUpdateProf
 
   return (
     <section>
-      <SectionHeading icon={<Icons.Users size={16} />} title={`Roles & Access · ${profiles.length} users`} />
+      <SectionHeading icon={<Icons.Users size={16} />} title={`Roles & Access · ${memberships.length} users`} />
       <div className="card overflow-hidden mb-4">
         <table className="w-full text-sm">
           <thead className="bg-gold-500/10">
@@ -374,50 +374,52 @@ function RolesSection({ profiles, data, currentUserId, currentRole, onUpdateProf
             </tr>
           </thead>
           <tbody>
-            {profiles.map((p, idx) => {
-              const isSelf = p.id === currentUserId;
-              const linked = p.member_id ? data.members.find(m => m.id === p.member_id) : null;
+            {memberships.map((m, idx) => {
+              const isSelf = m.profile_id === currentUserId;
+              const displayName = m.profile?.display_name ?? null;
+              const email = m.profile?.email ?? null;
+              const linked = m.member_id ? data.members.find(dm => dm.id === m.member_id) : null;
               return (
-                <tr key={p.id} className={idx > 0 ? 'border-t border-gold-500/10' : ''}>
+                <tr key={m.id} className={idx > 0 ? 'border-t border-gold-500/10' : ''}>
                   <td className="px-4 py-3">
                     <div className="flex items-center gap-3">
                       <div className="w-9 h-9 rounded-full grid place-items-center font-display font-bold text-sm flex-shrink-0"
-                           style={{ background: `${ROLE_COLORS[p.role]}20`, border: `1px solid ${ROLE_COLORS[p.role]}40`, color: ROLE_COLORS[p.role] }}>
-                        {initials(p.display_name ?? p.email ?? '?')}
+                           style={{ background: `${ROLE_COLORS[m.role]}20`, border: `1px solid ${ROLE_COLORS[m.role]}40`, color: ROLE_COLORS[m.role] }}>
+                        {initials(displayName ?? email ?? '?')}
                       </div>
                       <div className="min-w-0">
                         <div className="font-semibold text-ink-100 truncate">
-                          {p.display_name ?? p.email ?? '—'}
+                          {displayName ?? email ?? '—'}
                           {isSelf && <span className="ml-2 text-[10px] uppercase tracking-widest text-gold-300/60">(you)</span>}
                         </div>
-                        {p.display_name && <div className="text-xs text-ink-100/50 truncate">{p.email}</div>}
+                        {displayName && <div className="text-xs text-ink-100/50 truncate">{email}</div>}
                       </div>
                     </div>
                   </td>
                   <td className="px-4 py-3">
                     <select
-                      value={p.role}
-                      disabled={busy === p.id || (isSelf && adminCount <= 1) || (!isSuperAdmin && p.role === 'super_admin')}
-                      onChange={e => setRole(p.id, e.target.value as UserRole)}
+                      value={m.role}
+                      disabled={busy === m.id || (isSelf && adminCount <= 1) || (!isSuperAdmin && m.role === 'super_admin')}
+                      onChange={e => setRole(m.id, e.target.value as UserRole)}
                       className="px-2.5 py-1.5 bg-black/40 border border-gold-500/15 rounded text-sm cursor-pointer disabled:opacity-50"
-                      style={{ color: ROLE_COLORS[p.role] }}
-                      title={!isSuperAdmin && p.role === 'super_admin' ? "Only super admins can change this role" : isSelf && adminCount <= 1 ? "Can't demote the only admin" : undefined}
+                      style={{ color: ROLE_COLORS[m.role] }}
+                      title={!isSuperAdmin && m.role === 'super_admin' ? "Only super admins can change this role" : isSelf && adminCount <= 1 ? "Can't demote the only admin" : undefined}
                     >
                       {availableRoles.map(r => <option key={r} value={r} style={{ color: ROLE_COLORS[r] }}>{r.replace('_', ' ')}</option>)}
                     </select>
-                    {busy === p.id && <span className="ml-2 text-xs text-ink-100/50">Saving…</span>}
+                    {busy === m.id && <span className="ml-2 text-xs text-ink-100/50">Saving…</span>}
                   </td>
                   <td className="px-4 py-3">
                     <select
-                      value={p.member_id ?? ''}
-                      disabled={busy === p.id + '-m'}
-                      onChange={e => setMember(p.id, e.target.value || null)}
+                      value={m.member_id ?? ''}
+                      disabled={busy === m.id + '-m'}
+                      onChange={e => setMember(m.id, e.target.value || null)}
                       className="px-2.5 py-1.5 bg-black/40 border border-gold-500/15 rounded text-sm cursor-pointer disabled:opacity-50 max-w-[220px]"
                     >
                       <option value="">— Unlinked —</option>
                       {data.members
-                        .filter(m => !claimedMemberIds.has(m.id) || m.id === p.member_id)
-                        .map(m => <option key={m.id} value={m.id}>{m.name}{m.player_name ? ` (${m.player_name})` : ''}</option>)}
+                        .filter(dm => !claimedMemberIds.has(dm.id) || dm.id === m.member_id)
+                        .map(dm => <option key={dm.id} value={dm.id}>{dm.name}{dm.player_name ? ` (${dm.player_name})` : ''}</option>)}
                     </select>
                     {linked && (
                       <div className="text-xs text-ink-100/50 mt-0.5">
@@ -429,7 +431,7 @@ function RolesSection({ profiles, data, currentUserId, currentRole, onUpdateProf
                 </tr>
               );
             })}
-            {profiles.length === 0 && (
+            {memberships.length === 0 && (
               <tr><td colSpan={3} className="px-4 py-12 text-center text-ink-100/40 text-sm">No users found.</td></tr>
             )}
           </tbody>
