@@ -305,6 +305,7 @@ export function Layout() {
                 data={lance.data}
                 isAdmin={isAdmin}
                 onSetInventory={lance.setInventory}
+                onSetInventoryPrice={lance.setInventoryPrice}
                 onLogInventory={lance.logInventory}
                 onUpsertStock={lance.upsertMagicItemStock}
                 onDeleteStock={lance.deleteMagicItemStock}

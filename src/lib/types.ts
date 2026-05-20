@@ -129,6 +129,7 @@ export interface InventoryItem {
   item: string;
   current_qty: number;
   required_qty: number;
+  unit_value: number;
 }
 
 export interface InventoryLogEntry {

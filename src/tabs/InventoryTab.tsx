@@ -80,6 +80,7 @@ interface Props {
   data: LanceData;
   isAdmin: boolean;
   onSetInventory: (item: string, current: number, required: number) => Promise<void>;
+  onSetInventoryPrice: (item: string, unit_value: number) => Promise<void>;
   onLogInventory: (item: string, amount: number, direction: 'In' | 'Out' | 'Adjustment', notes?: string) => Promise<void>;
   onUpsertStock: (item: Partial<MagicItemStock> & { item_name: string; tier: string; form: string }) => Promise<void>;
   onDeleteStock: (id: string) => Promise<void>;
@@ -89,7 +90,7 @@ interface Props {
 
 export function InventoryTab({
   data, isAdmin,
-  onSetInventory, onLogInventory,
+  onSetInventory, onSetInventoryPrice, onLogInventory,
   onUpsertStock, onDeleteStock,
   onUpsertQueue, onDeleteQueue
 }: Props) {
@@ -137,6 +138,7 @@ export function InventoryTab({
           data={data}
           isAdmin={isAdmin}
           onSetInventory={onSetInventory}
+          onSetInventoryPrice={onSetInventoryPrice}
           onLogInventory={onLogInventory}
         />
       )}
@@ -193,12 +195,26 @@ export function InventoryTab({
 // ============================================================
 // INVENTORY VIEW
 // ============================================================
+
+function fmtRings(rings: number): string {
+  if (rings <= 0) return '—';
+  const thrones = Math.floor(rings / 160);
+  const crowns  = Math.floor((rings % 160) / 20);
+  const rem     = rings % 20;
+  const parts: string[] = [];
+  if (thrones > 0) parts.push(`${thrones}t`);
+  if (crowns  > 0) parts.push(`${crowns}cr`);
+  if (rem     > 0 || parts.length === 0) parts.push(`${rem}r`);
+  return parts.join(' ');
+}
+
 function InventoryView({
-  data, isAdmin, onSetInventory, onLogInventory
+  data, isAdmin, onSetInventory, onSetInventoryPrice, onLogInventory
 }: {
   data: LanceData;
   isAdmin: boolean;
   onSetInventory: (item: string, current: number, required: number) => Promise<void>;
+  onSetInventoryPrice: (item: string, unit_value: number) => Promise<void>;
   onLogInventory: (item: string, amount: number, direction: 'In' | 'Out' | 'Adjustment', notes?: string) => Promise<void>;
 }) {
   const [typeFilter, setTypeFilter] = useState<'All' | CatalogueType>('All');
@@ -206,6 +222,10 @@ function InventoryView({
   const [showAll, setShowAll] = useState(true);
 
   const invMap = useMemo(() => Object.fromEntries(data.inventory.map(i => [i.item, i])), [data.inventory]);
+
+  const totalStockValue = useMemo(() =>
+    data.inventory.reduce((sum, i) => sum + (i.unit_value ?? 0) * i.current_qty, 0),
+  [data.inventory]);
 
   const items = showAll ? EMPIRE_CATALOGUE : EMPIRE_CATALOGUE.filter(i => i.track);
   const filtered = items.filter(i => {
@@ -262,6 +282,18 @@ function InventoryView({
         </label>
       </div>
 
+      {/* Stock value summary */}
+      {totalStockValue > 0 && (
+        <div className="mb-5 card p-4 flex items-center gap-4" style={{ borderLeft: '3px solid #d4b46d' }}>
+          <Icons.Coins size={18} className="text-gold-300 flex-shrink-0" />
+          <div>
+            <div className="text-[10px] uppercase tracking-widest font-bold text-gold-300/70 mb-0.5">Total Stock Value</div>
+            <div className="font-bold text-gold-300 text-lg">{fmtRings(totalStockValue)}</div>
+          </div>
+          <div className="text-xs text-ink-100/40 ml-auto">{totalStockValue.toLocaleString()} rings</div>
+        </div>
+      )}
+
       {filtered.length === 0 ? (
         <p className="text-center py-16 text-ink-100/50">No items match your filters</p>
       ) : (
@@ -288,13 +320,16 @@ function InventoryView({
                         <Th center>Have</Th>
                         <Th center>Need</Th>
                         <Th center>Status</Th>
+                        <Th center>Price</Th>
+                        <Th center>Value</Th>
                         {isAdmin && <Th center>±</Th>}
                       </tr>
                     </thead>
                     <tbody>
                       {list.map((item, idx) => {
-                        const stock = invMap[item.item] ?? { item: item.item, current_qty: 0, required_qty: 0 };
+                        const stock = invMap[item.item] ?? { item: item.item, current_qty: 0, required_qty: 0, unit_value: 0 };
                         const status = stock.required_qty === 0 ? null : stock.current_qty >= stock.required_qty ? 'OK' : `−${stock.required_qty - stock.current_qty}`;
+                        const totalVal = (stock.unit_value ?? 0) * stock.current_qty;
                         return (
                           <tr key={item.item} className={idx > 0 ? 'border-t border-gold-500/10' : ''}>
                             <td className="px-3 py-2.5 text-sm font-semibold align-top">
@@ -310,7 +345,7 @@ function InventoryView({
                                     const v = parseInt(e.target.value, 10) || 0;
                                     if (v !== stock.current_qty) onSetInventory(item.item, v, stock.required_qty);
                                   }}
-                                  className="w-16 px-1.5 py-1 bg-black/40 border border-gold-500/15 rounded text-sm font-bold text-center"
+                                  className="w-14 px-1.5 py-1 bg-black/40 border border-gold-500/15 rounded text-sm font-bold text-center"
                                 />
                               ) : (
                                 <span className="font-bold">{stock.current_qty}</span>
@@ -325,7 +360,7 @@ function InventoryView({
                                     const v = parseInt(e.target.value, 10) || 0;
                                     if (v !== stock.required_qty) onSetInventory(item.item, stock.current_qty, v);
                                   }}
-                                  className="w-16 px-1.5 py-1 bg-black/40 border border-gold-500/15 rounded text-sm text-ink-100/70 text-center"
+                                  className="w-14 px-1.5 py-1 bg-black/40 border border-gold-500/15 rounded text-sm text-ink-100/70 text-center"
                                 />
                               ) : (
                                 <span className="text-ink-100/70">{stock.required_qty}</span>
@@ -337,6 +372,28 @@ function InventoryView({
                                   {status === 'OK' ? '✓' : status}
                                 </span>
                               )}
+                            </td>
+                            <td className="px-3 py-2.5 text-center">
+                              {isAdmin ? (
+                                <input
+                                  type="number"
+                                  min={0}
+                                  defaultValue={stock.unit_value ?? 0}
+                                  onBlur={e => {
+                                    const v = parseInt(e.target.value, 10) || 0;
+                                    if (v !== (stock.unit_value ?? 0)) onSetInventoryPrice(item.item, v);
+                                  }}
+                                  className="w-16 px-1.5 py-1 bg-black/40 border border-gold-500/15 rounded text-sm text-gold-300/80 text-center"
+                                  title="Market price in rings (20r = 1 crown)"
+                                />
+                              ) : (
+                                <span className="text-xs text-gold-300/70">{fmtRings(stock.unit_value ?? 0)}</span>
+                              )}
+                            </td>
+                            <td className="px-3 py-2.5 text-center">
+                              <span className={`text-xs font-semibold ${totalVal > 0 ? 'text-gold-300' : 'text-ink-100/25'}`}>
+                                {totalVal > 0 ? fmtRings(totalVal) : '—'}
+                              </span>
                             </td>
                             {isAdmin && (
                               <td className="px-3 py-2.5 text-center">

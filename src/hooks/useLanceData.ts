@@ -395,13 +395,24 @@ export function useLanceData(lanceId: string | null) {
 
   // ---- Inventory ----
   const setInventory = useCallback(async (item: string, current_qty: number, required_qty: number) => {
+    const existing = data.inventory.find(i => i.item === item);
     const { error: err } = await supabase.from('inventory').upsert(
-      { lance_id: lanceId, item, current_qty, required_qty },
+      { lance_id: lanceId, item, current_qty, required_qty, unit_value: existing?.unit_value ?? 0 },
       { onConflict: 'lance_id,item' }
     );
     if (err) throw new Error(err.message);
     await reload(true);
-  }, [lanceId, reload]);
+  }, [lanceId, data.inventory, reload]);
+
+  const setInventoryPrice = useCallback(async (item: string, unit_value: number) => {
+    const existing = data.inventory.find(i => i.item === item);
+    const { error: err } = await supabase.from('inventory').upsert(
+      { lance_id: lanceId, item, current_qty: existing?.current_qty ?? 0, required_qty: existing?.required_qty ?? 0, unit_value },
+      { onConflict: 'lance_id,item' }
+    );
+    if (err) throw new Error(err.message);
+    await reload(true);
+  }, [lanceId, data.inventory, reload]);
 
   const logInventory = useCallback(async (item: string, amount: number, direction: 'In' | 'Out' | 'Adjustment', notes?: string) => {
     const delta = direction === 'In' ? amount : direction === 'Out' ? -amount : 0;
@@ -434,6 +445,7 @@ export function useLanceData(lanceId: string | null) {
     upsertFunction,
     deleteFunction,
     setInventory,
+    setInventoryPrice,
     logInventory,
     upsertProfile,
     upsertSettings,
