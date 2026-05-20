@@ -17,42 +17,99 @@ const A = '#d4b46d';
 
 export function FunctionsTab({ data, isAdmin, canManageFunction, onUpsert, onDelete }: Props) {
   const [selected, setSelected] = useState<string | null>(null);
-  const [editing, setEditing] = useState<Partial<Func> | null>(null);
+  const [creating, setCreating] = useState(false);
+  const [detailForm, setDetailForm] = useState<Partial<Func>>({});
+  const [saving, setSaving] = useState(false);
   const { confirm, Dialog: ConfirmDialog } = useConfirm();
 
-  const fn = selected ? data.functions.find(f => f.id === selected) : null;
+  const fn = selected ? data.functions.find(f => f.id === selected) ?? null : null;
+
+  function goTo(id: string) {
+    const f = data.functions.find(fn => fn.id === id);
+    setDetailForm(f ? { ...f } : {});
+    setSelected(id);
+  }
+
+  const canEdit = fn ? canManageFunction(fn.id) : false;
+  const dirty = fn && (
+    detailForm.name !== fn.name ||
+    (detailForm.leader ?? null) !== (fn.leader ?? null) ||
+    (detailForm.description ?? null) !== (fn.description ?? null)
+  );
+
+  async function saveDetail() {
+    if (!fn || !dirty || !detailForm.name?.trim()) return;
+    setSaving(true);
+    try { await onUpsert({ ...detailForm, id: fn.id, name: detailForm.name }); }
+    finally { setSaving(false); }
+  }
 
   if (fn) {
     const members = data.members.filter(m => m.function === fn.id);
+    const activeMembers = data.members.filter(m => m.status === 'active').sort((a, b) => a.name.localeCompare(b.name));
+
     return (
       <div className="animate-fade-in">
         <div className="flex items-center justify-between mb-6">
           <button onClick={() => setSelected(null)} className="btn btn-ghost btn-sm">← Back to Functions</button>
-          {canManageFunction(fn.id) && (
-            <div className="flex gap-2">
-              <button onClick={() => setEditing(fn)} className="btn btn-secondary btn-sm"><Icons.Edit size={13} /> Edit</button>
-              {isAdmin && (
-                <button onClick={async () => { if (await confirm({ title: `Delete ${fn.name}?`, danger: true })) { await onDelete(fn.id); setSelected(null); } }} className="btn btn-danger btn-sm">
-                  <Icons.Trash size={13} /> Delete
-                </button>
-              )}
-            </div>
-          )}
+          <div className="flex gap-2">
+            {canEdit && dirty && (
+              <button onClick={saveDetail} disabled={saving || !detailForm.name?.trim()} className="btn btn-primary btn-sm">
+                {saving ? 'Saving…' : 'Save Changes'}
+              </button>
+            )}
+            {isAdmin && (
+              <button onClick={async () => { if (await confirm({ title: `Delete ${fn.name}?`, danger: true })) { await onDelete(fn.id); setSelected(null); } }} className="btn btn-danger btn-sm">
+                <Icons.Trash size={13} /> Delete
+              </button>
+            )}
+          </div>
         </div>
 
         <div className="flex items-center gap-4 mb-6">
-          <div className="w-14 h-14 rounded-xl grid place-items-center" style={{ background: `${A}20`, border: `1px solid ${A}40`, color: A }}>
+          <div className="w-14 h-14 rounded-xl grid place-items-center flex-shrink-0" style={{ background: `${A}20`, border: `1px solid ${A}40`, color: A }}>
             <Icons.Swords size={26} />
           </div>
-          <div>
-            <h2 className="font-display font-bold text-3xl text-ink-100 m-0">{fn.name}</h2>
-            {fn.leader && <p className="text-sm m-0 mt-0.5" style={{ color: A }}>Led by {data.members.find(m => m.id === fn.leader)?.name ?? '—'}</p>}
+          <div className="flex-1 min-w-0">
+            {canEdit ? (
+              <input
+                className="font-display font-bold text-3xl text-ink-100 bg-transparent border border-transparent hover:border-gold-500/30 focus:border-gold-500/50 rounded-lg px-2 -mx-2 outline-none w-full transition-colors"
+                value={detailForm.name ?? ''}
+                onChange={e => setDetailForm(f => ({ ...f, name: e.target.value }))}
+              />
+            ) : (
+              <h2 className="font-display font-bold text-3xl text-ink-100 m-0">{fn.name}</h2>
+            )}
+            {canEdit ? (
+              <select
+                className="mt-1 text-sm bg-transparent border border-transparent hover:border-gold-500/30 focus:border-gold-500/50 rounded px-1 -mx-1 outline-none transition-colors"
+                style={{ color: detailForm.leader ? A : 'rgba(255,255,255,0.4)' }}
+                value={detailForm.leader ?? ''}
+                onChange={e => setDetailForm(f => ({ ...f, leader: e.target.value || null }))}
+              >
+                <option value="">— No leader —</option>
+                {activeMembers.map(m => <option key={m.id} value={m.id}>{m.name}</option>)}
+              </select>
+            ) : (
+              fn.leader && <p className="text-sm m-0 mt-0.5" style={{ color: A }}>Led by {data.members.find(m => m.id === fn.leader)?.name ?? '—'}</p>
+            )}
           </div>
         </div>
 
-        {fn.description && (
+        {(canEdit || fn.description) && (
           <div className="card p-5 mb-6">
-            <p className="text-ink-100/70 leading-relaxed m-0">{fn.description}</p>
+            <div className="text-[10px] uppercase tracking-widest text-ink-100/50 font-semibold mb-2">Description</div>
+            {canEdit ? (
+              <textarea
+                rows={3}
+                className="w-full bg-transparent border border-transparent hover:border-gold-500/30 focus:border-gold-500/50 rounded-lg p-0 outline-none text-ink-100/70 leading-relaxed resize-y text-sm transition-colors"
+                placeholder="Add a description…"
+                value={detailForm.description ?? ''}
+                onChange={e => setDetailForm(f => ({ ...f, description: e.target.value || null }))}
+              />
+            ) : (
+              <p className="text-ink-100/70 leading-relaxed m-0">{fn.description}</p>
+            )}
           </div>
         )}
 
@@ -83,7 +140,7 @@ export function FunctionsTab({ data, isAdmin, canManageFunction, onUpsert, onDel
           {members.length === 0 && <p className="text-ink-100/40 text-sm py-8 col-span-full">No members assigned to this function.</p>}
         </div>
 
-        {editing && <FnModal members={data.members} initial={editing} onClose={() => setEditing(null)} onSave={async f => { await onUpsert({ ...f, id: fn.id, name: f.name! }); setEditing(null); }} />}
+        {ConfirmDialog}
       </div>
     );
   }
@@ -101,7 +158,7 @@ export function FunctionsTab({ data, isAdmin, canManageFunction, onUpsert, onDel
           </div>
         </div>
         {isAdmin && (
-          <button onClick={() => setEditing({ name: '' })} className="btn btn-secondary">
+          <button onClick={() => setCreating(true)} className="btn btn-secondary">
             <Icons.Plus size={15} /> New Function
           </button>
         )}
@@ -111,7 +168,7 @@ export function FunctionsTab({ data, isAdmin, canManageFunction, onUpsert, onDel
         {data.functions.map(f => {
           const members = data.members.filter(m => m.function === f.id);
           return (
-            <button key={f.id} onClick={() => setSelected(f.id)} className="card card-lift p-5 text-left w-full">
+            <button key={f.id} onClick={() => goTo(f.id)} className="card card-lift p-5 text-left w-full">
               <div className="flex items-center gap-3 mb-3">
                 <div className="w-10 h-10 rounded-xl grid place-items-center flex-shrink-0" style={{ background: `${A}20`, border: `1px solid ${A}40`, color: A }}>
                   <Icons.Swords size={18} />
@@ -132,15 +189,15 @@ export function FunctionsTab({ data, isAdmin, canManageFunction, onUpsert, onDel
         )}
       </div>
 
-      {editing !== null && (
+      {creating && (
         <FnModal
           members={data.members}
-          initial={editing}
-          onClose={() => setEditing(null)}
+          onClose={() => setCreating(false)}
           onSave={async f => {
             const id = f.name!.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '') || `fn-${Date.now()}`;
             await onUpsert({ ...f, id, name: f.name! });
-            setEditing(null);
+            setCreating(false);
+            goTo(id);
           }}
         />
       )}
@@ -149,8 +206,8 @@ export function FunctionsTab({ data, isAdmin, canManageFunction, onUpsert, onDel
   );
 }
 
-function FnModal({ members, initial, onClose, onSave }: { members: LanceData['members']; initial: Partial<Func>; onClose: () => void; onSave: (f: Partial<Func>) => Promise<void> }) {
-  const [form, setForm] = useState(initial);
+function FnModal({ members, onClose, onSave }: { members: LanceData['members']; onClose: () => void; onSave: (f: Partial<Func>) => Promise<void> }) {
+  const [form, setForm] = useState<Partial<Func>>({ name: '' });
   const [busy, setBusy] = useState(false);
 
   async function save() {
@@ -162,8 +219,8 @@ function FnModal({ members, initial, onClose, onSave }: { members: LanceData['me
   const activeMembers = members.filter(m => m.status === 'active').sort((a, b) => a.name.localeCompare(b.name));
 
   return (
-    <Modal onClose={onClose} title={initial.id ? 'Edit Function' : 'New Function'} icon={<Icons.Swords size={20} />}
-      footer={<><button onClick={onClose} className="btn btn-ghost">Cancel</button><button onClick={save} disabled={busy || !form.name?.trim()} className="btn btn-primary">{busy ? 'Saving…' : initial.id ? 'Save' : 'Create'}</button></>}>
+    <Modal onClose={onClose} title="New Function" icon={<Icons.Swords size={20} />}
+      footer={<><button onClick={onClose} className="btn btn-ghost">Cancel</button><button onClick={save} disabled={busy || !form.name?.trim()} className="btn btn-primary">{busy ? 'Saving…' : 'Create'}</button></>}>
       <Field label="Name"><input className="input" value={form.name ?? ''} onChange={e => setForm({ ...form, name: e.target.value })} autoFocus /></Field>
       <Field label="Leader" optional>
         <select className="input" value={form.leader ?? ''} onChange={e => setForm({ ...form, leader: e.target.value || null })}>
