@@ -90,7 +90,7 @@ export function CovensTab({ data, isAdmin, canManageCoven, onUpsert, onDelete, o
                   {c.domain && <span className="text-[11px] font-semibold uppercase tracking-wider" style={{ color: dc?.text ?? A }}>{c.domain}</span>}
                 </div>
               </div>
-              {c.leader && <p className="text-xs mb-2 m-0" style={{ color: A }}>Led by {c.leader}</p>}
+              {c.leader && <p className="text-xs mb-2 m-0" style={{ color: A }}>Led by {data.members.find(m => m.id === c.leader)?.name ?? '—'}</p>}
               {c.description && <p className="text-sm text-ink-100/60 mb-3 m-0" style={{ WebkitLineClamp: 2, display: '-webkit-box', WebkitBoxOrient: 'vertical', overflow: 'hidden' }}>{c.description}</p>}
               <div className="flex items-center justify-between pt-2 border-t border-gold-500/10">
                 <span className="text-xs text-ink-100/50">{members.length} member{members.length !== 1 ? 's' : ''}</span>
@@ -177,7 +177,7 @@ function CovenDetail({
               <div>
                 <h2 className="font-display font-bold text-3xl text-ink-100 m-0">{coven.name}</h2>
                 {coven.domain && <span className="text-xs font-semibold uppercase tracking-widest" style={{ color: c }}>{coven.domain}</span>}
-                {coven.leader && <p className="text-sm m-0 mt-0.5" style={{ color: A }}>Led by {coven.leader}</p>}
+                {coven.leader && <p className="text-sm m-0 mt-0.5" style={{ color: A }}>Led by {data.members.find(m => m.id === coven.leader)?.name ?? '—'}</p>}
               </div>
             </>
           );
@@ -430,7 +430,7 @@ function CovenModal({ members, initial, onClose, onSave }: { members: LanceData[
       <Field label="Leader" optional>
         <select className="input" value={form.leader ?? ''} onChange={e => setForm({ ...form, leader: e.target.value || null })}>
           <option value="">— None —</option>
-          {activeMembers.map(m => <option key={m.id} value={m.name}>{m.name}</option>)}
+          {activeMembers.map(m => <option key={m.id} value={m.id}>{m.name}</option>)}
         </select>
       </Field>
       <Field label="Description" optional><textarea rows={3} className="input resize-y" value={form.description ?? ''} onChange={e => setForm({ ...form, description: e.target.value || null })} /></Field>

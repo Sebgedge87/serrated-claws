@@ -46,7 +46,7 @@ export function FunctionsTab({ data, isAdmin, canManageFunction, onUpsert, onDel
           </div>
           <div>
             <h2 className="font-display font-bold text-3xl text-ink-100 m-0">{fn.name}</h2>
-            {fn.leader && <p className="text-sm m-0 mt-0.5" style={{ color: A }}>Led by {fn.leader}</p>}
+            {fn.leader && <p className="text-sm m-0 mt-0.5" style={{ color: A }}>Led by {data.members.find(m => m.id === fn.leader)?.name ?? '—'}</p>}
           </div>
         </div>
 
@@ -118,7 +118,7 @@ export function FunctionsTab({ data, isAdmin, canManageFunction, onUpsert, onDel
                 </div>
                 <h3 className="font-display font-bold text-lg text-ink-100 leading-tight m-0">{f.name}</h3>
               </div>
-              {f.leader && <p className="text-xs mb-2 m-0" style={{ color: A }}>Led by {f.leader}</p>}
+              {f.leader && <p className="text-xs mb-2 m-0" style={{ color: A }}>Led by {data.members.find(m => m.id === f.leader)?.name ?? '—'}</p>}
               {f.description && <p className="text-sm text-ink-100/60 mb-3 m-0" style={{ WebkitLineClamp: 2, display: '-webkit-box', WebkitBoxOrient: 'vertical', overflow: 'hidden' }}>{f.description}</p>}
               <div className="flex items-center justify-between pt-2 border-t border-gold-500/10">
                 <span className="text-xs text-ink-100/50">{members.length} member{members.length !== 1 ? 's' : ''}</span>
@@ -168,7 +168,7 @@ function FnModal({ members, initial, onClose, onSave }: { members: LanceData['me
       <Field label="Leader" optional>
         <select className="input" value={form.leader ?? ''} onChange={e => setForm({ ...form, leader: e.target.value || null })}>
           <option value="">— None —</option>
-          {activeMembers.map(m => <option key={m.id} value={m.name}>{m.name}</option>)}
+          {activeMembers.map(m => <option key={m.id} value={m.id}>{m.name}</option>)}
         </select>
       </Field>
       <Field label="Description" optional><textarea rows={3} className="input resize-y" value={form.description ?? ''} onChange={e => setForm({ ...form, description: e.target.value || null })} /></Field>

@@ -33,14 +33,14 @@ export function usePermissions(profile: Profile | null, data: LanceData): Permis
       if (isAdmin) return true;
       if (!myMember) return false;
       const coven = data.covens.find(c => c.id === covenId);
-      return !!coven?.leader && coven.leader === myMember.name;
+      return !!coven?.leader && coven.leader === myMember.id;
     }
 
     function canManageFunction(fnId: string): boolean {
       if (isAdmin) return true;
       if (!myMember) return false;
       const fn = data.functions.find(f => f.id === fnId);
-      return !!fn?.leader && fn.leader === myMember.name;
+      return !!fn?.leader && fn.leader === myMember.id;
     }
 
     function canManageBusiness(bizId: string): boolean {
