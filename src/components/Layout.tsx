@@ -184,7 +184,7 @@ export function Layout() {
             <button
               onClick={async () => {
                 if (!lances.currentLanceId) return;
-                const confirmed = window.confirm(`Leave "${lances.currentLance?.name}"? You will lose access until re-invited.`);
+                const confirmed = await confirm({ title: `Leave "${lances.currentLance?.name}"?`, body: 'You will lose access until re-invited.', danger: true, confirmLabel: 'Leave' });
                 if (confirmed) await lances.leaveLance(lances.currentLanceId);
               }}
               className="btn btn-ghost btn-sm text-red-400/70 hover:text-red-400"
