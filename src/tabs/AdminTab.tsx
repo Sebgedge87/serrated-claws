@@ -43,7 +43,7 @@ export function AdminTab({ data, memberships, settings, currentUserId, inviteCod
         </div>
       </div>
 
-      <StatsSection data={data} memberships={memberships} />
+      <StatsSection data={data} memberships={memberships} isSuperAdmin={isSuperAdmin} />
       <EventsSection events={data.events} data={data} onUpsert={onUpsertEvent} onDelete={onDeleteEvent} onClearAttending={onClearAttending} />
       <SettingsSection settings={settings} onSave={onUpsertSettings} />
       <RolesSection memberships={memberships} data={data} currentUserId={currentUserId} currentRole={currentRole} inviteCode={inviteCode} onUpdateProfile={onUpdateProfile} onRegenerateInviteCode={onRegenerateInviteCode} />
@@ -54,14 +54,18 @@ export function AdminTab({ data, memberships, settings, currentUserId, inviteCod
 
 // ── Stats ─────────────────────────────────────────────────────────────────────
 
-function StatsSection({ data, memberships }: { data: LanceData; memberships: LanceMembership[] }) {
+function StatsSection({ data, memberships, isSuperAdmin }: { data: LanceData; memberships: LanceMembership[]; isSuperAdmin: boolean }) {
   const active = data.members.filter(m => m.status === 'active').length;
   const inactive = data.members.filter(m => m.status === 'inactive').length;
   const kia = data.members.filter(m => m.status === 'KIA').length;
   const shortfalls = data.inventory.filter(v => v.required_qty > v.current_qty).length;
+  const superAdminCount = memberships.filter(m => m.role === 'super_admin').length;
   const adminCount = memberships.filter(m => m.role === 'admin').length;
   const memberCount = memberships.filter(m => m.role === 'member').length;
   const viewerCount = memberships.filter(m => m.role === 'viewer').length;
+  const linkedActive = memberships.filter(m =>
+    m.member_id && data.members.find(mem => mem.id === m.member_id && mem.status === 'active')
+  ).length;
 
   const houseRows = data.houses.map(h => ({
     name: h.name,
@@ -76,7 +80,11 @@ function StatsSection({ data, memberships }: { data: LanceData; memberships: Lan
       <div className="grid grid-cols-[repeat(auto-fill,minmax(200px,1fr))] gap-4 mb-6">
         <StatCard label="Total Members" value={data.members.length} sub={`${active} active · ${inactive} inactive · ${kia} KIA`} color={A} />
         <StatCard label="Houses" value={data.houses.length} sub={`${unassigned} unassigned member${unassigned !== 1 ? 's' : ''}`} color="#7eb0d4" />
-        <StatCard label="User Accounts" value={memberships.length} sub={`${adminCount} admin · ${memberCount} member · ${viewerCount} viewer`} color="#b56eb5" />
+        <StatCard label="User Accounts" value={memberships.length}
+          sub={isSuperAdmin
+            ? `${linkedActive} active · ${superAdminCount > 0 ? `${superAdminCount} super · ` : ''}${adminCount} admin · ${memberCount} member · ${viewerCount} viewer`
+            : `${adminCount} admin · ${memberCount} member · ${viewerCount} viewer`}
+          color="#b56eb5" />
         <StatCard label="Inventory" value={data.inventory.filter(v => v.current_qty > 0).length + ' held'} sub={shortfalls > 0 ? `${shortfalls} shortfall${shortfalls !== 1 ? 's' : ''}` : 'No shortfalls'} color={shortfalls > 0 ? '#f87171' : '#6dd47e'} />
       </div>
 
