@@ -8,13 +8,14 @@ import { initials } from '@/lib/utils';
 interface Props {
   data: LanceData;
   isAdmin: boolean;
+  canManageBusiness: (id: string) => boolean;
   onUpsert: (b: Partial<Business> & { id: string; name: string }) => Promise<void>;
   onDelete: (id: string) => Promise<void>;
 }
 
 const A = '#7eb0d4';
 
-export function BusinessesTab({ data, isAdmin, onUpsert, onDelete }: Props) {
+export function BusinessesTab({ data, isAdmin, canManageBusiness, onUpsert, onDelete }: Props) {
   const [selected, setSelected] = useState<string | null>(null);
   const [editing, setEditing] = useState<Partial<Business> | null>(null);
   const { confirm, Dialog: ConfirmDialog } = useConfirm();
@@ -27,12 +28,14 @@ export function BusinessesTab({ data, isAdmin, onUpsert, onDelete }: Props) {
       <div className="animate-fade-in">
         <div className="flex items-center justify-between mb-6">
           <button onClick={() => setSelected(null)} className="btn btn-ghost btn-sm">← Back to Businesses</button>
-          {isAdmin && (
+          {canManageBusiness(biz.id) && (
             <div className="flex gap-2">
               <button onClick={() => setEditing(biz)} className="btn btn-secondary btn-sm"><Icons.Edit size={13} /> Edit</button>
-              <button onClick={async () => { if (await confirm({ title: `Delete ${biz.name}?`, danger: true })) { await onDelete(biz.id); setSelected(null); } }} className="btn btn-danger btn-sm">
-                <Icons.Trash size={13} /> Delete
-              </button>
+              {isAdmin && (
+                <button onClick={async () => { if (await confirm({ title: `Delete ${biz.name}?`, danger: true })) { await onDelete(biz.id); setSelected(null); } }} className="btn btn-danger btn-sm">
+                  <Icons.Trash size={13} /> Delete
+                </button>
+              )}
             </div>
           )}
         </div>

@@ -8,13 +8,14 @@ import { initials } from '@/lib/utils';
 interface Props {
   data: LanceData;
   isAdmin: boolean;
+  canManageFunction: (id: string) => boolean;
   onUpsert: (f: Partial<Func> & { id: string; name: string }) => Promise<void>;
   onDelete: (id: string) => Promise<void>;
 }
 
 const A = '#d4b46d';
 
-export function FunctionsTab({ data, isAdmin, onUpsert, onDelete }: Props) {
+export function FunctionsTab({ data, isAdmin, canManageFunction, onUpsert, onDelete }: Props) {
   const [selected, setSelected] = useState<string | null>(null);
   const [editing, setEditing] = useState<Partial<Func> | null>(null);
   const { confirm, Dialog: ConfirmDialog } = useConfirm();
@@ -27,12 +28,14 @@ export function FunctionsTab({ data, isAdmin, onUpsert, onDelete }: Props) {
       <div className="animate-fade-in">
         <div className="flex items-center justify-between mb-6">
           <button onClick={() => setSelected(null)} className="btn btn-ghost btn-sm">← Back to Functions</button>
-          {isAdmin && (
+          {canManageFunction(fn.id) && (
             <div className="flex gap-2">
               <button onClick={() => setEditing(fn)} className="btn btn-secondary btn-sm"><Icons.Edit size={13} /> Edit</button>
-              <button onClick={async () => { if (await confirm({ title: `Delete ${fn.name}?`, danger: true })) { await onDelete(fn.id); setSelected(null); } }} className="btn btn-danger btn-sm">
-                <Icons.Trash size={13} /> Delete
-              </button>
+              {isAdmin && (
+                <button onClick={async () => { if (await confirm({ title: `Delete ${fn.name}?`, danger: true })) { await onDelete(fn.id); setSelected(null); } }} className="btn btn-danger btn-sm">
+                  <Icons.Trash size={13} /> Delete
+                </button>
+              )}
             </div>
           )}
         </div>

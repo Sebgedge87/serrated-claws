@@ -1,6 +1,7 @@
 import { useMemo, useState } from 'react';
 import { useAuth } from '@/hooks/useAuth';
 import { useLanceData } from '@/hooks/useLanceData';
+import { usePermissions } from '@/hooks/usePermissions';
 import { Icons } from '@/components/Icons';
 import { useConfirm } from '@/components/ConfirmDialog';
 import { OverviewTab } from '@/tabs/OverviewTab';
@@ -26,6 +27,7 @@ type TabId = 'overview' | 'unassigned' | 'covens' | 'functions' | 'businesses' |
 export function Layout() {
   const { user, profile, isAdmin, signOut } = useAuth();
   const lance = useLanceData();
+  const perms = usePermissions(profile, lance.data);
   const [activeTab, setActiveTab] = useState<TabId>('overview');
   const [search, setSearch] = useState('');
   const [showAddHouse, setShowAddHouse] = useState(false);
@@ -247,11 +249,11 @@ export function Layout() {
         {!lance.loading && !lance.error && !selectedMember && (
           <>
             {activeTab === 'overview' && <OverviewTab data={lance.data} filteredMembers={filteredMembers} isAdmin={isAdmin} onNavigate={setActiveTab} />}
-            {activeHouse && <HouseTab house={activeHouse} data={lance.data} search={search} isAdmin={isAdmin} onUpsert={lance.upsertMember} onUnassign={lance.unassignMember} onDelete={lance.deleteMember} onUpsertCharInventory={lance.upsertCharInventory} onDeleteCharInventory={lance.deleteCharInventory} onUpsertSkill={lance.upsertCharacterSkill} onDeleteSkill={lance.deleteCharacterSkill} onViewMember={setSelectedMember} />}
+            {activeHouse && <HouseTab house={activeHouse} data={lance.data} search={search} isAdmin={isAdmin} canManageHouse={perms.canManageHouse(activeHouse.id)} onUpsert={lance.upsertMember} onUnassign={lance.unassignMember} onDelete={lance.deleteMember} onUpsertCharInventory={lance.upsertCharInventory} onDeleteCharInventory={lance.deleteCharInventory} onUpsertSkill={lance.upsertCharacterSkill} onDeleteSkill={lance.deleteCharacterSkill} onViewMember={setSelectedMember} />}
             {activeTab === 'unassigned' && <UnassignedTab data={lance.data} isAdmin={isAdmin} onUpsert={lance.upsertMember} onDelete={lance.deleteMember} onUpsertCharInventory={lance.upsertCharInventory} onDeleteCharInventory={lance.deleteCharInventory} onUpsertSkill={lance.upsertCharacterSkill} onDeleteSkill={lance.deleteCharacterSkill} onViewMember={setSelectedMember} />}
-            {activeTab === 'covens' && <CovensTab data={lance.data} isAdmin={isAdmin} onUpsert={lance.upsertCoven} onDelete={lance.deleteCoven} onUpsertRitual={lance.upsertCovenRitual} onDeleteRitual={lance.deleteCovenRitual} />}
-            {activeTab === 'functions' && <FunctionsTab data={lance.data} isAdmin={isAdmin} onUpsert={lance.upsertFunction} onDelete={lance.deleteFunction} />}
-            {activeTab === 'businesses' && <BusinessesTab data={lance.data} isAdmin={isAdmin} onUpsert={lance.upsertBusiness} onDelete={lance.deleteBusiness} />}
+            {activeTab === 'covens' && <CovensTab data={lance.data} isAdmin={isAdmin} canManageCoven={perms.canManageCoven} onUpsert={lance.upsertCoven} onDelete={lance.deleteCoven} onUpsertRitual={lance.upsertCovenRitual} onDeleteRitual={lance.deleteCovenRitual} />}
+            {activeTab === 'functions' && <FunctionsTab data={lance.data} isAdmin={isAdmin} canManageFunction={perms.canManageFunction} onUpsert={lance.upsertFunction} onDelete={lance.deleteFunction} />}
+            {activeTab === 'businesses' && <BusinessesTab data={lance.data} isAdmin={isAdmin} canManageBusiness={perms.canManageBusiness} onUpsert={lance.upsertBusiness} onDelete={lance.deleteBusiness} />}
             {activeTab === 'inventory' && <InventoryTab data={lance.data} isAdmin={isAdmin} onSetInventory={lance.setInventory} onLogInventory={lance.logInventory} onUpsertStock={lance.upsertMagicItemStock} onDeleteStock={lance.deleteMagicItemStock} />}
             {activeTab === 'magic-items' && (
               <MagicItemsTab

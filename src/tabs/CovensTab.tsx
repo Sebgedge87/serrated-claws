@@ -11,6 +11,7 @@ import { initials } from '@/lib/utils';
 interface Props {
   data: LanceData;
   isAdmin: boolean;
+  canManageCoven: (id: string) => boolean;
   onUpsert: (c: Partial<Coven> & { id: string; name: string }) => Promise<void>;
   onDelete: (id: string) => Promise<void>;
   onUpsertRitual: (r: Omit<CovenRitual, 'id'> & { id?: string }) => Promise<void>;
@@ -21,7 +22,7 @@ const A = '#b56eb5';
 const DOMAINS: RitualRealm[] = ['Spring', 'Summer', 'Autumn', 'Winter', 'Day', 'Night'];
 
 
-export function CovensTab({ data, isAdmin, onUpsert, onDelete, onUpsertRitual, onDeleteRitual }: Props) {
+export function CovensTab({ data, isAdmin, canManageCoven, onUpsert, onDelete, onUpsertRitual, onDeleteRitual }: Props) {
   const [selected, setSelected] = useState<string | null>(null);
   const [editing, setEditing] = useState<Partial<Coven> | null>(null);
   const { confirm, Dialog: ConfirmDialog } = useConfirm();
@@ -35,6 +36,7 @@ export function CovensTab({ data, isAdmin, onUpsert, onDelete, onUpsertRitual, o
           coven={coven}
           data={data}
           isAdmin={isAdmin}
+          canManage={canManageCoven(coven.id)}
           onBack={() => setSelected(null)}
           onUpsert={onUpsert}
           onDelete={async () => {
@@ -101,6 +103,10 @@ export function CovensTab({ data, isAdmin, onUpsert, onDelete, onUpsertRitual, o
         {data.covens.length === 0 && (
           <p className="text-ink-100/40 text-sm py-16 text-center col-span-full">No covens yet.{isAdmin ? ' Click "New Coven" to add one.' : ''}</p>
         )}
+        {/* Coven leaders see a hint to click their coven */}
+        {data.covens.length > 0 && !isAdmin && data.covens.some(c => canManageCoven(c.id)) && (
+          <p className="text-ink-100/40 text-xs col-span-full">You can edit covens you lead.</p>
+        )}
       </div>
 
       {editing !== null && (
@@ -123,11 +129,12 @@ export function CovensTab({ data, isAdmin, onUpsert, onDelete, onUpsertRitual, o
 // ── Coven Detail ──────────────────────────────────────────────────────────────
 
 function CovenDetail({
-  coven, data, isAdmin, onBack, onUpsert, onDelete, onUpsertRitual, onDeleteRitual, confirm
+  coven, data, isAdmin, canManage, onBack, onUpsert, onDelete, onUpsertRitual, onDeleteRitual, confirm
 }: {
   coven: Coven;
   data: LanceData;
   isAdmin: boolean;
+  canManage: boolean;
   onBack: () => void;
   onUpsert: (c: Partial<Coven> & { id: string; name: string }) => Promise<void>;
   onDelete: () => void;
@@ -150,10 +157,10 @@ function CovenDetail({
     <div className="animate-fade-in">
       <div className="flex items-center justify-between mb-6">
         <button onClick={onBack} className="btn btn-ghost btn-sm">← Back to Covens</button>
-        {isAdmin && (
+        {canManage && (
           <div className="flex gap-2">
             <button onClick={() => setEditingCoven(true)} className="btn btn-secondary btn-sm"><Icons.Edit size={13} /> Edit</button>
-            <button onClick={onDelete} className="btn btn-danger btn-sm"><Icons.Trash size={13} /> Delete</button>
+            {isAdmin && <button onClick={onDelete} className="btn btn-danger btn-sm"><Icons.Trash size={13} /> Delete</button>}
           </div>
         )}
       </div>
@@ -221,7 +228,7 @@ function CovenDetail({
               <Icons.Download size={12} /> Export PDF
             </button>
           )}
-          {isAdmin && (
+          {canManage && (
             <button onClick={() => setAddingRitual(true)} className="btn btn-ghost btn-sm text-xs" style={{ color: A }}>
               <Icons.Plus size={12} /> Add Ritual
             </button>
@@ -248,12 +255,12 @@ function CovenDetail({
                 </div>
               </div>
               <div className="flex gap-1 flex-shrink-0">
-                {isAdmin && (
+                {canManage && (
                   <button onClick={() => setEditingRitual(r)} className="btn btn-ghost btn-sm">
                     <Icons.Edit size={13} />
                   </button>
                 )}
-                {isAdmin && (
+                {canManage && (
                   <button onClick={async () => { if (await confirm({ title: `Remove ${r.ritual_name}?`, danger: true, confirmLabel: 'Remove' })) onDeleteRitual(r.id); }} className="btn btn-ghost btn-sm text-red-400/60 hover:text-red-400">
                     <Icons.Trash size={13} />
                   </button>
@@ -262,7 +269,7 @@ function CovenDetail({
             </div>
           ))}
           {rituals.length === 0 && (
-            <p className="text-ink-100/40 text-sm py-6 text-center">No rituals added yet.{isAdmin ? ' Click "Add Ritual" to start.' : ''}</p>
+            <p className="text-ink-100/40 text-sm py-6 text-center">No rituals added yet.{canManage ? ' Click "Add Ritual" to start.' : ''}</p>
           )}
         </div>
       </div>
