@@ -13,7 +13,6 @@ import { CovensTab } from '@/tabs/CovensTab';
 import { FunctionsTab } from '@/tabs/FunctionsTab';
 import { BusinessesTab } from '@/tabs/BusinessesTab';
 import { InventoryTab } from '@/tabs/InventoryTab';
-import { MagicItemsTab } from '@/tabs/MagicItemsTab';
 import { AdminTab } from '@/tabs/AdminTab';
 import { AddHouseModal } from '@/components/modals/AddHouseModal';
 import { AddPersonModal } from '@/components/modals/AddPersonModal';
@@ -58,7 +57,6 @@ export function Layout() {
     { id: 'functions', label: 'Functions', Icon: Icons.Swords },
     { id: 'businesses', label: 'Businesses', Icon: Icons.Briefcase },
     { id: 'inventory', label: 'Inventory', Icon: Icons.Package },
-    { id: 'magic-items', label: 'Magic Items', Icon: Icons.Wand },
     ...(isAdmin ? [{ id: 'admin', label: 'Admin', Icon: Icons.Shield }] : [])
   ];
 
@@ -287,11 +285,12 @@ export function Layout() {
             {activeTab === 'covens' && <CovensTab data={lance.data} isAdmin={isAdmin} canManageCoven={perms.canManageCoven} onUpsert={lance.upsertCoven} onDelete={lance.deleteCoven} onUpsertRitual={lance.upsertCovenRitual} onDeleteRitual={lance.deleteCovenRitual} />}
             {activeTab === 'functions' && <FunctionsTab data={lance.data} isAdmin={isAdmin} canManageFunction={perms.canManageFunction} onUpsert={lance.upsertFunction} onDelete={lance.deleteFunction} />}
             {activeTab === 'businesses' && <BusinessesTab data={lance.data} isAdmin={isAdmin} canManageBusiness={perms.canManageBusiness} onUpsert={lance.upsertBusiness} onDelete={lance.deleteBusiness} />}
-            {activeTab === 'inventory' && <InventoryTab data={lance.data} isAdmin={isAdmin} onSetInventory={lance.setInventory} onLogInventory={lance.logInventory} onUpsertStock={lance.upsertMagicItemStock} onDeleteStock={lance.deleteMagicItemStock} />}
-            {activeTab === 'magic-items' && (
-              <MagicItemsTab
+            {activeTab === 'inventory' && (
+              <InventoryTab
                 data={lance.data}
                 isAdmin={isAdmin}
+                onSetInventory={lance.setInventory}
+                onLogInventory={lance.logInventory}
                 onUpsertStock={lance.upsertMagicItemStock}
                 onDeleteStock={lance.deleteMagicItemStock}
                 onUpsertQueue={lance.upsertCraftingQueueItem}
