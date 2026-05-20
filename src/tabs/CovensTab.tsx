@@ -105,6 +105,7 @@ export function CovensTab({ data, isAdmin, onUpsert, onDelete, onUpsertRitual, o
 
       {editing !== null && (
         <CovenModal
+          members={data.members}
           initial={editing}
           onClose={() => setEditing(null)}
           onSave={async f => {
@@ -314,6 +315,7 @@ function CovenDetail({
       )}
       {editingCoven && (
         <CovenModal
+          members={data.members}
           initial={coven}
           onClose={() => setEditingCoven(false)}
           onSave={async f => { await onUpsert({ ...f, id: coven.id, name: f.name! }); setEditingCoven(false); }}
@@ -373,7 +375,7 @@ function ManaStatBox({
 
 // ── Modals ────────────────────────────────────────────────────────────────────
 
-function CovenModal({ initial, onClose, onSave }: { initial: Partial<Coven>; onClose: () => void; onSave: (c: Partial<Coven>) => Promise<void> }) {
+function CovenModal({ members, initial, onClose, onSave }: { members: LanceData['members']; initial: Partial<Coven>; onClose: () => void; onSave: (c: Partial<Coven>) => Promise<void> }) {
   const [form, setForm] = useState(initial);
   const [busy, setBusy] = useState(false);
 
@@ -387,6 +389,7 @@ function CovenModal({ initial, onClose, onSave }: { initial: Partial<Coven>; onC
   }
 
   const dc = form.domain ? REALM_COLORS[form.domain as RitualRealm] : null;
+  const activeMembers = members.filter(m => m.status === 'active').sort((a, b) => a.name.localeCompare(b.name));
 
   return (
     <Modal onClose={onClose} title={isNew ? 'New Coven' : 'Edit Coven'} icon={<Icons.Sparkles size={20} />} accent="#b56eb5"
@@ -417,7 +420,12 @@ function CovenModal({ initial, onClose, onSave }: { initial: Partial<Coven>; onC
         {dc && <p className="text-[11px] mt-1.5" style={{ color: dc.text }}>Rituals will be filtered to {form.domain} + Special</p>}
         {isNew && !form.domain && <p className="text-[11px] mt-1 text-ink-100/40">Select a domain to continue</p>}
       </Field>
-      <Field label="Leader" optional><input className="input" value={form.leader ?? ''} onChange={e => setForm({ ...form, leader: e.target.value || null })} /></Field>
+      <Field label="Leader" optional>
+        <select className="input" value={form.leader ?? ''} onChange={e => setForm({ ...form, leader: e.target.value || null })}>
+          <option value="">— None —</option>
+          {activeMembers.map(m => <option key={m.id} value={m.name}>{m.name}</option>)}
+        </select>
+      </Field>
       <Field label="Description" optional><textarea rows={3} className="input resize-y" value={form.description ?? ''} onChange={e => setForm({ ...form, description: e.target.value || null })} /></Field>
     </Modal>
   );
