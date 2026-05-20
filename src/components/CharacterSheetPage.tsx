@@ -15,6 +15,7 @@ interface Props {
   data: LanceData;
   isAdmin: boolean;
   canEdit: boolean;
+  isOwn: boolean;
   wikiUrl: string;
   onBack: () => void;
   onUpsertMember: (m: Partial<Member> & { name: string }) => Promise<void>;
@@ -31,6 +32,7 @@ export function CharacterSheetPage({
   data,
   isAdmin,
   canEdit,
+  isOwn,
   wikiUrl,
   onBack,
   onUpsertMember,
@@ -82,6 +84,13 @@ export function CharacterSheetPage({
           canEdit={canEdit}
           onUpsertMember={onUpsertMember}
         />
+          {(isOwn || isAdmin) && (
+            <PersonalFundsCard
+              member={member}
+              canEdit={canEdit}
+              onUpsertMember={onUpsertMember}
+            />
+          )}
           <PersonalResourceCard
             member={member}
             canEdit={canEdit}
@@ -526,6 +535,116 @@ function StatsCard({
             <div className="flex items-center justify-between">
               <span className="text-xs text-ink-100/60 flex items-center gap-1.5"><Icons.Shield size={12} /> Military Role</span>
               <span className="text-sm text-ink-100">{member.military_function}</span>
+            </div>
+          )}
+        </div>
+      )}
+    </div>
+  );
+}
+
+// ── Personal Funds Card ───────────────────────────────────────────────────────
+
+function PersonalFundsCard({
+  member,
+  canEdit,
+  onUpsertMember,
+}: {
+  member: Member;
+  canEdit: boolean;
+  onUpsertMember: (m: Partial<Member> & { name: string }) => Promise<void>;
+}) {
+  const [editing, setEditing] = useState(false);
+  const [form, setForm] = useState({
+    personal_rings: member.personal_rings ?? 0,
+    personal_crowns: member.personal_crowns ?? 0,
+    personal_thrones: member.personal_thrones ?? 0,
+  });
+  const [busy, setBusy] = useState(false);
+
+  const incomeRings = (member.rings_per_event ?? 0) + (member.crowns_per_event ?? 0) * 20 + (member.thrones_per_event ?? 0) * 160;
+
+  function rollup(rings: number, crowns: number, thrones: number) {
+    const total = rings + crowns * 20 + thrones * 160;
+    const t = Math.floor(total / 160); const rem1 = total % 160;
+    const c = Math.floor(rem1 / 20);   const r = rem1 % 20;
+    return { t, c, r, total };
+  }
+
+  const { t, c, r, total } = rollup(member.personal_rings ?? 0, member.personal_crowns ?? 0, member.personal_thrones ?? 0);
+
+  async function save() {
+    setBusy(true);
+    try {
+      await onUpsertMember({ ...member, name: member.name, ...form });
+      setEditing(false);
+    } finally { setBusy(false); }
+  }
+
+  async function collectIncome() {
+    if (!incomeRings || busy) return;
+    setBusy(true);
+    try {
+      const curTotal = (member.personal_rings ?? 0) + (member.personal_crowns ?? 0) * 20 + (member.personal_thrones ?? 0) * 160;
+      const newTotal = curTotal + incomeRings;
+      const nt = Math.floor(newTotal / 160); const rem = newTotal % 160;
+      const nc = Math.floor(rem / 20);       const nr = rem % 20;
+      await onUpsertMember({ ...member, name: member.name, personal_rings: nr, personal_crowns: nc, personal_thrones: nt });
+    } finally { setBusy(false); }
+  }
+
+  return (
+    <div className="card px-4 py-4">
+      <div className="flex items-center justify-between mb-3">
+        <div className="flex items-center gap-1.5">
+          <Icons.Coins size={13} className="text-gold-300" />
+          <span className="text-[10px] uppercase tracking-widest text-ink-100/50 font-semibold">Personal Funds</span>
+          <span className="text-[9px] text-ink-100/30 ml-1">(private)</span>
+        </div>
+        {canEdit && !editing && (
+          <button onClick={() => { setForm({ personal_rings: member.personal_rings ?? 0, personal_crowns: member.personal_crowns ?? 0, personal_thrones: member.personal_thrones ?? 0 }); setEditing(true); }} className="text-[10px] text-ink-100/40 hover:text-gold-300 transition-colors">
+            edit
+          </button>
+        )}
+      </div>
+
+      {editing ? (
+        <div className="space-y-2">
+          <div className="grid grid-cols-3 gap-2">
+            {(['personal_thrones', 'personal_crowns', 'personal_rings'] as const).map(key => (
+              <div key={key}>
+                <label className="text-[10px] text-ink-100/40 block mb-1 capitalize">{key.replace('personal_', '')}</label>
+                <input type="number" min={0} className="input text-sm py-1" value={form[key]} onChange={e => setForm(f => ({ ...f, [key]: parseInt(e.target.value) || 0 }))} />
+              </div>
+            ))}
+          </div>
+          <div className="flex gap-2 justify-end pt-1">
+            <button onClick={() => setEditing(false)} className="btn btn-ghost btn-sm text-xs">Cancel</button>
+            <button onClick={save} disabled={busy} className="btn btn-primary btn-sm text-xs">{busy ? 'Saving…' : 'Save'}</button>
+          </div>
+        </div>
+      ) : (
+        <div className="space-y-2">
+          <div className="flex items-end justify-between">
+            <span className="text-2xl font-display font-bold text-gold-300">
+              {t > 0 && <>{t}<span className="text-sm text-gold-300/60 ml-0.5">t</span>{' '}</>}
+              {c > 0 && <>{c}<span className="text-sm text-gold-300/60 ml-0.5">c</span>{' '}</>}
+              {r > 0 && <>{r}<span className="text-sm text-gold-300/60 ml-0.5">r</span></>}
+              {total === 0 && <span className="text-ink-100/30">0r</span>}
+            </span>
+            <span className="text-xs text-ink-100/40 font-mono">{total} rings</span>
+          </div>
+
+          {incomeRings > 0 && (
+            <div className="flex items-center justify-between pt-1 border-t border-gold-500/10">
+              <span className="text-xs text-ink-100/50">
+                Income / event: <span className="text-gold-300/80">{formatIncome(member.rings_per_event, member.crowns_per_event, member.thrones_per_event)}</span>
+              </span>
+              {canEdit && (
+                <button onClick={collectIncome} disabled={busy} className="btn btn-ghost btn-sm text-xs text-gold-300 hover:bg-gold-500/10">
+                  + Collect
+                </button>
+              )}
             </div>
           )}
         </div>

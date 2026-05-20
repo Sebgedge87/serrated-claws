@@ -230,6 +230,7 @@ export function Layout() {
             data={lance.data}
             isAdmin={isAdmin}
             canEdit={isAdmin || profile?.member_id === liveMember.id}
+            isOwn={profile?.member_id === liveMember.id}
             wikiUrl={WIKI_URL}
             onBack={() => setSelectedMember(null)}
             onUpsertMember={lance.upsertMember}
