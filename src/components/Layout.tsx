@@ -199,14 +199,22 @@ export function Layout() {
 
       {/* Tabs */}
       <nav className="bg-ink-950/50 backdrop-blur border-b border-gold-500/15">
-      <div className="page-wrap flex gap-0.5 overflow-x-auto scrollbar-hide">
-        {tabs.map(t => (
-          <button key={t.id} onClick={() => { setActiveTab(t.id); setSelectedMember(null); }} className={cx('tab-btn', activeTab === t.id && 'active')}>
-            <t.Icon size={16} />
-            {t.label}
-          </button>
-        ))}
-      </div></nav>
+        <div className="page-wrap !px-2 sm:!px-4">
+          <div className="flex overflow-x-auto scrollbar-hide">
+            {tabs.map(t => (
+              <button
+                key={t.id}
+                title={t.label}
+                onClick={() => { setActiveTab(t.id); setSelectedMember(null); }}
+                className={cx('tab-btn', activeTab === t.id && 'active')}
+              >
+                <t.Icon size={15} />
+                <span className="hidden xl:inline">{t.label}</span>
+              </button>
+            ))}
+          </div>
+        </div>
+      </nav>
 
       {/* Content */}
       <main className="py-8 sm:py-10 animate-fade-in">
