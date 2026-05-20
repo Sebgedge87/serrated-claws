@@ -107,8 +107,11 @@ export function Layout() {
         memberships={lances.memberships}
         loading={lances.loading}
         currentLanceId={lances.currentLanceId}
+        memberIdToMove={profile?.member_id ?? null}
         onSelect={lances.setCurrentLanceId}
         onCreate={lances.createLance}
+        onJoin={lances.joinLance}
+        onMoveCharacter={lances.moveCharacterToLance}
       />
     );
   }
@@ -178,6 +181,18 @@ export function Layout() {
               <Icons.BookOpen size={14} />
               Empire Wiki
             </a>
+            <button
+              onClick={async () => {
+                if (!lances.currentLanceId) return;
+                const confirmed = window.confirm(`Leave "${lances.currentLance?.name}"? You will lose access until re-invited.`);
+                if (confirmed) await lances.leaveLance(lances.currentLanceId);
+              }}
+              className="btn btn-ghost btn-sm text-red-400/70 hover:text-red-400"
+              title="Leave this lance"
+            >
+              <Icons.LogOut size={14} />
+              Leave Lance
+            </button>
             <button onClick={signOut} className="btn btn-ghost btn-sm">
               <Icons.LogOut size={14} />
               Sign out
@@ -303,6 +318,7 @@ export function Layout() {
                 memberships={lance.memberships}
                 settings={lance.settings}
                 currentUserId={user!.id}
+                inviteCode={lances.currentLance?.invite_code ?? null}
                 onUpdateProfile={lance.upsertProfile}
                 onUpsertSettings={lance.upsertSettings}
                 onResetInventoryQty={lance.resetInventoryQty}
@@ -310,6 +326,7 @@ export function Layout() {
                 onUpsertEvent={lance.upsertEvent}
                 onDeleteEvent={lance.deleteEvent}
                 onClearAttending={lance.clearAttending}
+                onRegenerateInviteCode={() => lances.regenerateInviteCode(lances.currentLanceId!)}
               />
             )}
           </>

@@ -42,19 +42,51 @@ export function useLances(userId: string | null) {
   const currentMembership = memberships.find(m => m.lance_id === currentLanceId) ?? null;
   const currentLance = currentMembership?.lance ?? null;
 
-  const createLance = useCallback(async (name: string, motto?: string) => {
+  async function reloadMemberships() {
+    if (!userId) return;
+    const { data: ms } = await supabase
+      .from('lance_memberships')
+      .select('*, lance:lances(*), profile:profiles(email, display_name)')
+      .eq('profile_id', userId);
+    setMemberships((ms ?? []) as MembershipWithLance[]);
+  }
+
+  const joinLance = useCallback(async (code: string) => {
+    const { data, error } = await supabase.rpc('join_lance_by_code', { p_code: code });
+    if (error) throw new Error(error.message);
+    const lance = data as { id: string } | null;
+    await reloadMemberships();
+    if (lance) setCurrentLanceId(lance.id);
+  }, [userId]);
+
+  const leaveLance = useCallback(async (lanceId: string) => {
+    const { error } = await supabase.rpc('leave_lance', { p_lance_id: lanceId });
+    if (error) throw new Error(error.message);
+    await reloadMemberships();
+    setCurrentLanceIdState(null);
+  }, [userId]);
+
+  const moveCharacterToLance = useCallback(async (memberId: string, lanceId: string) => {
+    const { error } = await supabase.rpc('move_member_to_lance', { p_member_id: memberId, p_target_lance_id: lanceId });
+    if (error) throw new Error(error.message);
+  }, []);
+
+  const regenerateInviteCode = useCallback(async (lanceId: string) => {
+    const { data, error } = await supabase.rpc('regenerate_invite_code', { p_lance_id: lanceId });
+    if (error) throw new Error(error.message);
+    await reloadMemberships();
+    return data as string;
+  }, [userId]);
+
+  const createLance = useCallback(async (name: string, motto?: string): Promise<string> => {
     const { data, error } = await supabase.rpc('create_lance', { p_name: name, p_motto: motto ?? null });
     if (error) throw new Error(error.message);
     const lance = data as { id: string } | null;
-    if (lance && userId) {
-      const { data: ms } = await supabase
-        .from('lance_memberships')
-        .select('*, lance:lances(*), profile:profiles(email, display_name)')
-        .eq('profile_id', userId);
-      setMemberships((ms ?? []) as MembershipWithLance[]);
-      setCurrentLanceId(lance.id);
-    }
+    if (!lance) throw new Error('No lance returned');
+    await reloadMemberships();
+    setCurrentLanceId(lance.id);
+    return lance.id;
   }, [userId]);
 
-  return { memberships, currentLanceId, currentLance, currentMembership, setCurrentLanceId, loading, createLance };
+  return { memberships, currentLanceId, currentLance, currentMembership, setCurrentLanceId, loading, createLance, joinLance, leaveLance, moveCharacterToLance, regenerateInviteCode };
 }
