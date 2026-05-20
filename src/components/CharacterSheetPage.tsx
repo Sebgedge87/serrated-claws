@@ -1,5 +1,5 @@
 import { useMemo, useState } from 'react';
-import type { CharInventoryItem, CharacterSkill, CraftingQueueItem, LanceData, Member } from '@/lib/types';
+import type { CharInventoryItem, CharacterSkill, CharacterSpell, CraftingQueueItem, LanceData, Member } from '@/lib/types';
 import { Icons } from '@/components/Icons';
 import { SKILLS_CATALOGUE, SKILL_CATEGORY_COLORS, SKILL_CATEGORY_ORDER, skillXpCost } from '@/lib/skillsCatalogue';
 import type { SkillCategory } from '@/lib/skillsCatalogue';
@@ -18,6 +18,8 @@ interface Props {
   onUpsertMember: (m: Partial<Member> & { name: string }) => Promise<void>;
   onUpsertSkill: (s: Omit<CharacterSkill, 'id'> & { id?: string }) => Promise<void>;
   onDeleteSkill: (id: string) => Promise<void>;
+  onUpsertSpell: (s: Omit<CharacterSpell, 'id'> & { id?: string }) => Promise<void>;
+  onDeleteSpell: (id: string) => Promise<void>;
   onUpsertCharInventory: (i: Omit<CharInventoryItem, 'id'> & { id?: string }) => Promise<void>;
   onDeleteCharInventory: (id: string) => Promise<void>;
 }
@@ -32,6 +34,8 @@ export function CharacterSheetPage({
   onUpsertMember,
   onUpsertSkill,
   onDeleteSkill,
+  onUpsertSpell,
+  onDeleteSpell,
   onUpsertCharInventory,
   onDeleteCharInventory,
 }: Props) {
@@ -99,6 +103,15 @@ export function CharacterSheetPage({
             onUpsert={onUpsertSkill}
             onDelete={onDeleteSkill}
           />
+          {(member.mp != null || data.characterSpells.some(s => s.member_id === member.id) || canEdit) && (
+            <SpellsSection
+              memberId={member.id}
+              spells={data.characterSpells.filter(s => s.member_id === member.id)}
+              canEdit={canEdit}
+              onUpsert={onUpsertSpell}
+              onDelete={onDeleteSpell}
+            />
+          )}
           <CharInventorySectionPage
             memberId={member.id}
             items={data.characterInventory.filter(ci => ci.member_id === member.id)}
@@ -1017,6 +1030,156 @@ function SkillPicker({
           Queue
         </button>
       </div>
+    </div>
+  );
+}
+
+// ── Spells Section ────────────────────────────────────────────────────────────
+
+const SPELL_SCHOOLS = ['Spring', 'Summer', 'Autumn', 'Winter', 'Day', 'Night'] as const;
+const SCHOOL_COLORS: Record<string, { text: string; bg: string; border: string }> = {
+  Spring: { text: '#6ad47e', bg: 'rgba(106,212,126,0.12)', border: 'rgba(106,212,126,0.35)' },
+  Summer: { text: '#e8a870', bg: 'rgba(232,168,112,0.12)', border: 'rgba(232,168,112,0.35)' },
+  Autumn: { text: '#d4b46d', bg: 'rgba(212,180,109,0.12)', border: 'rgba(212,180,109,0.35)' },
+  Winter: { text: '#7eb0ff', bg: 'rgba(126,176,255,0.12)', border: 'rgba(126,176,255,0.35)' },
+  Day:    { text: '#fff5a0', bg: 'rgba(255,245,160,0.10)', border: 'rgba(255,245,160,0.30)' },
+  Night:  { text: '#b56eb5', bg: 'rgba(181,110,181,0.12)', border: 'rgba(181,110,181,0.35)' },
+};
+
+function SpellsSection({
+  memberId,
+  spells,
+  canEdit,
+  onUpsert,
+  onDelete,
+}: {
+  memberId: string;
+  spells: CharacterSpell[];
+  canEdit: boolean;
+  onUpsert: (s: Omit<CharacterSpell, 'id'> & { id?: string }) => Promise<void>;
+  onDelete: (id: string) => Promise<void>;
+}) {
+  const [adding, setAdding] = useState(false);
+  const [form, setForm] = useState({ spell_name: '', school: 'Spring' as string, magnitude: 1, notes: '' });
+  const [busy, setBusy] = useState(false);
+
+  async function addSpell() {
+    if (!form.spell_name.trim() || busy) return;
+    setBusy(true);
+    try {
+      await onUpsert({
+        member_id: memberId,
+        spell_name: form.spell_name.trim(),
+        school: form.school,
+        magnitude: form.magnitude,
+        notes: form.notes.trim() || null,
+      });
+      setForm({ spell_name: '', school: form.school, magnitude: 1, notes: '' });
+      setAdding(false);
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  const bySchool = useMemo(() => {
+    const map = new Map<string, CharacterSpell[]>();
+    for (const s of spells) {
+      if (!map.has(s.school)) map.set(s.school, []);
+      map.get(s.school)!.push(s);
+    }
+    return map;
+  }, [spells]);
+
+  return (
+    <div className="card px-5 py-5">
+      <div className="flex items-center justify-between mb-3">
+        <span className="text-xs uppercase tracking-widest font-bold" style={{ color: '#b56eb5' }}>Personal Spells</span>
+        {canEdit && (
+          <button onClick={() => setAdding(a => !a)} className="btn btn-ghost btn-sm text-xs">
+            <Icons.Plus size={13} />
+            Add Spell
+          </button>
+        )}
+      </div>
+
+      {spells.length === 0 && !adding && (
+        <p className="text-xs text-ink-100/40 text-center py-4">No spells recorded{canEdit ? ' · click Add Spell to begin' : ''}</p>
+      )}
+
+      {SPELL_SCHOOLS.filter(school => bySchool.has(school)).map(school => {
+        const schoolSpells = bySchool.get(school)!;
+        const colors = SCHOOL_COLORS[school];
+        return (
+          <div key={school} className="mb-3">
+            <div className="text-[10px] uppercase tracking-widest mb-1.5 font-semibold" style={{ color: colors.text }}>{school}</div>
+            <div className="flex flex-wrap gap-1.5">
+              {schoolSpells.map(sp => (
+                <div
+                  key={sp.id}
+                  className="flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-medium border"
+                  style={{ background: colors.bg, color: colors.text, borderColor: colors.border }}
+                  title={sp.notes ?? undefined}
+                >
+                  <span>{sp.spell_name}</span>
+                  <span className="opacity-60 text-[10px]">{sp.magnitude}m</span>
+                  {canEdit && (
+                    <button onClick={() => onDelete(sp.id)} className="ml-0.5 opacity-50 hover:opacity-100 transition-opacity">
+                      <Icons.X size={11} />
+                    </button>
+                  )}
+                </div>
+              ))}
+            </div>
+          </div>
+        );
+      })}
+
+      {adding && (
+        <div className="mt-2 border-t border-gold-500/10 pt-3 bg-ink-800/30 rounded-lg p-3 space-y-2 border border-gold-500/10">
+          <div className="grid grid-cols-[1fr_auto_auto] gap-2 items-end">
+            <div>
+              <label className="text-[10px] uppercase tracking-widest text-ink-100/40 block mb-1">Spell Name</label>
+              <input
+                autoFocus
+                className="input text-sm"
+                placeholder="e.g. Swift Heal"
+                value={form.spell_name}
+                onChange={e => setForm(f => ({ ...f, spell_name: e.target.value }))}
+                onKeyDown={e => { if (e.key === 'Enter') addSpell(); if (e.key === 'Escape') setAdding(false); }}
+              />
+            </div>
+            <div>
+              <label className="text-[10px] uppercase tracking-widest text-ink-100/40 block mb-1">School</label>
+              <select className="input text-sm" value={form.school} onChange={e => setForm(f => ({ ...f, school: e.target.value }))}>
+                {SPELL_SCHOOLS.map(s => <option key={s} value={s}>{s}</option>)}
+              </select>
+            </div>
+            <div>
+              <label className="text-[10px] uppercase tracking-widest text-ink-100/40 block mb-1">Mag</label>
+              <input
+                type="number"
+                min={1}
+                max={10}
+                className="input text-sm w-16"
+                value={form.magnitude}
+                onChange={e => setForm(f => ({ ...f, magnitude: Math.max(1, parseInt(e.target.value) || 1) }))}
+              />
+            </div>
+          </div>
+          <input
+            className="input text-sm w-full"
+            placeholder="Notes (optional)"
+            value={form.notes}
+            onChange={e => setForm(f => ({ ...f, notes: e.target.value }))}
+          />
+          <div className="flex gap-2 justify-end">
+            <button onClick={() => setAdding(false)} className="btn btn-ghost btn-sm text-xs">Cancel</button>
+            <button onClick={addSpell} disabled={!form.spell_name.trim() || busy} className="btn btn-primary btn-sm text-xs">
+              {busy ? 'Saving…' : 'Add Spell'}
+            </button>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

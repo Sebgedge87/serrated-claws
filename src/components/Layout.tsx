@@ -227,6 +227,8 @@ export function Layout() {
             onUpsertMember={lance.upsertMember}
             onUpsertSkill={lance.upsertCharacterSkill}
             onDeleteSkill={lance.deleteCharacterSkill}
+            onUpsertSpell={lance.upsertCharacterSpell}
+            onDeleteSpell={lance.deleteCharacterSpell}
             onUpsertCharInventory={lance.upsertCharInventory}
             onDeleteCharInventory={lance.deleteCharInventory}
           />
