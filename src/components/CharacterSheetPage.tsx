@@ -6,6 +6,8 @@ import type { SkillCategory } from '@/lib/skillsCatalogue';
 import { TERRITORIES, RESOURCE_TYPES, resourceSubOptions, buildResourceString, parseResourceString } from '@/lib/personalResource';
 import type { ResourceType } from '@/lib/personalResource';
 import { EMPIRE_CATALOGUE } from '@/lib/catalogue';
+import { spellsForRealm } from '@/lib/spellsCatalogue';
+import type { SpellRealm } from '@/lib/spellsCatalogue';
 import { cx, formatIncome } from '@/lib/utils';
 
 interface Props {
@@ -13,6 +15,7 @@ interface Props {
   data: LanceData;
   isAdmin: boolean;
   canEdit: boolean;
+  isOwn: boolean;
   wikiUrl: string;
   onBack: () => void;
   onUpsertMember: (m: Partial<Member> & { name: string }) => Promise<void>;
@@ -29,6 +32,7 @@ export function CharacterSheetPage({
   data,
   isAdmin,
   canEdit,
+  isOwn,
   wikiUrl,
   onBack,
   onUpsertMember,
@@ -80,6 +84,13 @@ export function CharacterSheetPage({
           canEdit={canEdit}
           onUpsertMember={onUpsertMember}
         />
+          {(isOwn || isAdmin) && (
+            <PersonalFundsCard
+              member={member}
+              canEdit={canEdit}
+              onUpsertMember={onUpsertMember}
+            />
+          )}
           <PersonalResourceCard
             member={member}
             canEdit={canEdit}
@@ -106,6 +117,8 @@ export function CharacterSheetPage({
           {(member.mp != null || data.characterSpells.some(s => s.member_id === member.id) || canEdit) && (
             <SpellsSection
               memberId={member.id}
+              member={member}
+              data={data}
               spells={data.characterSpells.filter(s => s.member_id === member.id)}
               canEdit={canEdit}
               onUpsert={onUpsertSpell}
@@ -522,6 +535,116 @@ function StatsCard({
             <div className="flex items-center justify-between">
               <span className="text-xs text-ink-100/60 flex items-center gap-1.5"><Icons.Shield size={12} /> Military Role</span>
               <span className="text-sm text-ink-100">{member.military_function}</span>
+            </div>
+          )}
+        </div>
+      )}
+    </div>
+  );
+}
+
+// ── Personal Funds Card ───────────────────────────────────────────────────────
+
+function PersonalFundsCard({
+  member,
+  canEdit,
+  onUpsertMember,
+}: {
+  member: Member;
+  canEdit: boolean;
+  onUpsertMember: (m: Partial<Member> & { name: string }) => Promise<void>;
+}) {
+  const [editing, setEditing] = useState(false);
+  const [form, setForm] = useState({
+    personal_rings: member.personal_rings ?? 0,
+    personal_crowns: member.personal_crowns ?? 0,
+    personal_thrones: member.personal_thrones ?? 0,
+  });
+  const [busy, setBusy] = useState(false);
+
+  const incomeRings = (member.rings_per_event ?? 0) + (member.crowns_per_event ?? 0) * 20 + (member.thrones_per_event ?? 0) * 160;
+
+  function rollup(rings: number, crowns: number, thrones: number) {
+    const total = rings + crowns * 20 + thrones * 160;
+    const t = Math.floor(total / 160); const rem1 = total % 160;
+    const c = Math.floor(rem1 / 20);   const r = rem1 % 20;
+    return { t, c, r, total };
+  }
+
+  const { t, c, r, total } = rollup(member.personal_rings ?? 0, member.personal_crowns ?? 0, member.personal_thrones ?? 0);
+
+  async function save() {
+    setBusy(true);
+    try {
+      await onUpsertMember({ ...member, name: member.name, ...form });
+      setEditing(false);
+    } finally { setBusy(false); }
+  }
+
+  async function collectIncome() {
+    if (!incomeRings || busy) return;
+    setBusy(true);
+    try {
+      const curTotal = (member.personal_rings ?? 0) + (member.personal_crowns ?? 0) * 20 + (member.personal_thrones ?? 0) * 160;
+      const newTotal = curTotal + incomeRings;
+      const nt = Math.floor(newTotal / 160); const rem = newTotal % 160;
+      const nc = Math.floor(rem / 20);       const nr = rem % 20;
+      await onUpsertMember({ ...member, name: member.name, personal_rings: nr, personal_crowns: nc, personal_thrones: nt });
+    } finally { setBusy(false); }
+  }
+
+  return (
+    <div className="card px-4 py-4">
+      <div className="flex items-center justify-between mb-3">
+        <div className="flex items-center gap-1.5">
+          <Icons.Coins size={13} className="text-gold-300" />
+          <span className="text-[10px] uppercase tracking-widest text-ink-100/50 font-semibold">Personal Funds</span>
+          <span className="text-[9px] text-ink-100/30 ml-1">(private)</span>
+        </div>
+        {canEdit && !editing && (
+          <button onClick={() => { setForm({ personal_rings: member.personal_rings ?? 0, personal_crowns: member.personal_crowns ?? 0, personal_thrones: member.personal_thrones ?? 0 }); setEditing(true); }} className="text-[10px] text-ink-100/40 hover:text-gold-300 transition-colors">
+            edit
+          </button>
+        )}
+      </div>
+
+      {editing ? (
+        <div className="space-y-2">
+          <div className="grid grid-cols-3 gap-2">
+            {(['personal_thrones', 'personal_crowns', 'personal_rings'] as const).map(key => (
+              <div key={key}>
+                <label className="text-[10px] text-ink-100/40 block mb-1 capitalize">{key.replace('personal_', '')}</label>
+                <input type="number" min={0} className="input text-sm py-1" value={form[key]} onChange={e => setForm(f => ({ ...f, [key]: parseInt(e.target.value) || 0 }))} />
+              </div>
+            ))}
+          </div>
+          <div className="flex gap-2 justify-end pt-1">
+            <button onClick={() => setEditing(false)} className="btn btn-ghost btn-sm text-xs">Cancel</button>
+            <button onClick={save} disabled={busy} className="btn btn-primary btn-sm text-xs">{busy ? 'Saving…' : 'Save'}</button>
+          </div>
+        </div>
+      ) : (
+        <div className="space-y-2">
+          <div className="flex items-end justify-between">
+            <span className="text-2xl font-display font-bold text-gold-300">
+              {t > 0 && <>{t}<span className="text-sm text-gold-300/60 ml-0.5">t</span>{' '}</>}
+              {c > 0 && <>{c}<span className="text-sm text-gold-300/60 ml-0.5">c</span>{' '}</>}
+              {r > 0 && <>{r}<span className="text-sm text-gold-300/60 ml-0.5">r</span></>}
+              {total === 0 && <span className="text-ink-100/30">0r</span>}
+            </span>
+            <span className="text-xs text-ink-100/40 font-mono">{total} rings</span>
+          </div>
+
+          {incomeRings > 0 && (
+            <div className="flex items-center justify-between pt-1 border-t border-gold-500/10">
+              <span className="text-xs text-ink-100/50">
+                Income / event: <span className="text-gold-300/80">{formatIncome(member.rings_per_event, member.crowns_per_event, member.thrones_per_event)}</span>
+              </span>
+              {canEdit && (
+                <button onClick={collectIncome} disabled={busy} className="btn btn-ghost btn-sm text-xs text-gold-300 hover:bg-gold-500/10">
+                  + Collect
+                </button>
+              )}
             </div>
           )}
         </div>
@@ -1048,33 +1171,69 @@ const SCHOOL_COLORS: Record<string, { text: string; bg: string; border: string }
 
 function SpellsSection({
   memberId,
+  member,
+  data,
   spells,
   canEdit,
   onUpsert,
   onDelete,
 }: {
   memberId: string;
+  member: Member;
+  data: LanceData;
   spells: CharacterSpell[];
   canEdit: boolean;
   onUpsert: (s: Omit<CharacterSpell, 'id'> & { id?: string }) => Promise<void>;
   onDelete: (id: string) => Promise<void>;
 }) {
+  // Derive realm from member's coven domain
+  const covenRealm = useMemo((): SpellRealm | null => {
+    if (!member.coven) return null;
+    const coven = data.covens.find(c => c.id === member.coven);
+    const domain = coven?.domain;
+    if (domain && (SPELL_SCHOOLS as readonly string[]).includes(domain)) return domain as SpellRealm;
+    return null;
+  }, [member.coven, data.covens]);
+
   const [adding, setAdding] = useState(false);
-  const [form, setForm] = useState({ spell_name: '', school: 'Spring' as string, magnitude: 1, notes: '' });
+  const [school, setSchool] = useState<string>(covenRealm ?? 'Spring');
+  const [spellName, setSpellName] = useState('');
+  const [magnitude, setMagnitude] = useState(1);
+  const [notes, setNotes] = useState('');
   const [busy, setBusy] = useState(false);
 
+  // When the derived realm changes (e.g. coven updates), sync the school default
+  const availableSpells = useMemo(() => spellsForRealm(school as SpellRealm), [school]);
+
+  function openAdding() {
+    setSchool(covenRealm ?? 'Spring');
+    setSpellName('');
+    setMagnitude(1);
+    setNotes('');
+    setAdding(true);
+  }
+
+  // When school changes, reset spell selection
+  function changeSchool(s: string) {
+    setSchool(s);
+    setSpellName('');
+    setMagnitude(1);
+  }
+
+  function pickSpell(name: string) {
+    const entry = availableSpells.find(s => s.name === name);
+    setSpellName(name);
+    if (entry) setMagnitude(entry.manaCost);
+  }
+
   async function addSpell() {
-    if (!form.spell_name.trim() || busy) return;
+    if (!spellName || busy) return;
     setBusy(true);
     try {
-      await onUpsert({
-        member_id: memberId,
-        spell_name: form.spell_name.trim(),
-        school: form.school,
-        magnitude: form.magnitude,
-        notes: form.notes.trim() || null,
-      });
-      setForm({ spell_name: '', school: form.school, magnitude: 1, notes: '' });
+      await onUpsert({ member_id: memberId, spell_name: spellName, school, magnitude, notes: notes.trim() || null });
+      setSpellName('');
+      setMagnitude(1);
+      setNotes('');
       setAdding(false);
     } finally {
       setBusy(false);
@@ -1095,7 +1254,7 @@ function SpellsSection({
       <div className="flex items-center justify-between mb-3">
         <span className="text-xs uppercase tracking-widest font-bold" style={{ color: '#b56eb5' }}>Personal Spells</span>
         {canEdit && (
-          <button onClick={() => setAdding(a => !a)} className="btn btn-ghost btn-sm text-xs">
+          <button onClick={openAdding} className="btn btn-ghost btn-sm text-xs">
             <Icons.Plus size={13} />
             Add Spell
           </button>
@@ -1106,18 +1265,18 @@ function SpellsSection({
         <p className="text-xs text-ink-100/40 text-center py-4">No spells recorded{canEdit ? ' · click Add Spell to begin' : ''}</p>
       )}
 
-      {SPELL_SCHOOLS.filter(school => bySchool.has(school)).map(school => {
-        const schoolSpells = bySchool.get(school)!;
-        const colors = SCHOOL_COLORS[school];
+      {SPELL_SCHOOLS.filter(s => bySchool.has(s)).map(s => {
+        const schoolSpells = bySchool.get(s)!;
+        const sc = SCHOOL_COLORS[s];
         return (
-          <div key={school} className="mb-3">
-            <div className="text-[10px] uppercase tracking-widest mb-1.5 font-semibold" style={{ color: colors.text }}>{school}</div>
+          <div key={s} className="mb-3">
+            <div className="text-[10px] uppercase tracking-widest mb-1.5 font-semibold" style={{ color: sc.text }}>{s}</div>
             <div className="flex flex-wrap gap-1.5">
               {schoolSpells.map(sp => (
                 <div
                   key={sp.id}
                   className="flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-medium border"
-                  style={{ background: colors.bg, color: colors.text, borderColor: colors.border }}
+                  style={{ background: sc.bg, color: sc.text, borderColor: sc.border }}
                   title={sp.notes ?? undefined}
                 >
                   <span>{sp.spell_name}</span>
@@ -1135,46 +1294,61 @@ function SpellsSection({
       })}
 
       {adding && (
-        <div className="mt-2 border-t border-gold-500/10 pt-3 bg-ink-800/30 rounded-lg p-3 space-y-2 border border-gold-500/10">
-          <div className="grid grid-cols-[1fr_auto_auto] gap-2 items-end">
-            <div>
-              <label className="text-[10px] uppercase tracking-widest text-ink-100/40 block mb-1">Spell Name</label>
-              <input
-                autoFocus
-                className="input text-sm"
-                placeholder="e.g. Swift Heal"
-                value={form.spell_name}
-                onChange={e => setForm(f => ({ ...f, spell_name: e.target.value }))}
-                onKeyDown={e => { if (e.key === 'Enter') addSpell(); if (e.key === 'Escape') setAdding(false); }}
-              />
+        <div className="mt-2 border-t border-gold-500/10 pt-3 space-y-2 bg-ink-800/30 rounded-lg p-3 border border-gold-500/10">
+          {/* School selector — locked to coven realm if set */}
+          <div className="flex items-center gap-2 mb-1">
+            {SPELL_SCHOOLS.map(s => {
+              const sc = SCHOOL_COLORS[s];
+              const active = school === s;
+              return (
+                <button
+                  key={s}
+                  disabled={!!covenRealm && s !== covenRealm}
+                  onClick={() => changeSchool(s)}
+                  className="px-2.5 py-1 rounded-lg text-xs font-medium border transition-colors disabled:opacity-25 disabled:cursor-not-allowed"
+                  style={active ? { background: sc.bg, color: sc.text, borderColor: sc.border } : { background: 'transparent', color: '#ffffff50', borderColor: '#ffffff15' }}
+                >
+                  {s}
+                </button>
+              );
+            })}
+          </div>
+
+          {/* Spell dropdown filtered to chosen school */}
+          <div>
+            <label className="text-[10px] uppercase tracking-widest text-ink-100/40 block mb-1">Spell</label>
+            <select
+              className="input text-sm"
+              value={spellName}
+              onChange={e => pickSpell(e.target.value)}
+            >
+              <option value="">— choose spell —</option>
+              {availableSpells.map(sp => (
+                <option key={sp.name} value={sp.name}>{sp.name} ({sp.manaCost}m) {sp.type === 'Offensive' ? '⚔' : ''}</option>
+              ))}
+            </select>
+          </div>
+
+          {spellName && (
+            <div className="text-xs text-ink-100/50 px-1">
+              {availableSpells.find(s => s.name === spellName)?.effect}
             </div>
-            <div>
-              <label className="text-[10px] uppercase tracking-widest text-ink-100/40 block mb-1">School</label>
-              <select className="input text-sm" value={form.school} onChange={e => setForm(f => ({ ...f, school: e.target.value }))}>
-                {SPELL_SCHOOLS.map(s => <option key={s} value={s}>{s}</option>)}
-              </select>
+          )}
+
+          <div className="flex items-end gap-2">
+            <div className="flex-1">
+              <label className="text-[10px] uppercase tracking-widest text-ink-100/40 block mb-1">Notes</label>
+              <input className="input text-sm" placeholder="Optional" value={notes} onChange={e => setNotes(e.target.value)} />
             </div>
             <div>
               <label className="text-[10px] uppercase tracking-widest text-ink-100/40 block mb-1">Mag</label>
-              <input
-                type="number"
-                min={1}
-                max={10}
-                className="input text-sm w-16"
-                value={form.magnitude}
-                onChange={e => setForm(f => ({ ...f, magnitude: Math.max(1, parseInt(e.target.value) || 1) }))}
-              />
+              <input type="number" min={1} className="input text-sm w-16" value={magnitude} onChange={e => setMagnitude(Math.max(1, parseInt(e.target.value) || 1))} />
             </div>
           </div>
-          <input
-            className="input text-sm w-full"
-            placeholder="Notes (optional)"
-            value={form.notes}
-            onChange={e => setForm(f => ({ ...f, notes: e.target.value }))}
-          />
+
           <div className="flex gap-2 justify-end">
             <button onClick={() => setAdding(false)} className="btn btn-ghost btn-sm text-xs">Cancel</button>
-            <button onClick={addSpell} disabled={!form.spell_name.trim() || busy} className="btn btn-primary btn-sm text-xs">
+            <button onClick={addSpell} disabled={!spellName || busy} className="btn btn-primary btn-sm text-xs">
               {busy ? 'Saving…' : 'Add Spell'}
             </button>
           </div>

@@ -105,6 +105,9 @@ export interface Member {
   rings_per_event: number | null;
   crowns_per_event: number | null;
   thrones_per_event: number | null;
+  personal_rings?: number | null;
+  personal_crowns?: number | null;
+  personal_thrones?: number | null;
   coven: string | null;
   notes: string | null;
   claimed_by: string | null;
