@@ -268,6 +268,7 @@ function MagicItemsSection({
   onDeleteStock: (id: string) => Promise<void>;
 }) {
   const memberMap = useMemo(() => Object.fromEntries(data.members.map(m => [m.id, m.name])), [data.members]);
+  const eventMap = useMemo(() => Object.fromEntries(data.events.map(e => [e.id, e.name])), [data.events]);
   const [modal, setModal] = useState<{ open: boolean; initial?: Partial<MagicItemStock> }>({ open: false });
   const { confirm, Dialog: ConfirmDialog } = useConfirm();
   const items = data.magicItemsStock;
@@ -328,8 +329,8 @@ function MagicItemsSection({
                         {item.status}
                       </span>
                     </td>
-                    <td className="px-3 py-2.5 text-xs text-ink-100/50">{item.created_at_event ?? '—'}</td>
-                    <td className="px-3 py-2.5 text-xs text-ink-100/50">{item.expires_after_event ?? '—'}</td>
+                    <td className="px-3 py-2.5 text-xs text-ink-100/50">{item.created_at_event ? (eventMap[item.created_at_event] ?? '—') : '—'}</td>
+                    <td className="px-3 py-2.5 text-xs text-ink-100/50">{item.expires_after_event ? (eventMap[item.expires_after_event] ?? '—') : '—'}</td>
                     {isAdmin && (
                       <td className="px-3 py-2.5">
                         <div className="flex gap-1 justify-center">
