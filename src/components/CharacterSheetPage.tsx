@@ -3,7 +3,7 @@ import type { CharInventoryItem, CharacterSkill, CharacterSpell, CraftingQueueIt
 import { Icons } from '@/components/Icons';
 import { SKILLS_CATALOGUE, SKILL_CATEGORY_COLORS, SKILL_CATEGORY_ORDER, skillXpCost } from '@/lib/skillsCatalogue';
 import type { SkillCategory } from '@/lib/skillsCatalogue';
-import { TERRITORIES, RESOURCE_TYPES, resourceSubOptions, buildResourceString, parseResourceString } from '@/lib/personalResource';
+import { RESOURCE_TYPES, resourceSubOptions, territoriesForResource, buildResourceString, parseResourceString } from '@/lib/personalResource';
 import type { ResourceType } from '@/lib/personalResource';
 import { EMPIRE_CATALOGUE } from '@/lib/catalogue';
 import { spellsForRealm } from '@/lib/spellsCatalogue';
@@ -670,33 +670,28 @@ function PersonalResourceCard({
   const [territory, setTerritory] = useState<string | null>(member.territory);
 
   const subOptions = resourceSubOptions(resType);
+  const validTerritories = territoriesForResource(resType);
 
-  async function saveResource(type: ResourceType | null, sub: string | null) {
+  async function saveResource(type: ResourceType | null, sub: string | null, newTerritory?: string | null) {
     const resource = buildResourceString(type, sub);
-    await onUpsertMember({ ...member, resource, name: member.name });
+    const ter = newTerritory !== undefined ? newTerritory : territory;
+    await onUpsertMember({ ...member, resource, territory: ter, name: member.name });
   }
 
   async function saveTerritory(val: string | null) {
+    setTerritory(val);
     await onUpsertMember({ ...member, territory: val, name: member.name });
   }
 
   if (!canEdit) {
-    if (!member.resource && !member.territory) return null;
+    if (!member.resource) return null;
     return (
       <div className="card px-4 py-4">
         <div className="text-[10px] uppercase tracking-widest text-ink-100/50 font-semibold mb-3">Personal Resource</div>
-        {member.territory && (
-          <div className="flex items-center justify-between mb-2">
-            <span className="text-xs text-ink-100/60">Territory</span>
-            <span className="text-sm text-ink-100">{member.territory}</span>
-          </div>
-        )}
-        {member.resource && (
-          <div className="flex items-center justify-between">
-            <span className="text-xs text-ink-100/60">Resource</span>
-            <span className="text-sm text-ink-100">{member.resource}</span>
-          </div>
-        )}
+        <div className="flex items-center justify-between">
+          <span className="text-sm font-medium text-ink-100">{member.resource}</span>
+          {member.territory && <span className="text-xs text-ink-100/50">{member.territory}</span>}
+        </div>
       </div>
     );
   }
@@ -705,22 +700,7 @@ function PersonalResourceCard({
     <div className="card px-4 py-4">
       <div className="text-[10px] uppercase tracking-widest text-ink-100/50 font-semibold mb-3">Personal Resource</div>
 
-      <div className="mb-3">
-        <label className="text-[10px] uppercase tracking-widest text-ink-100/40 block mb-1.5">Territory</label>
-        <select
-          className="input text-sm"
-          value={territory ?? ''}
-          onChange={async e => {
-            const val = e.target.value || null;
-            setTerritory(val);
-            await saveTerritory(val);
-          }}
-        >
-          <option value="">None</option>
-          {TERRITORIES.map(t => <option key={t} value={t}>{t}</option>)}
-        </select>
-      </div>
-
+      {/* Step 1: pick resource type */}
       <div className="mb-3">
         <label className="text-[10px] uppercase tracking-widest text-ink-100/40 block mb-1.5">Resource Type</label>
         <div className="flex flex-wrap gap-1.5">
@@ -735,10 +715,13 @@ function PersonalResourceCard({
               )}
               onClick={async () => {
                 const newType = resType === rt ? null : rt;
+                // Reset sub and territory if switching type
                 const newSub = null;
+                const newTer = newType ? territory : null;
                 setResType(newType);
                 setResSub(newSub);
-                await saveResource(newType, newSub);
+                if (!newType) setTerritory(null);
+                await saveResource(newType, newSub, newTer);
               }}
             >
               {rt}
@@ -747,8 +730,9 @@ function PersonalResourceCard({
         </div>
       </div>
 
-      {subOptions.length > 0 && (
-        <div>
+      {/* Step 2: subtype (Forest/Mine only) */}
+      {resType && subOptions.length > 0 && (
+        <div className="mb-3">
           <label className="text-[10px] uppercase tracking-widest text-ink-100/40 block mb-1.5">Subtype</label>
           <select
             className="input text-sm"
@@ -759,8 +743,26 @@ function PersonalResourceCard({
               await saveResource(resType, val);
             }}
           >
-            <option value="">None</option>
+            <option value="">— choose subtype —</option>
             {subOptions.map(s => <option key={s} value={s}>{s}</option>)}
+          </select>
+        </div>
+      )}
+
+      {/* Step 3: territory — only shown when a resource type is selected */}
+      {resType && (
+        <div>
+          <label className="text-[10px] uppercase tracking-widest text-ink-100/40 block mb-1.5">
+            Territory
+            {resType === 'Fleet' && <span className="ml-1.5 text-ink-100/30">(coastal only)</span>}
+          </label>
+          <select
+            className="input text-sm"
+            value={territory ?? ''}
+            onChange={async e => await saveTerritory(e.target.value || null)}
+          >
+            <option value="">— choose territory —</option>
+            {validTerritories.map(t => <option key={t} value={t}>{t}</option>)}
           </select>
         </div>
       )}
@@ -1252,7 +1254,7 @@ function SpellsSection({
   return (
     <div className="card px-5 py-5">
       <div className="flex items-center justify-between mb-3">
-        <span className="text-xs uppercase tracking-widest font-bold" style={{ color: '#b56eb5' }}>Personal Spells</span>
+        <span className="text-xs uppercase tracking-widest font-bold" style={{ color: '#b56eb5' }}>Spells</span>
         {canEdit && (
           <button onClick={openAdding} className="btn btn-ghost btn-sm text-xs">
             <Icons.Plus size={13} />
