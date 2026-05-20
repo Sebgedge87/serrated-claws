@@ -97,9 +97,15 @@ end;
 $$;
 
 -- FK on lance_memberships.member_id now that members has lance_id
-alter table public.lance_memberships
-  add constraint if not exists lance_memberships_member_id_fkey
-  foreign key (member_id) references public.members(id) on delete set null;
+do $$ begin
+  if not exists (
+    select 1 from pg_constraint where conname = 'lance_memberships_member_id_fkey'
+  ) then
+    alter table public.lance_memberships
+      add constraint lance_memberships_member_id_fkey
+      foreign key (member_id) references public.members(id) on delete set null;
+  end if;
+end $$;
 
 -- Migrate existing profiles → lance_memberships
 insert into public.lance_memberships (lance_id, profile_id, role, member_id)
@@ -109,25 +115,29 @@ cross join (select id from public.lances order by created_at limit 1) l
 on conflict (lance_id, profile_id) do nothing;
 
 -- 4. RLS for new tables
-alter table if exists public.lances enable row level security;
-alter table if exists public.lance_memberships enable row level security;
+alter table public.lances enable row level security;
+alter table public.lance_memberships enable row level security;
 
-create policy if not exists lances_member_read on public.lances
+drop policy if exists lances_member_read on public.lances;
+create policy lances_member_read on public.lances
   for select using (
     id in (select lance_id from public.lance_memberships where profile_id = auth.uid())
   );
 
-create policy if not exists lances_superadmin_write on public.lances
+drop policy if exists lances_superadmin_write on public.lances;
+create policy lances_superadmin_write on public.lances
   for all using (
     exists (select 1 from public.profiles where id = auth.uid() and role = 'super_admin')
   ) with check (
     exists (select 1 from public.profiles where id = auth.uid() and role = 'super_admin')
   );
 
-create policy if not exists memberships_self_read on public.lance_memberships
+drop policy if exists memberships_self_read on public.lance_memberships;
+create policy memberships_self_read on public.lance_memberships
   for select using (profile_id = auth.uid());
 
-create policy if not exists memberships_lance_read on public.lance_memberships
+drop policy if exists memberships_lance_read on public.lance_memberships;
+create policy memberships_lance_read on public.lance_memberships
   for select using (
     lance_id in (
       select lm2.lance_id from public.lance_memberships lm2
@@ -135,7 +145,8 @@ create policy if not exists memberships_lance_read on public.lance_memberships
     )
   );
 
-create policy if not exists memberships_admin_write on public.lance_memberships
+drop policy if exists memberships_admin_write on public.lance_memberships;
+create policy memberships_admin_write on public.lance_memberships
   for all using (
     lance_id in (
       select lm2.lance_id from public.lance_memberships lm2
