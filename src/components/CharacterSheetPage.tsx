@@ -1244,21 +1244,6 @@ function RitualsSection({
     }
   }
 
-  const grouped = useMemo(() => {
-    const map = new Map<string, CharacterRitual[]>();
-    for (const r of rituals) {
-      const key = r.realm || 'Spring';
-      if (!map.has(key)) map.set(key, []);
-      map.get(key)!.push(r);
-    }
-    return map;
-  }, [rituals]);
-
-  const orderedRealms = [
-    ...RITUAL_REALM_ORDER.filter(r => grouped.has(r)),
-    ...[...grouped.keys()].filter(r => !(RITUAL_REALM_ORDER as string[]).includes(r)),
-  ];
-
   return (
     <div className="card px-5 py-5">
       <div className="flex items-center justify-between mb-3">
@@ -1275,72 +1260,66 @@ function RitualsSection({
         <p className="text-xs text-ink-100/40 text-center py-4">No rituals mastered{canEdit ? ' · click Add Ritual to begin' : ''}</p>
       )}
 
-      {orderedRealms.map(r => {
-        const realmRituals = grouped.get(r)!;
-        const colors = REALM_COLORS[(r as RitualRealm)] ?? REALM_COLORS.Spring;
-        return (
-          <div key={r} className="mb-3">
-            <div className="text-[10px] uppercase tracking-widest mb-1.5 font-semibold" style={{ color: colors.text }}>{r}</div>
-            <div className="flex flex-wrap gap-1.5">
-              {realmRituals.map(rt => (
-                <div
-                  key={rt.id}
-                  className="flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-medium border"
+      {rituals.length > 0 && (
+        <div className="space-y-1.5">
+          {rituals.map(rt => {
+            const colors = REALM_COLORS[(rt.realm as RitualRealm)] ?? REALM_COLORS.Spring;
+            return (
+              <div key={rt.id} className="flex items-start gap-3 py-1.5 border-b border-gold-500/8 last:border-0">
+                <span
+                  className="shrink-0 mt-0.5 text-[10px] uppercase tracking-wider font-semibold px-2 py-0.5 rounded border"
                   style={{ background: colors.bg, color: colors.text, borderColor: colors.border }}
-                  title={rt.notes ?? undefined}
                 >
-                  <span>{rt.ritual_name}</span>
-                  {canEdit && (
-                    <button onClick={() => onDelete(rt.id)} className="ml-0.5 opacity-50 hover:opacity-100 transition-opacity">
-                      <Icons.X size={11} />
-                    </button>
-                  )}
+                  {rt.realm}
+                </span>
+                <div className="flex-1 min-w-0">
+                  <div className="text-sm text-ink-100">{rt.ritual_name}</div>
+                  {rt.notes && <div className="text-xs text-ink-100/50 mt-0.5">{rt.notes}</div>}
                 </div>
-              ))}
-            </div>
-          </div>
-        );
-      })}
+                {canEdit && (
+                  <button onClick={() => onDelete(rt.id)} className="shrink-0 opacity-40 hover:opacity-100 transition-opacity mt-0.5">
+                    <Icons.X size={14} />
+                  </button>
+                )}
+              </div>
+            );
+          })}
+        </div>
+      )}
 
       {adding && (
-        <div className="mt-2 border-t border-gold-500/10 pt-3 space-y-2 bg-ink-800/30 rounded-lg p-3 border border-gold-500/10">
-          {/* Realm selector — locked to coven realm if set */}
-          <div className="flex items-center gap-2 mb-1 flex-wrap">
-            {RITUAL_REALM_ORDER.map(r => {
-              const colors = REALM_COLORS[r];
-              const active = realm === r;
-              return (
-                <button
-                  key={r}
-                  disabled={!!covenRealm && r !== covenRealm}
-                  onClick={() => changeRealm(r)}
-                  className="px-2.5 py-1 rounded-lg text-xs font-medium border transition-colors disabled:opacity-25 disabled:cursor-not-allowed"
-                  style={active ? { background: colors.bg, color: colors.text, borderColor: colors.border } : { background: 'transparent', color: '#ffffff50', borderColor: '#ffffff15' }}
-                >
-                  {r}
-                </button>
-              );
-            })}
-          </div>
-          {/* Ritual dropdown filtered to chosen realm */}
-          <div>
-            <label className="text-[10px] uppercase tracking-widest text-ink-100/40 block mb-1">Ritual</label>
-            <select
-              autoFocus
-              className="input text-sm"
-              value={ritualName}
-              onChange={e => setRitualName(e.target.value)}
-            >
-              <option value="">— choose ritual —</option>
-              {availableRituals.map(r => (
-                <option key={r.name} value={r.name}>{r.name}</option>
-              ))}
-            </select>
+        <div className="mt-3 pt-3 border-t border-gold-500/10 space-y-2">
+          <div className="flex gap-2">
+            <div className="flex-1">
+              <label className="text-[10px] uppercase tracking-widest text-ink-100/40 block mb-1">Realm</label>
+              <select
+                className="input text-sm"
+                value={realm}
+                onChange={e => changeRealm(e.target.value as RitualRealm)}
+                disabled={!!covenRealm}
+              >
+                {RITUAL_REALM_ORDER.map(r => <option key={r} value={r}>{r}</option>)}
+              </select>
+            </div>
+            <div className="flex-[2]">
+              <label className="text-[10px] uppercase tracking-widest text-ink-100/40 block mb-1">Ritual</label>
+              <select
+                autoFocus
+                className="input text-sm"
+                value={ritualName}
+                onChange={e => setRitualName(e.target.value)}
+              >
+                <option value="">— choose ritual —</option>
+                {availableRituals.map(r => (
+                  <option key={r.name} value={r.name}>{r.name}</option>
+                ))}
+              </select>
+            </div>
           </div>
           {ritualName && (
-            <div className="text-xs text-ink-100/50 px-1">
+            <p className="text-xs text-ink-100/50 px-0.5">
               {availableRituals.find(r => r.name === ritualName)?.effect}
-            </div>
+            </p>
           )}
           <input
             className="input text-sm w-full"
