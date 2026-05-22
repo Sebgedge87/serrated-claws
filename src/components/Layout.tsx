@@ -79,6 +79,26 @@ export function Layout() {
       lines.push([i.item, i.current_qty, i.required_qty, status].map(q).join(','));
     });
 
+    // Blank row + skills section
+    if (lance.data.characterSkills.length > 0) {
+      lines.push('');
+      lines.push(['SKILLS', 'Character', 'Skill', 'Category', 'Rank', 'Notes'].map(q).join(','));
+      lance.data.characterSkills.forEach(sk => {
+        const member = lance.data.members.find(m => m.id === sk.member_id);
+        lines.push([member?.name ?? sk.member_id, sk.skill_name, sk.category, sk.rank, sk.notes ?? ''].map(q).join(','));
+      });
+    }
+
+    // Blank row + rituals section
+    if (lance.data.characterRituals.length > 0) {
+      lines.push('');
+      lines.push(['RITUALS', 'Character', 'Ritual', 'Realm', 'Notes'].map(q).join(','));
+      lance.data.characterRituals.forEach(rt => {
+        const member = lance.data.members.find(m => m.id === rt.member_id);
+        lines.push([member?.name ?? rt.member_id, rt.ritual_name, rt.realm, rt.notes ?? ''].map(q).join(','));
+      });
+    }
+
     // Blank row + money summary
     const inv = Object.fromEntries(lance.data.inventory.map(i => [i.item, i]));
     const rings = inv['Ring']?.current_qty ?? 0;
@@ -295,8 +315,8 @@ export function Layout() {
         {!lance.loading && !lance.error && !selectedMember && (
           <>
             {activeTab === 'overview' && <OverviewTab data={lance.data} filteredMembers={filteredMembers} isAdmin={isAdmin} onNavigate={setActiveTab} />}
-            {activeHouse && <HouseTab house={activeHouse} data={lance.data} search={search} isAdmin={isAdmin} canManageHouse={perms.canManageHouse(activeHouse.id)} onUpsert={lance.upsertMember} onUnassign={lance.unassignMember} onDelete={lance.deleteMember} onUpsertCharInventory={lance.upsertCharInventory} onDeleteCharInventory={lance.deleteCharInventory} onUpsertSkill={lance.upsertCharacterSkill} onDeleteSkill={lance.deleteCharacterSkill} onViewMember={setSelectedMember} />}
-            {activeTab === 'unassigned' && <UnassignedTab data={lance.data} isAdmin={isAdmin} onUpsert={lance.upsertMember} onDelete={lance.deleteMember} onUpsertCharInventory={lance.upsertCharInventory} onDeleteCharInventory={lance.deleteCharInventory} onUpsertSkill={lance.upsertCharacterSkill} onDeleteSkill={lance.deleteCharacterSkill} onViewMember={setSelectedMember} />}
+            {activeHouse && <HouseTab house={activeHouse} data={lance.data} search={search} isAdmin={isAdmin} canManageHouse={perms.canManageHouse(activeHouse.id)} onUpsert={lance.upsertMember} onUnassign={lance.unassignMember} onDelete={lance.deleteMember} onUpsertCharInventory={lance.upsertCharInventory} onDeleteCharInventory={lance.deleteCharInventory} onUpsertSkill={lance.upsertCharacterSkill} onDeleteSkill={lance.deleteCharacterSkill} onUpsertRitual={lance.upsertCharacterRitual} onDeleteRitual={lance.deleteCharacterRitual} onViewMember={setSelectedMember} />}
+            {activeTab === 'unassigned' && <UnassignedTab data={lance.data} isAdmin={isAdmin} onUpsert={lance.upsertMember} onDelete={lance.deleteMember} onUpsertCharInventory={lance.upsertCharInventory} onDeleteCharInventory={lance.deleteCharInventory} onUpsertSkill={lance.upsertCharacterSkill} onDeleteSkill={lance.deleteCharacterSkill} onUpsertRitual={lance.upsertCharacterRitual} onDeleteRitual={lance.deleteCharacterRitual} onViewMember={setSelectedMember} />}
             {activeTab === 'covens' && <CovensTab data={lance.data} isAdmin={isAdmin} canManageCoven={perms.canManageCoven} onUpsert={lance.upsertCoven} onDelete={lance.deleteCoven} onUpsertRitual={lance.upsertCovenRitual} onDeleteRitual={lance.deleteCovenRitual} />}
             {activeTab === 'functions' && <FunctionsTab data={lance.data} isAdmin={isAdmin} canManageFunction={perms.canManageFunction} onUpsert={lance.upsertFunction} onDelete={lance.deleteFunction} />}
             {activeTab === 'businesses' && <BusinessesTab data={lance.data} isAdmin={isAdmin} canManageBusiness={perms.canManageBusiness} onUpsert={lance.upsertBusiness} onDelete={lance.deleteBusiness} />}

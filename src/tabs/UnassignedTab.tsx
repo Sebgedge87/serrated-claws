@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import type { CharInventoryItem, CharacterSkill, LanceData, Member } from '@/lib/types';
+import type { CharInventoryItem, CharacterRitual, CharacterSkill, LanceData, Member } from '@/lib/types';
 import { Icons } from '@/components/Icons';
 import { MemberCard } from '@/components/MemberCard';
 import { AddPersonModal } from '@/components/modals/AddPersonModal';
@@ -13,10 +13,12 @@ interface Props {
   onDeleteCharInventory?: (id: string) => Promise<void>;
   onUpsertSkill?: (skill: Omit<CharacterSkill, 'id'> & { id?: string }) => Promise<void>;
   onDeleteSkill?: (id: string) => Promise<void>;
+  onUpsertRitual?: (ritual: Omit<CharacterRitual, 'id'> & { id?: string }) => Promise<void>;
+  onDeleteRitual?: (id: string) => Promise<void>;
   onViewMember?: (m: Member) => void;
 }
 
-export function UnassignedTab({ data, isAdmin, onUpsert, onDelete, onUpsertCharInventory, onDeleteCharInventory, onUpsertSkill, onDeleteSkill, onViewMember }: Props) {
+export function UnassignedTab({ data, isAdmin, onUpsert, onDelete, onUpsertCharInventory, onDeleteCharInventory, onUpsertSkill, onDeleteSkill, onUpsertRitual, onDeleteRitual, onViewMember }: Props) {
   const [editing, setEditing] = useState<Member | null>(null);
   const unassigned = data.members.filter(m => !m.house_id);
 
@@ -52,6 +54,8 @@ export function UnassignedTab({ data, isAdmin, onUpsert, onDelete, onUpsertCharI
           onDeleteCharInventory={onDeleteCharInventory}
           onUpsertSkill={onUpsertSkill}
           onDeleteSkill={onDeleteSkill}
+          onUpsertRitual={onUpsertRitual}
+          onDeleteRitual={onDeleteRitual}
         />
       )}
     </div>

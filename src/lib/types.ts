@@ -28,6 +28,14 @@ export interface CharacterSkill {
   notes: string | null;
 }
 
+export interface CharacterRitual {
+  id: string;
+  member_id: string;
+  ritual_name: string;
+  realm: string;
+  notes: string | null;
+}
+
 export interface CharacterSpell {
   id: string;
   member_id: string;
@@ -154,6 +162,7 @@ export interface LanceData {
   events: LanceEvent[];
   characterInventory: CharInventoryItem[];
   characterSkills: CharacterSkill[];
+  characterRituals: CharacterRitual[];
   characterSpells: CharacterSpell[];
   magicItemsStock: MagicItemStock[];
   craftingQueue: CraftingQueueItem[];
