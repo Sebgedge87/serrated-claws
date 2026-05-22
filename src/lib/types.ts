@@ -3,7 +3,8 @@ export type MemberStatus = 'active' | 'inactive' | 'KIA';
 export interface LanceEvent {
   id: string;
   name: string;
-  date: string; // ISO date
+  start_date: string; // ISO date
+  end_date: string | null; // ISO date
   sort_order: number;
   cleared: boolean;
 }
@@ -35,6 +36,15 @@ export interface CharacterRitual {
   notes: string | null;
 }
 
+export interface CharacterSpell {
+  id: string;
+  member_id: string;
+  spell_name: string;
+  school: string;
+  magnitude: number;
+  notes: string | null;
+}
+
 export interface LanceSettings {
   id: string;
   name: string;
@@ -63,8 +73,20 @@ export interface House {
 export interface Coven {
   id: string;
   name: string;
+  domain: string | null;
   leader: string | null;
   description: string | null;
+  mana_available: number;
+}
+
+export interface CovenRitual {
+  id: string;
+  coven_id: string;
+  ritual_name: string;
+  magnitude: number;
+  realm: string | null;
+  notes: string | null;
+  wording: string | null;
 }
 
 export interface Func {
@@ -88,11 +110,18 @@ export interface Member {
   hp: number | null;
   mp: number | null;
   resource: string | null;
-  coin_per_event: string | null;
+  rings_per_event: number | null;
+  crowns_per_event: number | null;
+  thrones_per_event: number | null;
+  personal_rings?: number | null;
+  personal_crowns?: number | null;
+  personal_thrones?: number | null;
   coven: string | null;
   notes: string | null;
   claimed_by: string | null;
   attending_event: boolean;
+  territory: string | null;
+  total_xp: number | null;
 }
 
 export interface Business {
@@ -108,6 +137,7 @@ export interface InventoryItem {
   item: string;
   current_qty: number;
   required_qty: number;
+  unit_value: number;
 }
 
 export interface InventoryLogEntry {
@@ -133,8 +163,10 @@ export interface LanceData {
   characterInventory: CharInventoryItem[];
   characterSkills: CharacterSkill[];
   characterRituals: CharacterRitual[];
+  characterSpells: CharacterSpell[];
   magicItemsStock: MagicItemStock[];
   craftingQueue: CraftingQueueItem[];
+  covenRituals: CovenRitual[];
 }
 
 export interface MagicItemStock {
@@ -185,3 +217,22 @@ export type CatalogueType =
   | 'Carded / Consumable Item'
   | 'Vis'
   | 'Magic Item';
+
+export interface Lance {
+  id: string;
+  name: string;
+  motto: string | null;
+  description: string | null;
+  created_at: string;
+  invite_code: string;
+}
+
+export interface LanceMembership {
+  id: string;
+  lance_id: string;
+  profile_id: string;
+  role: UserRole;
+  member_id: string | null;
+  // joined fields when fetched with profile
+  profile?: { email: string | null; display_name: string | null };
+}

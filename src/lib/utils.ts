@@ -1,15 +1,22 @@
 /** Shared utilities. */
 
-/** Convert any string-form coin amount (e.g. "4 crowns", "18 r", "1 throne") to rings. */
-export function parseCoinToRings(value: string | null | undefined): number {
-  if (!value) return 0;
-  const s = String(value).toLowerCase();
-  const match = s.match(/(\d+(?:\.\d+)?)/);
-  if (!match) return 0;
-  const num = parseFloat(match[1]);
-  if (s.includes('throne')) return num * 160;
-  if (s.includes('crown') || s.includes(' c')) return num * 20;
-  return num;
+/** Total income in rings from structured currency fields. */
+export function memberIncomeRings(rings: number | null, crowns: number | null, thrones: number | null): number {
+  return (rings ?? 0) + (crowns ?? 0) * 20 + (thrones ?? 0) * 160;
+}
+
+/** Format income fields as a compact string, rolling up to crowns/thrones.
+ *  e.g. rings=25, crowns=3 → total 85r → "4c · 5r". Returns null if all zero. */
+export function formatIncome(rings: number | null, crowns: number | null, thrones: number | null): string | null {
+  let total = memberIncomeRings(rings, crowns, thrones);
+  if (total === 0) return null;
+  const t = Math.floor(total / 160); total %= 160;
+  const c = Math.floor(total / 20);  const r = total % 20;
+  const parts: string[] = [];
+  if (t) parts.push(`${t}t`);
+  if (c) parts.push(`${c}c`);
+  if (r) parts.push(`${r}r`);
+  return parts.join(' · ');
 }
 
 /** Initials for avatar tiles. */

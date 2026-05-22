@@ -10,6 +10,7 @@ interface Props {
   data: LanceData;
   search: string;
   isAdmin: boolean;
+  canManageHouse: boolean;
   onUpsert: (m: Partial<Member> & { name: string }) => Promise<void>;
   onUnassign: (id: string) => Promise<void>;
   onDelete: (id: string) => Promise<void>;
@@ -19,9 +20,10 @@ interface Props {
   onDeleteSkill?: (id: string) => Promise<void>;
   onUpsertRitual?: (ritual: Omit<CharacterRitual, 'id'> & { id?: string }) => Promise<void>;
   onDeleteRitual?: (id: string) => Promise<void>;
+  onViewMember?: (m: Member) => void;
 }
 
-export function HouseTab({ house, data, search, isAdmin, onUpsert, onUnassign, onDelete, onUpsertCharInventory, onDeleteCharInventory, onUpsertSkill, onDeleteSkill, onUpsertRitual, onDeleteRitual }: Props) {
+export function HouseTab({ house, data, search, isAdmin, canManageHouse, onUpsert, onUnassign, onDelete, onUpsertCharInventory, onDeleteCharInventory, onUpsertSkill, onDeleteSkill, onUpsertRitual, onDeleteRitual, onViewMember }: Props) {
   const [editing, setEditing] = useState<Member | null>(null);
   const c = house.primary_color ?? '#d4b46d';
 
@@ -53,9 +55,9 @@ export function HouseTab({ house, data, search, isAdmin, onUpsert, onUnassign, o
       {nobles.length > 0 && (
         <>
           <SectionHeader icon={<Icons.Crown size={16} />} title="Nobility" count={nobles.length} />
-          <div className="grid gap-3.5 mb-8">
+          <div className="grid sm:grid-cols-2 gap-3.5 mb-8">
             {nobles.map(m => (
-              <MemberCard key={m.id} member={m} isAdmin={isAdmin} onEdit={setEditing} onUnassign={onUnassign} onDelete={onDelete} />
+              <MemberCard key={m.id} member={m} isAdmin={isAdmin} onEdit={canManageHouse ? setEditing : undefined} onUnassign={isAdmin ? onUnassign : undefined} onDelete={isAdmin ? onDelete : undefined} onViewSheet={onViewMember} />
             ))}
           </div>
         </>
@@ -64,9 +66,9 @@ export function HouseTab({ house, data, search, isAdmin, onUpsert, onUnassign, o
       {regulars.length > 0 && (
         <>
           <SectionHeader icon={<Icons.Users size={16} />} title="Members" count={regulars.length} />
-          <div className="grid gap-3.5">
+          <div className="grid sm:grid-cols-2 gap-3.5">
             {regulars.map(m => (
-              <MemberCard key={m.id} member={m} isAdmin={isAdmin} onEdit={setEditing} onUnassign={onUnassign} onDelete={onDelete} />
+              <MemberCard key={m.id} member={m} isAdmin={isAdmin} onEdit={canManageHouse ? setEditing : undefined} onUnassign={isAdmin ? onUnassign : undefined} onDelete={isAdmin ? onDelete : undefined} onViewSheet={onViewMember} />
             ))}
           </div>
         </>

@@ -15,9 +15,10 @@ interface Props {
   onDeleteSkill?: (id: string) => Promise<void>;
   onUpsertRitual?: (ritual: Omit<CharacterRitual, 'id'> & { id?: string }) => Promise<void>;
   onDeleteRitual?: (id: string) => Promise<void>;
+  onViewMember?: (m: Member) => void;
 }
 
-export function UnassignedTab({ data, isAdmin, onUpsert, onDelete, onUpsertCharInventory, onDeleteCharInventory, onUpsertSkill, onDeleteSkill, onUpsertRitual, onDeleteRitual }: Props) {
+export function UnassignedTab({ data, isAdmin, onUpsert, onDelete, onUpsertCharInventory, onDeleteCharInventory, onUpsertSkill, onDeleteSkill, onUpsertRitual, onDeleteRitual, onViewMember }: Props) {
   const [editing, setEditing] = useState<Member | null>(null);
   const unassigned = data.members.filter(m => !m.house_id);
 
@@ -33,9 +34,9 @@ export function UnassignedTab({ data, isAdmin, onUpsert, onDelete, onUpsertCharI
         </div>
       </div>
 
-      <div className="grid gap-3.5">
+      <div className="grid sm:grid-cols-2 gap-3.5">
         {unassigned.map(m => (
-          <MemberCard key={m.id} member={m} isAdmin={isAdmin} onEdit={setEditing} onDelete={onDelete} />
+          <MemberCard key={m.id} member={m} isAdmin={isAdmin} onEdit={setEditing} onDelete={onDelete} onViewSheet={onViewMember} />
         ))}
         {unassigned.length === 0 && <p className="text-center py-16 text-ink-100/50">All sworn. No unassigned members.</p>}
       </div>

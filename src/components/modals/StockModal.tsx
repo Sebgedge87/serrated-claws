@@ -155,11 +155,21 @@ export function StockModal({ data, initial, prefill, onClose, onSave }: Props) {
         </Field>
 
         <Field label="Created at Event" optional>
-          <input className="input" placeholder="E2 386YE" value={form.created_at_event ?? ''} onChange={e => set('created_at_event', e.target.value || null)} />
+          <select className="input" value={form.created_at_event ?? ''} onChange={e => set('created_at_event', e.target.value || null)}>
+            <option value="">— None —</option>
+            {[...data.events].sort((a, b) => b.sort_order - a.sort_order).map(ev => (
+              <option key={ev.id} value={ev.id}>{ev.name}</option>
+            ))}
+          </select>
         </Field>
 
         <Field label="Expires After Event" optional>
-          <input className="input" placeholder="E1 387YE" value={form.expires_after_event ?? ''} onChange={e => set('expires_after_event', e.target.value || null)} />
+          <select className="input" value={form.expires_after_event ?? ''} onChange={e => set('expires_after_event', e.target.value || null)}>
+            <option value="">— None —</option>
+            {[...data.events].sort((a, b) => b.sort_order - a.sort_order).map(ev => (
+              <option key={ev.id} value={ev.id}>{ev.name}</option>
+            ))}
+          </select>
         </Field>
 
         <Field label="Notes" optional span="full">

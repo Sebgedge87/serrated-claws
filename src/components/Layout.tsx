@@ -1,7 +1,11 @@
 import { useMemo, useState } from 'react';
 import { useAuth } from '@/hooks/useAuth';
 import { useLanceData } from '@/hooks/useLanceData';
+import { useLances } from '@/hooks/useLances';
+import { usePermissions } from '@/hooks/usePermissions';
 import { Icons } from '@/components/Icons';
+import { useConfirm } from '@/components/ConfirmDialog';
+import { LanceGate } from '@/components/LanceGate';
 import { OverviewTab } from '@/tabs/OverviewTab';
 import { HouseTab } from '@/tabs/HouseTab';
 import { UnassignedTab } from '@/tabs/UnassignedTab';
@@ -9,21 +13,31 @@ import { CovensTab } from '@/tabs/CovensTab';
 import { FunctionsTab } from '@/tabs/FunctionsTab';
 import { BusinessesTab } from '@/tabs/BusinessesTab';
 import { InventoryTab } from '@/tabs/InventoryTab';
-import { MagicItemsTab } from '@/tabs/MagicItemsTab';
 import { AdminTab } from '@/tabs/AdminTab';
 import { AddHouseModal } from '@/components/modals/AddHouseModal';
 import { AddPersonModal } from '@/components/modals/AddPersonModal';
+import { CharacterSheetPage } from '@/components/CharacterSheetPage';
+import { CreateCharacterScreen } from '@/components/CreateCharacterScreen';
 import { cx } from '@/lib/utils';
+import type { Member } from '@/lib/types';
+
+const WIKI_URL = 'https://www.profounddecisions.co.uk/empire-wiki/Skills';
 
 type TabId = 'overview' | 'unassigned' | 'covens' | 'functions' | 'businesses' | 'inventory' | 'admin' | string;
 
 export function Layout() {
-  const { user, profile, isAdmin, signOut } = useAuth();
-  const lance = useLanceData();
+  const { user, profile, signOut } = useAuth();
+  const lances = useLances(user?.id ?? null);
+  const lance = useLanceData(lances.currentLanceId);
+  const perms = usePermissions(lances.currentMembership, lance.data);
+  const isAdmin = lances.currentMembership?.role === 'admin' || lances.currentMembership?.role === 'super_admin' || profile?.role === 'super_admin';
   const [activeTab, setActiveTab] = useState<TabId>('overview');
   const [search, setSearch] = useState('');
   const [showAddHouse, setShowAddHouse] = useState(false);
   const [showAddPerson, setShowAddPerson] = useState(false);
+  const [selectedMember, setSelectedMember] = useState<Member | null>(null);
+  const [showCreateCharacter, setShowCreateCharacter] = useState(false);
+  const { confirm, Dialog: ConfirmDialog } = useConfirm();
 
   const filteredMembers = useMemo(() => {
     const q = search.trim().toLowerCase();
@@ -43,7 +57,6 @@ export function Layout() {
     { id: 'functions', label: 'Functions', Icon: Icons.Swords },
     { id: 'businesses', label: 'Businesses', Icon: Icons.Briefcase },
     { id: 'inventory', label: 'Inventory', Icon: Icons.Package },
-    { id: 'magic-items', label: 'Magic Items', Icon: Icons.Wand },
     ...(isAdmin ? [{ id: 'admin', label: 'Admin', Icon: Icons.Shield }] : [])
   ];
 
@@ -52,10 +65,10 @@ export function Layout() {
     const lines: string[] = [];
 
     // Members
-    lines.push(['House', 'Name', 'Player', 'Rank', 'Function', 'Military Role', 'Noble', 'Status', 'Attending', 'HP', 'MP', 'Resource', 'Coin/Event', 'Coven', 'Notes'].map(q).join(','));
+    lines.push(['House', 'Name', 'Player', 'Rank', 'Function', 'Military Role', 'Noble', 'Status', 'Attending', 'HP', 'MP', 'Resource', 'Rings/Event', 'Crowns/Event', 'Thrones/Event', 'Coven', 'Notes'].map(q).join(','));
     lance.data.members.forEach(m => {
       const house = lance.data.houses.find(h => h.id === m.house_id)?.name ?? 'Unassigned';
-      lines.push([house, m.name, m.player_name ?? '', m.rank ?? '', m.function ?? '', m.military_function ?? '', m.is_noble ? 'Y' : 'N', m.status, m.attending_event ? 'Y' : 'N', m.hp ?? '', m.mp ?? '', m.resource ?? '', m.coin_per_event ?? '', m.coven ?? '', m.notes ?? ''].map(q).join(','));
+      lines.push([house, m.name, m.player_name ?? '', m.rank ?? '', m.function ?? '', m.military_function ?? '', m.is_noble ? 'Y' : 'N', m.status, m.attending_event ? 'Y' : 'N', m.hp ?? '', m.mp ?? '', m.resource ?? '', m.rings_per_event ?? '', m.crowns_per_event ?? '', m.thrones_per_event ?? '', m.coven ?? '', m.notes ?? ''].map(q).join(','));
     });
 
     // Blank row + inventory header
@@ -105,33 +118,101 @@ export function Layout() {
 
   const activeHouse = lance.data.houses.find(h => h.id === activeTab);
 
+  // Show LanceGate if no lance is selected or user has no memberships
+  const gate = !lances.loading && (lances.memberships.length === 0 || (!lances.currentLanceId && lances.memberships.length > 1));
+
+  if (gate || lances.loading) {
+    return (
+      <LanceGate
+        memberships={lances.memberships}
+        loading={lances.loading}
+        currentLanceId={lances.currentLanceId}
+        memberIdToMove={profile?.member_id ?? null}
+        onSelect={lances.setCurrentLanceId}
+        onCreate={lances.createLance}
+        onJoin={lances.joinLance}
+        onMoveCharacter={lances.moveCharacterToLance}
+      />
+    );
+  }
+
+  const currentMembership = lances.currentMembership;
+
   return (
     <div className="min-h-screen">
       {/* Header */}
-      <header className="relative overflow-hidden px-12 py-8 border-b border-gold-500/15 bg-gradient-to-br from-ink-900/95 to-ink-800/95">
+      <header className="relative overflow-hidden border-b border-gold-500/15 bg-gradient-to-br from-ink-900/95 to-ink-800/95">
         <div
           className="absolute -top-10 -right-10 w-72 h-72 opacity-[0.04] pointer-events-none text-gold-300"
           style={{ background: 'radial-gradient(circle, currentColor 1px, transparent 1px)', backgroundSize: '24px 24px' }}
         />
-        <div className="relative flex items-start justify-between">
+        <div className="page-wrap py-8 relative flex items-start justify-between">
           <div className="flex items-center gap-4">
             <div className="w-12 h-12 rounded-xl text-ink-800 grid place-items-center" style={{ background: 'linear-gradient(135deg, #d4b46d 0%, #b8954c 100%)', boxShadow: '0 8px 24px -8px rgba(201,169,97,0.6), 0 1px 0 rgba(255,255,255,0.3) inset' }}>
               <Icons.Swords size={24} />
             </div>
             <div>
-              <h1 className="text-4xl font-display font-bold m-0 bg-gradient-to-b from-gold-50 to-gold-500 text-transparent bg-clip-text">
-                {lance.settings?.name ?? 'The Serrated Claws'}
+              <h1 className="text-4xl font-display font-bold m-0 text-gold-300 select-none">
+                {lance.settings?.name ?? lances.currentLance?.name ?? 'The Serrated Claws'}
               </h1>
               <p className="text-xs uppercase tracking-[0.15em] text-ink-100/50 mt-1">Lance Management System</p>
             </div>
           </div>
           <div className="flex items-center gap-3">
+            {/* Lance switcher for users with multiple lances */}
+            {lances.memberships.length > 1 && (
+              <select
+                value={lances.currentLanceId ?? ''}
+                onChange={e => lances.setCurrentLanceId(e.target.value)}
+                className="px-2.5 py-1.5 bg-black/40 border border-gold-500/15 rounded text-sm text-gold-300 cursor-pointer"
+              >
+                {lances.memberships.map(m => (
+                  <option key={m.lance_id} value={m.lance_id}>{m.lance.name}</option>
+                ))}
+              </select>
+            )}
             {profile && (
               <div className="text-right hidden sm:block">
                 <div className="text-sm text-ink-100">{profile.display_name ?? user?.email}</div>
-                <div className="text-[10px] uppercase tracking-widest text-gold-300/80">{profile.role}</div>
+                <div className="text-[10px] uppercase tracking-widest text-gold-300/80">{currentMembership?.role ?? profile.role}</div>
               </div>
             )}
+            {currentMembership?.member_id ? (
+              <button
+                onClick={() => {
+                  const me = lance.data.members.find(m => m.id === currentMembership.member_id);
+                  if (me) setSelectedMember(me);
+                }}
+                className="btn btn-ghost btn-sm"
+              >
+                <Icons.Users size={14} />
+                My Character
+              </button>
+            ) : (
+              <button
+                onClick={() => setShowCreateCharacter(true)}
+                className="btn btn-ghost btn-sm"
+              >
+                <Icons.Plus size={14} />
+                Add Character
+              </button>
+            )}
+            <a href={WIKI_URL} target="_blank" rel="noopener noreferrer" className="btn btn-ghost btn-sm">
+              <Icons.BookOpen size={14} />
+              Empire Wiki
+            </a>
+            <button
+              onClick={async () => {
+                if (!lances.currentLanceId) return;
+                const confirmed = await confirm({ title: `Leave "${lances.currentLance?.name}"?`, body: 'You will lose access until re-invited.', danger: true, confirmLabel: 'Leave' });
+                if (confirmed) await lances.leaveLance(lances.currentLanceId);
+              }}
+              className="btn btn-ghost btn-sm text-red-400/70 hover:text-red-400"
+              title="Leave this lance"
+            >
+              <Icons.LogOut size={14} />
+              Leave Lance
+            </button>
             <button onClick={signOut} className="btn btn-ghost btn-sm">
               <Icons.LogOut size={14} />
               Sign out
@@ -141,7 +222,8 @@ export function Layout() {
       </header>
 
       {/* Action bar */}
-      <div className="sticky top-0 z-40 px-12 py-4 flex flex-wrap gap-3 items-center bg-ink-900/40 backdrop-blur-xl border-b border-gold-500/15">
+      <div className="sticky top-0 z-40 bg-ink-900/40 backdrop-blur-xl border-b border-gold-500/15">
+      <div className="page-wrap py-3 flex flex-wrap gap-3 items-center">
         <div className="relative flex-1 min-w-[280px]">
           <Icons.Search size={18} className="absolute left-3.5 top-1/2 -translate-y-1/2 text-ink-100/40 pointer-events-none" />
           <input
@@ -164,7 +246,7 @@ export function Layout() {
             {activeHouse && (
               <button
                 onClick={async () => {
-                  if (confirm(`Delete ${activeHouse.name}? Members will be unassigned.`)) {
+                  if (await confirm({ title: `Delete ${activeHouse.name}?`, body: 'Members will be unassigned.', danger: true })) {
                     await lance.deleteHouse(activeHouse.id);
                     setActiveTab('overview');
                   }
@@ -181,36 +263,70 @@ export function Layout() {
           <Icons.Download size={16} />
           Export
         </button>
-      </div>
+      </div></div>
 
       {/* Tabs */}
-      <nav className="px-12 flex gap-0.5 overflow-x-auto bg-ink-950/50 backdrop-blur border-b border-gold-500/15">
-        {tabs.map(t => (
-          <button key={t.id} onClick={() => setActiveTab(t.id)} className={cx('tab-btn', activeTab === t.id && 'active')}>
-            <t.Icon size={16} />
-            {t.label}
-          </button>
-        ))}
+      <nav className="bg-ink-950/50 backdrop-blur border-b border-gold-500/15">
+        <div className="page-wrap !px-2 sm:!px-4">
+          <div className="flex overflow-x-auto scrollbar-hide">
+            {tabs.map(t => (
+              <button
+                key={t.id}
+                title={t.label}
+                onClick={() => { setActiveTab(t.id); setSelectedMember(null); }}
+                className={cx('tab-btn', activeTab === t.id && 'active')}
+              >
+                <t.Icon size={15} />
+                <span className="hidden xl:inline">{t.label}</span>
+              </button>
+            ))}
+          </div>
+        </div>
       </nav>
 
       {/* Content */}
-      <main className="px-12 py-10 animate-fade-in">
+      <main className="py-8 sm:py-10 animate-fade-in">
+      <div className="page-wrap">
         {lance.loading && <div className="text-ink-100/60 text-center py-20">Loading roster…</div>}
         {lance.error && <ErrorBanner error={lance.error} />}
 
-        {!lance.loading && !lance.error && (
+        {!lance.loading && !lance.error && selectedMember && (() => {
+          const liveMember = lance.data.members.find(m => m.id === selectedMember.id) ?? selectedMember;
+          return (
+          <CharacterSheetPage
+            member={liveMember}
+            data={lance.data}
+            isAdmin={isAdmin}
+            canEdit={isAdmin || currentMembership?.member_id === liveMember.id}
+            isOwn={currentMembership?.member_id === liveMember.id}
+            wikiUrl={WIKI_URL}
+            onBack={() => setSelectedMember(null)}
+            onUpsertMember={lance.upsertMember}
+            onUpsertSkill={lance.upsertCharacterSkill}
+            onDeleteSkill={lance.deleteCharacterSkill}
+            onUpsertSpell={lance.upsertCharacterSpell}
+            onDeleteSpell={lance.deleteCharacterSpell}
+            onUpsertCharInventory={lance.upsertCharInventory}
+            onDeleteCharInventory={lance.deleteCharInventory}
+          />
+          );
+        })()}
+
+        {!lance.loading && !lance.error && !selectedMember && (
           <>
             {activeTab === 'overview' && <OverviewTab data={lance.data} filteredMembers={filteredMembers} isAdmin={isAdmin} onNavigate={setActiveTab} />}
-            {activeHouse && <HouseTab house={activeHouse} data={lance.data} search={search} isAdmin={isAdmin} onUpsert={lance.upsertMember} onUnassign={lance.unassignMember} onDelete={lance.deleteMember} onUpsertCharInventory={lance.upsertCharInventory} onDeleteCharInventory={lance.deleteCharInventory} onUpsertSkill={lance.upsertCharacterSkill} onDeleteSkill={lance.deleteCharacterSkill} onUpsertRitual={lance.upsertCharacterRitual} onDeleteRitual={lance.deleteCharacterRitual} />}
-            {activeTab === 'unassigned' && <UnassignedTab data={lance.data} isAdmin={isAdmin} onUpsert={lance.upsertMember} onDelete={lance.deleteMember} onUpsertCharInventory={lance.upsertCharInventory} onDeleteCharInventory={lance.deleteCharInventory} onUpsertSkill={lance.upsertCharacterSkill} onDeleteSkill={lance.deleteCharacterSkill} onUpsertRitual={lance.upsertCharacterRitual} onDeleteRitual={lance.deleteCharacterRitual} />}
-            {activeTab === 'covens' && <CovensTab data={lance.data} isAdmin={isAdmin} onUpsert={lance.upsertCoven} onDelete={lance.deleteCoven} />}
-            {activeTab === 'functions' && <FunctionsTab data={lance.data} isAdmin={isAdmin} onUpsert={lance.upsertFunction} onDelete={lance.deleteFunction} />}
-            {activeTab === 'businesses' && <BusinessesTab data={lance.data} isAdmin={isAdmin} onUpsert={lance.upsertBusiness} onDelete={lance.deleteBusiness} />}
-            {activeTab === 'inventory' && <InventoryTab data={lance.data} isAdmin={isAdmin} onSetInventory={lance.setInventory} onLogInventory={lance.logInventory} onUpsertStock={lance.upsertMagicItemStock} onDeleteStock={lance.deleteMagicItemStock} />}
-            {activeTab === 'magic-items' && (
-              <MagicItemsTab
+            {activeHouse && <HouseTab house={activeHouse} data={lance.data} search={search} isAdmin={isAdmin} canManageHouse={perms.canManageHouse(activeHouse.id)} onUpsert={lance.upsertMember} onUnassign={lance.unassignMember} onDelete={lance.deleteMember} onUpsertCharInventory={lance.upsertCharInventory} onDeleteCharInventory={lance.deleteCharInventory} onUpsertSkill={lance.upsertCharacterSkill} onDeleteSkill={lance.deleteCharacterSkill} onUpsertRitual={lance.upsertCharacterRitual} onDeleteRitual={lance.deleteCharacterRitual} onViewMember={setSelectedMember} />}
+            {activeTab === 'unassigned' && <UnassignedTab data={lance.data} isAdmin={isAdmin} onUpsert={lance.upsertMember} onDelete={lance.deleteMember} onUpsertCharInventory={lance.upsertCharInventory} onDeleteCharInventory={lance.deleteCharInventory} onUpsertSkill={lance.upsertCharacterSkill} onDeleteSkill={lance.deleteCharacterSkill} onUpsertRitual={lance.upsertCharacterRitual} onDeleteRitual={lance.deleteCharacterRitual} onViewMember={setSelectedMember} />}
+            {activeTab === 'covens' && <CovensTab data={lance.data} isAdmin={isAdmin} canManageCoven={perms.canManageCoven} onUpsert={lance.upsertCoven} onDelete={lance.deleteCoven} onUpsertRitual={lance.upsertCovenRitual} onDeleteRitual={lance.deleteCovenRitual} />}
+            {activeTab === 'functions' && <FunctionsTab data={lance.data} isAdmin={isAdmin} canManageFunction={perms.canManageFunction} onUpsert={lance.upsertFunction} onDelete={lance.deleteFunction} />}
+            {activeTab === 'businesses' && <BusinessesTab data={lance.data} isAdmin={isAdmin} canManageBusiness={perms.canManageBusiness} onUpsert={lance.upsertBusiness} onDelete={lance.deleteBusiness} />}
+            {activeTab === 'inventory' && (
+              <InventoryTab
                 data={lance.data}
                 isAdmin={isAdmin}
+                onSetInventory={lance.setInventory}
+                onSetInventoryPrice={lance.setInventoryPrice}
+                onLogInventory={lance.logInventory}
                 onUpsertStock={lance.upsertMagicItemStock}
                 onDeleteStock={lance.deleteMagicItemStock}
                 onUpsertQueue={lance.upsertCraftingQueueItem}
@@ -220,20 +336,23 @@ export function Layout() {
             {activeTab === 'admin' && isAdmin && (
               <AdminTab
                 data={lance.data}
-                profiles={lance.profiles}
+                memberships={lance.memberships}
                 settings={lance.settings}
                 currentUserId={user!.id}
+                inviteCode={lances.currentLance?.invite_code ?? null}
                 onUpdateProfile={lance.upsertProfile}
                 onUpsertSettings={lance.upsertSettings}
                 onResetInventoryQty={lance.resetInventoryQty}
                 onClearInventoryLog={lance.clearInventoryLog}
                 onUpsertEvent={lance.upsertEvent}
                 onDeleteEvent={lance.deleteEvent}
+                onClearAttending={lance.clearAttending}
+                onRegenerateInviteCode={() => lances.regenerateInviteCode(lances.currentLanceId!)}
               />
             )}
           </>
         )}
-      </main>
+      </div></main>
 
       {showAddHouse && (
         <AddHouseModal
@@ -255,6 +374,17 @@ export function Layout() {
           }}
         />
       )}
+      {showCreateCharacter && user && (
+        <div className="fixed inset-0 z-50 bg-ink-950/90 backdrop-blur-sm overflow-y-auto">
+          <CreateCharacterScreen
+            userId={user.id}
+            lanceId={lances.currentLanceId!}
+            onCreated={() => window.location.reload()}
+            onClose={() => setShowCreateCharacter(false)}
+          />
+        </div>
+      )}
+      {ConfirmDialog}
     </div>
   );
 }

@@ -33,7 +33,9 @@ export function AddPersonModal({ data, initial, onClose, onSave, onUpsertCharInv
     hp: null,
     mp: null,
     resource: null,
-    coin_per_event: null,
+    rings_per_event: null as number | null,
+    crowns_per_event: null as number | null,
+    thrones_per_event: null as number | null,
     attending_event: false,
     coven: null,
     notes: null,
@@ -110,9 +112,22 @@ export function AddPersonModal({ data, initial, onClose, onSave, onUpsertCharInv
         <Field label="Resource">
           <input className="input" placeholder="Military Unit, Mana Site…" value={form.resource ?? ''} onChange={e => set('resource', e.target.value || null)} />
         </Field>
-        <Field label="Coin per Event">
-          <input className="input" placeholder="18 r, 4 crowns" value={form.coin_per_event ?? ''} onChange={e => set('coin_per_event', e.target.value || null)} />
-        </Field>
+        <Field label="Income per Event" optional>
+        <div className="grid grid-cols-3 gap-2">
+          <div>
+            <label className="text-[10px] text-ink-100/40 block mb-0.5">Rings</label>
+            <input type="number" min={0} className="input" placeholder="0" value={form.rings_per_event ?? ''} onChange={e => set('rings_per_event', e.target.value ? parseInt(e.target.value) : null)} />
+          </div>
+          <div>
+            <label className="text-[10px] text-ink-100/40 block mb-0.5">Crowns</label>
+            <input type="number" min={0} className="input" placeholder="0" value={form.crowns_per_event ?? ''} onChange={e => set('crowns_per_event', e.target.value ? parseInt(e.target.value) : null)} />
+          </div>
+          <div>
+            <label className="text-[10px] text-ink-100/40 block mb-0.5">Thrones</label>
+            <input type="number" min={0} className="input" placeholder="0" value={form.thrones_per_event ?? ''} onChange={e => set('thrones_per_event', e.target.value ? parseInt(e.target.value) : null)} />
+          </div>
+        </div>
+      </Field>
         <Field label="Coven">
           <select className="input" value={form.coven ?? ''} onChange={e => set('coven', e.target.value || null)}>
             <option value="">None</option>
@@ -175,6 +190,7 @@ export function AddPersonModal({ data, initial, onClose, onSave, onUpsertCharInv
           memberId={initial.id}
           queue={data.craftingQueue}
           members={data.members}
+          events={data.events}
         />
       )}
     </Modal>
@@ -678,11 +694,14 @@ function CraftingSection({
   memberId,
   queue,
   members,
+  events,
 }: {
   memberId: string;
   queue: CraftingQueueItem[];
   members: { id: string; name: string }[];
+  events: { id: string; name: string }[];
 }) {
+  const eventMap = Object.fromEntries(events.map(e => [e.id, e.name]));
   const crafting = queue.filter(q => q.crafter_id === memberId && q.status !== 'complete' && q.status !== 'cancelled');
   if (crafting.length === 0) return null;
 
@@ -702,7 +721,7 @@ function CraftingSection({
                 <span className="text-sm text-ink-100">{item.item_name}</span>
                 <span className="text-xs text-ink-100/50 ml-2 capitalize">{item.tier}</span>
                 {recipient && <span className="text-xs text-ink-100/40 ml-2">→ {recipient.name}</span>}
-                {item.target_event && <span className="text-xs text-ink-100/30 ml-2">by {item.target_event}</span>}
+                {item.target_event && <span className="text-xs text-ink-100/30 ml-2">by {eventMap[item.target_event] ?? item.target_event}</span>}
               </div>
               <span
                 className="text-[10px] px-2 py-0.5 rounded-full border flex-shrink-0"

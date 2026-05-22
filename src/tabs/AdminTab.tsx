@@ -1,27 +1,31 @@
 import { useState } from 'react';
-import type { LanceData, LanceEvent, LanceSettings, Profile, UserRole } from '@/lib/types';
+import type { LanceData, LanceEvent, LanceMembership, LanceSettings, UserRole } from '@/lib/types';
+import { useConfirm } from '@/components/ConfirmDialog';
 import { Icons } from '@/components/Icons';
 import { initials } from '@/lib/utils';
-import { parseCoinToRings } from '@/lib/utils';
+import { exportRosterPdf, exportResourcesPdf } from '@/lib/parchmentPdf';
 
 interface Props {
   data: LanceData;
-  profiles: Profile[];
+  memberships: LanceMembership[];
   settings: LanceSettings | null;
   currentUserId: string;
+  inviteCode: string | null;
   onUpdateProfile: (id: string, updates: { role?: UserRole; member_id?: string | null; display_name?: string | null }) => Promise<void>;
   onUpsertSettings: (updates: { name?: string; motto?: string | null; description?: string | null }) => Promise<void>;
   onResetInventoryQty: () => Promise<void>;
   onClearInventoryLog: () => Promise<void>;
-  onUpsertEvent: (ev: Partial<LanceEvent> & { name: string; date: string }) => Promise<void>;
+  onUpsertEvent: (ev: Partial<LanceEvent> & { name: string; start_date: string }) => Promise<void>;
   onDeleteEvent: (id: string) => Promise<void>;
+  onClearAttending: () => Promise<void>;
+  onRegenerateInviteCode: () => Promise<string>;
 }
 
 const A = '#d4b46d';
 const ROLE_COLORS: Record<UserRole, string> = { super_admin: '#f0a040', admin: '#d4b46d', member: '#7eb0d4', viewer: '#9ca3af' };
 
-export function AdminTab({ data, profiles, settings, currentUserId, onUpdateProfile, onUpsertSettings, onResetInventoryQty, onClearInventoryLog, onUpsertEvent, onDeleteEvent }: Props) {
-  const currentRole = profiles.find(p => p.id === currentUserId)?.role ?? 'admin';
+export function AdminTab({ data, memberships, settings, currentUserId, inviteCode, onUpdateProfile, onUpsertSettings, onResetInventoryQty, onClearInventoryLog, onUpsertEvent, onDeleteEvent, onClearAttending, onRegenerateInviteCode }: Props) {
+  const currentRole = memberships.find(m => m.profile_id === currentUserId)?.role ?? 'admin';
   const isSuperAdmin = currentRole === 'super_admin';
 
   return (
@@ -39,10 +43,10 @@ export function AdminTab({ data, profiles, settings, currentUserId, onUpdateProf
         </div>
       </div>
 
-      <StatsSection data={data} profiles={profiles} />
-      <EventsSection events={data.events} data={data} onUpsert={onUpsertEvent} onDelete={onDeleteEvent} />
+      <StatsSection data={data} memberships={memberships} isSuperAdmin={isSuperAdmin} />
+      <EventsSection events={data.events} data={data} onUpsert={onUpsertEvent} onDelete={onDeleteEvent} onClearAttending={onClearAttending} />
       <SettingsSection settings={settings} onSave={onUpsertSettings} />
-      <RolesSection profiles={profiles} data={data} currentUserId={currentUserId} currentRole={currentRole} onUpdateProfile={onUpdateProfile} />
+      <RolesSection memberships={memberships} data={data} currentUserId={currentUserId} currentRole={currentRole} inviteCode={inviteCode} onUpdateProfile={onUpdateProfile} onRegenerateInviteCode={onRegenerateInviteCode} />
       {isSuperAdmin && <DangerZone onResetInventoryQty={onResetInventoryQty} onClearInventoryLog={onClearInventoryLog} logCount={data.inventoryLog.length} />}
     </div>
   );
@@ -50,14 +54,18 @@ export function AdminTab({ data, profiles, settings, currentUserId, onUpdateProf
 
 // ── Stats ─────────────────────────────────────────────────────────────────────
 
-function StatsSection({ data, profiles }: { data: LanceData; profiles: Profile[] }) {
+function StatsSection({ data, memberships, isSuperAdmin }: { data: LanceData; memberships: LanceMembership[]; isSuperAdmin: boolean }) {
   const active = data.members.filter(m => m.status === 'active').length;
   const inactive = data.members.filter(m => m.status === 'inactive').length;
   const kia = data.members.filter(m => m.status === 'KIA').length;
   const shortfalls = data.inventory.filter(v => v.required_qty > v.current_qty).length;
-  const adminCount = profiles.filter(p => p.role === 'admin').length;
-  const memberCount = profiles.filter(p => p.role === 'member').length;
-  const viewerCount = profiles.filter(p => p.role === 'viewer').length;
+  const superAdminCount = memberships.filter(m => m.role === 'super_admin').length;
+  const adminCount = memberships.filter(m => m.role === 'admin').length;
+  const memberCount = memberships.filter(m => m.role === 'member').length;
+  const viewerCount = memberships.filter(m => m.role === 'viewer').length;
+  const linkedActive = memberships.filter(m =>
+    m.member_id && data.members.find(mem => mem.id === m.member_id && mem.status === 'active')
+  ).length;
 
   const houseRows = data.houses.map(h => ({
     name: h.name,
@@ -72,7 +80,11 @@ function StatsSection({ data, profiles }: { data: LanceData; profiles: Profile[]
       <div className="grid grid-cols-[repeat(auto-fill,minmax(200px,1fr))] gap-4 mb-6">
         <StatCard label="Total Members" value={data.members.length} sub={`${active} active · ${inactive} inactive · ${kia} KIA`} color={A} />
         <StatCard label="Houses" value={data.houses.length} sub={`${unassigned} unassigned member${unassigned !== 1 ? 's' : ''}`} color="#7eb0d4" />
-        <StatCard label="User Accounts" value={profiles.length} sub={`${adminCount} admin · ${memberCount} member · ${viewerCount} viewer`} color="#b56eb5" />
+        <StatCard label="User Accounts" value={memberships.length}
+          sub={isSuperAdmin
+            ? `${linkedActive} active · ${superAdminCount > 0 ? `${superAdminCount} super · ` : ''}${adminCount} admin · ${memberCount} member · ${viewerCount} viewer`
+            : `${adminCount} admin · ${memberCount} member · ${viewerCount} viewer`}
+          color="#b56eb5" />
         <StatCard label="Inventory" value={data.inventory.filter(v => v.current_qty > 0).length + ' held'} sub={shortfalls > 0 ? `${shortfalls} shortfall${shortfalls !== 1 ? 's' : ''}` : 'No shortfalls'} color={shortfalls > 0 ? '#f87171' : '#6dd47e'} />
       </div>
 
@@ -120,58 +132,53 @@ function StatCard({ label, value, sub, color }: { label: string; value: string |
 
 // ── Events ────────────────────────────────────────────────────────────────────
 
-function EventsSection({ events, data, onUpsert, onDelete }: { events: LanceEvent[]; data: LanceData; onUpsert: Props['onUpsertEvent']; onDelete: Props['onDeleteEvent'] }) {
+function EventsSection({ events, data, onUpsert, onDelete, onClearAttending }: { events: LanceEvent[]; data: LanceData; onUpsert: Props['onUpsertEvent']; onDelete: Props['onDeleteEvent']; onClearAttending: Props['onClearAttending'] }) {
   const [editing, setEditing] = useState<Partial<LanceEvent> | null>(null);
+  const { confirm, Dialog: ConfirmDialog } = useConfirm();
   const today = new Date(); today.setHours(0, 0, 0, 0);
-  const attending = data.members.filter(m => m.attending_event).length;
+  const attendingMembers = data.members.filter(m => m.attending_event);
+  const nextEvent = events.find(ev => !ev.cleared);
 
-  function exportAttending() {
-    const rows: string[][] = [['Character', 'Player', 'House', 'Function', 'Coven', 'Rank', 'Resource', 'Coin/Event', 'Tithe (10%)']];
-    const attending = data.members.filter(m => m.attending_event);
-    attending.sort((a, b) => {
-      const fa = a.function ?? ''; const fb = b.function ?? '';
-      if (fa !== fb) return fa.localeCompare(fb);
-      return a.name.localeCompare(b.name);
-    });
-    attending.forEach(m => {
-      const house = data.houses.find(h => h.id === m.house_id)?.name ?? 'Unassigned';
-      const rings = parseCoinToRings(m.coin_per_event);
-      const tithe = rings > 0 ? `${Math.round(rings * 0.1)} r` : '';
-      rows.push([m.name, m.player_name ?? '', house, m.function ?? '', m.coven ?? '', m.rank ?? '', m.resource ?? '', m.coin_per_event ?? '', tithe]);
-    });
-    const csv = rows.map(r => r.map(c => `"${c.replace(/"/g, '""')}"`).join(',')).join('\n');
-    const blob = new Blob([csv], { type: 'text/csv' });
-    const a = document.createElement('a'); a.href = URL.createObjectURL(blob);
-    a.download = `attending-${new Date().toISOString().split('T')[0]}.csv`; a.click();
+  function fmtDate(d: string) {
+    return new Date(d).toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: '2-digit' });
   }
+
+  function exportRoster() { exportRosterPdf(data, nextEvent); }
+  function exportResources() { exportResourcesPdf(data); }
 
   return (
     <section>
       <SectionHeading icon={<Icons.Package size={16} />} title="Events" />
       <div className="flex items-center gap-3 mb-4 flex-wrap">
-        <span className="text-sm text-ink-100/60">{attending} member{attending !== 1 ? 's' : ''} attending next event</span>
-        {attending > 0 && (
-          <button onClick={exportAttending} className="btn btn-secondary btn-sm">
-            <Icons.Download size={14} /> Export Attending CSV
+        <span className="text-sm text-ink-100/60">{attendingMembers.length} member{attendingMembers.length !== 1 ? 's' : ''} attending next event</span>
+        {attendingMembers.length > 0 && <>
+          <button onClick={exportRoster} className="btn btn-secondary btn-sm">
+            <Icons.Download size={14} /> Export Roster
           </button>
-        )}
-        <button onClick={() => setEditing({ name: '', date: '', sort_order: events.length })} className="btn btn-secondary btn-sm">
+          <button onClick={async () => { if (await confirm({ title: 'Clear all attending?', body: 'Sets attending_event = false for all members.', danger: false, confirmLabel: 'Clear' })) await onClearAttending(); }} className="btn btn-ghost btn-sm">
+            <Icons.Question size={14} /> Clear Attending
+          </button>
+        </>}
+        <button onClick={exportResources} className="btn btn-ghost btn-sm">
+          <Icons.Download size={14} /> Export Resources
+        </button>
+        <button onClick={() => setEditing({ name: '', start_date: '', end_date: null, sort_order: events.length })} className="btn btn-secondary btn-sm">
           <Icons.Plus size={14} /> Add Event
         </button>
       </div>
       <div className="grid grid-cols-[repeat(auto-fill,minmax(280px,1fr))] gap-3">
         {events.map(ev => {
-          const d = new Date(ev.date); d.setHours(12);
-          const dayAfter = new Date(ev.date); dayAfter.setDate(dayAfter.getDate() + 1); dayAfter.setHours(0);
-          const isPast = today >= dayAfter;
-          const isToday = !isPast && today >= d;
+          const start = new Date(ev.start_date); start.setHours(12);
+          const clearAfter = new Date(ev.end_date ?? ev.start_date); clearAfter.setDate(clearAfter.getDate() + 1); clearAfter.setHours(0);
+          const isPast = today >= clearAfter;
+          const isActive = !isPast && today >= start;
           return (
             <div key={ev.id} className="card p-4 flex items-center justify-between gap-3">
               <div>
                 <div className="font-semibold text-ink-100">{ev.name}</div>
                 <div className="text-xs text-ink-100/50 mt-0.5">
-                  {new Date(ev.date).toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: '2-digit' })}
-                  {isToday && <span className="ml-2 text-gold-300 font-semibold">Today</span>}
+                  {fmtDate(ev.start_date)}{ev.end_date ? ` – ${fmtDate(ev.end_date)}` : ''}
+                  {isActive && <span className="ml-2 text-gold-300 font-semibold">Active</span>}
                   {isPast && <span className="ml-2 text-ink-100/30">(past{ev.cleared ? ', cleared' : ''})</span>}
                 </div>
               </div>
@@ -179,7 +186,7 @@ function EventsSection({ events, data, onUpsert, onDelete }: { events: LanceEven
             </div>
           );
         })}
-        {events.length === 0 && <p className="text-sm text-ink-100/40 col-span-full">No events yet. Add up to 4 per year.</p>}
+        {events.length === 0 && <p className="text-sm text-ink-100/40 col-span-full">No events yet.</p>}
       </div>
       {editing !== null && (
         <EventModal
@@ -189,23 +196,27 @@ function EventsSection({ events, data, onUpsert, onDelete }: { events: LanceEven
           onDelete={editing.id ? async () => { await onDelete(editing.id!); setEditing(null); } : undefined}
         />
       )}
+      {ConfirmDialog}
     </section>
   );
 }
 
-function EventModal({ initial, onClose, onSave, onDelete }: { initial: Partial<LanceEvent>; onClose: () => void; onSave: (ev: Partial<LanceEvent> & { name: string; date: string }) => Promise<void>; onDelete?: () => Promise<void> }) {
+function EventModal({ initial, onClose, onSave, onDelete }: { initial: Partial<LanceEvent>; onClose: () => void; onSave: (ev: Partial<LanceEvent> & { name: string; start_date: string }) => Promise<void>; onDelete?: () => Promise<void> }) {
   const [name, setName] = useState(initial.name ?? '');
-  const [date, setDate] = useState(initial.date ? initial.date.slice(0, 10) : '');
+  const [startDate, setStartDate] = useState(initial.start_date ? initial.start_date.slice(0, 10) : '');
+  const [endDate, setEndDate] = useState(initial.end_date ? initial.end_date.slice(0, 10) : '');
   const [order, setOrder] = useState(initial.sort_order ?? 0);
   const [busy, setBusy] = useState(false);
+  const { confirm, Dialog: ConfirmDialog } = useConfirm();
 
   async function save() {
-    if (!name.trim() || !date || busy) return;
+    if (!name.trim() || !startDate || busy) return;
     setBusy(true);
-    try { await onSave({ ...initial, name: name.trim(), date, sort_order: order }); } finally { setBusy(false); }
+    try { await onSave({ ...initial, name: name.trim(), start_date: startDate, end_date: endDate || null, sort_order: order }); } finally { setBusy(false); }
   }
 
   return (
+    <>
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm" onClick={onClose}>
       <div className="card p-6 w-full max-w-sm space-y-4" onClick={e => e.stopPropagation()}>
         <h3 className="font-display font-bold text-lg text-gold-300">{initial.id ? 'Edit Event' : 'New Event'}</h3>
@@ -213,9 +224,15 @@ function EventModal({ initial, onClose, onSave, onDelete }: { initial: Partial<L
           <label className="block text-xs text-ink-100/50 uppercase tracking-widest mb-1">Name</label>
           <input className="input w-full" value={name} onChange={e => setName(e.target.value)} placeholder="E1 — Spring Gathering" autoFocus />
         </div>
-        <div>
-          <label className="block text-xs text-ink-100/50 uppercase tracking-widest mb-1">Date</label>
-          <input type="date" className="input w-full" value={date} onChange={e => setDate(e.target.value)} />
+        <div className="grid grid-cols-2 gap-3">
+          <div>
+            <label className="block text-xs text-ink-100/50 uppercase tracking-widest mb-1">Start Date</label>
+            <input type="date" className="input w-full" value={startDate} onChange={e => setStartDate(e.target.value)} />
+          </div>
+          <div>
+            <label className="block text-xs text-ink-100/50 uppercase tracking-widest mb-1">End Date</label>
+            <input type="date" className="input w-full" value={endDate} min={startDate} onChange={e => setEndDate(e.target.value)} />
+          </div>
         </div>
         <div>
           <label className="block text-xs text-ink-100/50 uppercase tracking-widest mb-1">Sort Order</label>
@@ -223,15 +240,17 @@ function EventModal({ initial, onClose, onSave, onDelete }: { initial: Partial<L
         </div>
         <div className="flex justify-between pt-2">
           {onDelete ? (
-            <button onClick={async () => { if (confirm('Delete this event?')) await onDelete(); }} className="btn btn-danger btn-sm">Delete</button>
+            <button onClick={async () => { if (await confirm({ title: 'Delete this event?', danger: true })) await onDelete(); }} className="btn btn-danger btn-sm">Delete</button>
           ) : <div />}
           <div className="flex gap-2">
             <button onClick={onClose} className="btn btn-ghost">Cancel</button>
-            <button onClick={save} disabled={!name.trim() || !date || busy} className="btn btn-primary">{busy ? 'Saving…' : 'Save'}</button>
+            <button onClick={save} disabled={!name.trim() || !startDate || busy} className="btn btn-primary">{busy ? 'Saving…' : 'Save'}</button>
           </div>
         </div>
       </div>
     </div>
+    {ConfirmDialog}
+    </>
   );
 }
 
@@ -301,12 +320,15 @@ function SettingsSection({ settings, onSave }: { settings: LanceSettings | null;
 
 // ── Roles ─────────────────────────────────────────────────────────────────────
 
-function RolesSection({ profiles, data, currentUserId, currentRole, onUpdateProfile }: { profiles: Profile[]; data: LanceData; currentUserId: string; currentRole: UserRole; onUpdateProfile: Props['onUpdateProfile'] }) {
+function RolesSection({ memberships, data, currentUserId, currentRole, inviteCode, onUpdateProfile, onRegenerateInviteCode }: { memberships: LanceMembership[]; data: LanceData; currentUserId: string; currentRole: UserRole; inviteCode: string | null; onUpdateProfile: Props['onUpdateProfile']; onRegenerateInviteCode: Props['onRegenerateInviteCode'] }) {
   const [busy, setBusy] = useState<string | null>(null);
+  const [localCode, setLocalCode] = useState<string | null>(inviteCode);
+  const [regenBusy, setRegenBusy] = useState(false);
+  const [copied, setCopied] = useState(false);
   const isSuperAdmin = currentRole === 'super_admin';
-  const adminCount = profiles.filter(p => p.role === 'admin' || p.role === 'super_admin').length;
+  const adminCount = memberships.filter(m => m.role === 'admin' || m.role === 'super_admin').length;
   const availableRoles: UserRole[] = isSuperAdmin ? ['super_admin', 'admin', 'member', 'viewer'] : ['admin', 'member', 'viewer'];
-  const claimedMemberIds = new Set(profiles.filter(p => p.member_id).map(p => p.member_id!));
+  const claimedMemberIds = new Set(memberships.filter(m => m.member_id).map(m => m.member_id!));
 
   async function setRole(id: string, role: UserRole) {
     setBusy(id);
@@ -317,9 +339,51 @@ function RolesSection({ profiles, data, currentUserId, currentRole, onUpdateProf
     try { await onUpdateProfile(id, { member_id }); } finally { setBusy(null); }
   }
 
+  const displayCode = localCode ?? inviteCode;
+
+  async function handleRegen() {
+    setRegenBusy(true);
+    try {
+      const newCode = await onRegenerateInviteCode();
+      setLocalCode(newCode);
+    } finally {
+      setRegenBusy(false);
+    }
+  }
+
+  function handleCopy() {
+    if (!displayCode) return;
+    navigator.clipboard.writeText(displayCode).then(() => {
+      setCopied(true);
+      setTimeout(() => setCopied(false), 2000);
+    });
+  }
+
   return (
     <section>
-      <SectionHeading icon={<Icons.Users size={16} />} title={`Roles & Access · ${profiles.length} users`} />
+      <SectionHeading icon={<Icons.Users size={16} />} title={`Roles & Access · ${memberships.length} users`} />
+
+      {/* Invite code */}
+      <div className="card p-4 mb-4 flex items-center gap-4 flex-wrap" style={{ borderLeft: `3px solid ${A}` }}>
+        <div className="flex-1 min-w-0">
+          <div className="text-[10px] uppercase tracking-widest font-bold text-gold-300/70 mb-1">Invite Code</div>
+          <div className="font-mono text-lg font-bold tracking-widest text-ink-100 select-all">
+            {displayCode ?? '—'}
+          </div>
+          <div className="text-xs text-ink-100/50 mt-0.5">Share this code with new members so they can join from the "No Lance Yet" screen.</div>
+        </div>
+        <div className="flex gap-2 flex-shrink-0">
+          <button onClick={handleCopy} className="btn btn-ghost btn-sm" disabled={!displayCode}>
+            <Icons.Copy size={13} />
+            {copied ? 'Copied!' : 'Copy'}
+          </button>
+          <button onClick={handleRegen} disabled={regenBusy} className="btn btn-ghost btn-sm text-red-400/70 hover:text-red-400">
+            <Icons.Refresh size={13} />
+            {regenBusy ? 'Regenerating…' : 'Regenerate'}
+          </button>
+        </div>
+      </div>
+
       <div className="card overflow-hidden mb-4">
         <table className="w-full text-sm">
           <thead className="bg-gold-500/10">
@@ -365,50 +429,52 @@ function RolesSection({ profiles, data, currentUserId, currentRole, onUpdateProf
             </tr>
           </thead>
           <tbody>
-            {profiles.map((p, idx) => {
-              const isSelf = p.id === currentUserId;
-              const linked = p.member_id ? data.members.find(m => m.id === p.member_id) : null;
+            {memberships.map((m, idx) => {
+              const isSelf = m.profile_id === currentUserId;
+              const displayName = m.profile?.display_name ?? null;
+              const email = m.profile?.email ?? null;
+              const linked = m.member_id ? data.members.find(dm => dm.id === m.member_id) : null;
               return (
-                <tr key={p.id} className={idx > 0 ? 'border-t border-gold-500/10' : ''}>
+                <tr key={m.id} className={idx > 0 ? 'border-t border-gold-500/10' : ''}>
                   <td className="px-4 py-3">
                     <div className="flex items-center gap-3">
                       <div className="w-9 h-9 rounded-full grid place-items-center font-display font-bold text-sm flex-shrink-0"
-                           style={{ background: `${ROLE_COLORS[p.role]}20`, border: `1px solid ${ROLE_COLORS[p.role]}40`, color: ROLE_COLORS[p.role] }}>
-                        {initials(p.display_name ?? p.email ?? '?')}
+                           style={{ background: `${ROLE_COLORS[m.role]}20`, border: `1px solid ${ROLE_COLORS[m.role]}40`, color: ROLE_COLORS[m.role] }}>
+                        {initials(displayName ?? email ?? '?')}
                       </div>
                       <div className="min-w-0">
                         <div className="font-semibold text-ink-100 truncate">
-                          {p.display_name ?? p.email ?? '—'}
+                          {displayName ?? email ?? '—'}
                           {isSelf && <span className="ml-2 text-[10px] uppercase tracking-widest text-gold-300/60">(you)</span>}
                         </div>
-                        {p.display_name && <div className="text-xs text-ink-100/50 truncate">{p.email}</div>}
+                        {displayName && <div className="text-xs text-ink-100/50 truncate">{email}</div>}
                       </div>
                     </div>
                   </td>
                   <td className="px-4 py-3">
                     <select
-                      value={p.role}
-                      disabled={busy === p.id || (isSelf && adminCount <= 1) || (!isSuperAdmin && p.role === 'super_admin')}
-                      onChange={e => setRole(p.id, e.target.value as UserRole)}
+                      value={m.role}
+                      disabled={busy === m.id || (isSelf && adminCount <= 1) || (!isSuperAdmin && m.role === 'super_admin')}
+                      onChange={e => setRole(m.id, e.target.value as UserRole)}
                       className="px-2.5 py-1.5 bg-black/40 border border-gold-500/15 rounded text-sm cursor-pointer disabled:opacity-50"
-                      style={{ color: ROLE_COLORS[p.role] }}
-                      title={!isSuperAdmin && p.role === 'super_admin' ? "Only super admins can change this role" : isSelf && adminCount <= 1 ? "Can't demote the only admin" : undefined}
+                      style={{ color: ROLE_COLORS[m.role] }}
+                      title={!isSuperAdmin && m.role === 'super_admin' ? "Only super admins can change this role" : isSelf && adminCount <= 1 ? "Can't demote the only admin" : undefined}
                     >
                       {availableRoles.map(r => <option key={r} value={r} style={{ color: ROLE_COLORS[r] }}>{r.replace('_', ' ')}</option>)}
                     </select>
-                    {busy === p.id && <span className="ml-2 text-xs text-ink-100/50">Saving…</span>}
+                    {busy === m.id && <span className="ml-2 text-xs text-ink-100/50">Saving…</span>}
                   </td>
                   <td className="px-4 py-3">
                     <select
-                      value={p.member_id ?? ''}
-                      disabled={busy === p.id + '-m'}
-                      onChange={e => setMember(p.id, e.target.value || null)}
+                      value={m.member_id ?? ''}
+                      disabled={busy === m.id + '-m'}
+                      onChange={e => setMember(m.id, e.target.value || null)}
                       className="px-2.5 py-1.5 bg-black/40 border border-gold-500/15 rounded text-sm cursor-pointer disabled:opacity-50 max-w-[220px]"
                     >
                       <option value="">— Unlinked —</option>
                       {data.members
-                        .filter(m => !claimedMemberIds.has(m.id) || m.id === p.member_id)
-                        .map(m => <option key={m.id} value={m.id}>{m.name}{m.player_name ? ` (${m.player_name})` : ''}</option>)}
+                        .filter(dm => !claimedMemberIds.has(dm.id) || dm.id === m.member_id)
+                        .map(dm => <option key={dm.id} value={dm.id}>{dm.name}{dm.player_name ? ` (${dm.player_name})` : ''}</option>)}
                     </select>
                     {linked && (
                       <div className="text-xs text-ink-100/50 mt-0.5">
@@ -420,7 +486,7 @@ function RolesSection({ profiles, data, currentUserId, currentRole, onUpdateProf
                 </tr>
               );
             })}
-            {profiles.length === 0 && (
+            {memberships.length === 0 && (
               <tr><td colSpan={3} className="px-4 py-12 text-center text-ink-100/40 text-sm">No users found.</td></tr>
             )}
           </tbody>
