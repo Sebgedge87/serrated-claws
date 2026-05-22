@@ -1,5 +1,5 @@
 import { useMemo, useState } from 'react';
-import type { CharInventoryItem, CharacterSkill, CharacterSpell, CraftingQueueItem, LanceData, Member } from '@/lib/types';
+import type { CharInventoryItem, CharacterRitual, CharacterSkill, CharacterSpell, CraftingQueueItem, LanceData, Member } from '@/lib/types';
 import { Icons } from '@/components/Icons';
 import { SKILLS_CATALOGUE, SKILL_CATEGORY_COLORS, SKILL_CATEGORY_ORDER, skillXpCost } from '@/lib/skillsCatalogue';
 import type { SkillCategory } from '@/lib/skillsCatalogue';
@@ -8,6 +8,8 @@ import type { ResourceType } from '@/lib/personalResource';
 import { EMPIRE_CATALOGUE } from '@/lib/catalogue';
 import { spellsForRealm } from '@/lib/spellsCatalogue';
 import type { SpellRealm } from '@/lib/spellsCatalogue';
+import { RITUALS_CATALOGUE, REALM_COLORS, RITUAL_REALM_ORDER } from '@/lib/ritualsCatalogue';
+import type { RitualRealm } from '@/lib/ritualsCatalogue';
 import { cx, formatIncome } from '@/lib/utils';
 
 interface Props {
@@ -23,6 +25,8 @@ interface Props {
   onDeleteSkill: (id: string) => Promise<void>;
   onUpsertSpell: (s: Omit<CharacterSpell, 'id'> & { id?: string }) => Promise<void>;
   onDeleteSpell: (id: string) => Promise<void>;
+  onUpsertRitual: (r: Omit<CharacterRitual, 'id'> & { id?: string }) => Promise<void>;
+  onDeleteRitual: (id: string) => Promise<void>;
   onUpsertCharInventory: (i: Omit<CharInventoryItem, 'id'> & { id?: string }) => Promise<void>;
   onDeleteCharInventory: (id: string) => Promise<void>;
 }
@@ -40,6 +44,8 @@ export function CharacterSheetPage({
   onDeleteSkill,
   onUpsertSpell,
   onDeleteSpell,
+  onUpsertRitual,
+  onDeleteRitual,
   onUpsertCharInventory,
   onDeleteCharInventory,
 }: Props) {
@@ -125,6 +131,13 @@ export function CharacterSheetPage({
               onDelete={onDeleteSpell}
             />
           )}
+          <RitualsSection
+            memberId={member.id}
+            rituals={data.characterRituals.filter(r => r.member_id === member.id)}
+            canEdit={canEdit}
+            onUpsert={onUpsertRitual}
+            onDelete={onDeleteRitual}
+          />
           <CharInventorySectionPage
             memberId={member.id}
             items={data.characterInventory.filter(ci => ci.member_id === member.id)}
@@ -1162,6 +1175,164 @@ function SkillPicker({
           Queue
         </button>
       </div>
+    </div>
+  );
+}
+
+// ── Rituals Section ───────────────────────────────────────────────────────────
+
+function RitualsSection({
+  memberId,
+  rituals,
+  canEdit,
+  onUpsert,
+  onDelete,
+}: {
+  memberId: string;
+  rituals: CharacterRitual[];
+  canEdit: boolean;
+  onUpsert: (r: Omit<CharacterRitual, 'id'> & { id?: string }) => Promise<void>;
+  onDelete: (id: string) => Promise<void>;
+}) {
+  const [adding, setAdding] = useState(false);
+  const [search, setSearch] = useState('');
+  const [form, setForm] = useState({ ritual_name: '', realm: 'Spring' as RitualRealm, notes: '' });
+  const [busy, setBusy] = useState(false);
+
+  const suggestions = useMemo(() => {
+    if (!search) return [];
+    const q = search.toLowerCase();
+    return RITUALS_CATALOGUE.filter(r => r.name.toLowerCase().includes(q)).slice(0, 6);
+  }, [search]);
+
+  function pickSuggestion(r: typeof RITUALS_CATALOGUE[number]) {
+    setForm({ ritual_name: r.name, realm: r.realm, notes: '' });
+    setSearch(r.name);
+  }
+
+  async function addRitual() {
+    if (!form.ritual_name.trim() || busy) return;
+    setBusy(true);
+    try {
+      await onUpsert({ member_id: memberId, ritual_name: form.ritual_name.trim(), realm: form.realm, notes: form.notes.trim() || null });
+      setSearch('');
+      setForm({ ritual_name: '', realm: 'Spring', notes: '' });
+      setAdding(false);
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  const grouped = useMemo(() => {
+    const map = new Map<string, CharacterRitual[]>();
+    for (const r of rituals) {
+      const realm = r.realm || 'Spring';
+      if (!map.has(realm)) map.set(realm, []);
+      map.get(realm)!.push(r);
+    }
+    return map;
+  }, [rituals]);
+
+  const orderedRealms = [
+    ...RITUAL_REALM_ORDER.filter(r => grouped.has(r)),
+    ...[...grouped.keys()].filter(r => !(RITUAL_REALM_ORDER as string[]).includes(r)),
+  ];
+
+  return (
+    <div className="card px-5 py-5">
+      <div className="flex items-center justify-between mb-3">
+        <span className="text-xs uppercase tracking-widest font-bold text-gold-300">Mastered Rituals</span>
+        {canEdit && (
+          <button onClick={() => setAdding(a => !a)} className="btn btn-ghost btn-sm text-xs">
+            <Icons.Plus size={13} />
+            Add Ritual
+          </button>
+        )}
+      </div>
+
+      {rituals.length === 0 && !adding && (
+        <p className="text-xs text-ink-100/40 text-center py-4">No rituals mastered{canEdit ? ' · click Add Ritual to begin' : ''}</p>
+      )}
+
+      {orderedRealms.map(realm => {
+        const realmRituals = grouped.get(realm)!;
+        const colors = REALM_COLORS[(realm as RitualRealm)] ?? REALM_COLORS.Spring;
+        return (
+          <div key={realm} className="mb-3">
+            <div className="text-[10px] uppercase tracking-widest mb-1.5 font-semibold" style={{ color: colors.text }}>{realm}</div>
+            <div className="flex flex-wrap gap-1.5">
+              {realmRituals.map(rt => (
+                <div
+                  key={rt.id}
+                  className="flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-medium border"
+                  style={{ background: colors.bg, color: colors.text, borderColor: colors.border }}
+                  title={rt.notes ?? undefined}
+                >
+                  <span>{rt.ritual_name}</span>
+                  {canEdit && (
+                    <button onClick={() => onDelete(rt.id)} className="ml-0.5 opacity-50 hover:opacity-100 transition-opacity">
+                      <Icons.X size={11} />
+                    </button>
+                  )}
+                </div>
+              ))}
+            </div>
+          </div>
+        );
+      })}
+
+      {adding && (
+        <div className="mt-2 border-t border-gold-500/10 pt-3 space-y-2 bg-ink-800/30 rounded-lg p-3 border border-gold-500/10">
+          <div className="relative">
+            <input
+              autoFocus
+              className="input text-sm w-full"
+              placeholder="Ritual name (e.g. Raise the Drowned Levy…)"
+              value={search}
+              onChange={e => { setSearch(e.target.value); setForm(f => ({ ...f, ritual_name: e.target.value })); }}
+              onKeyDown={e => e.key === 'Enter' && !suggestions.length && addRitual()}
+            />
+            {suggestions.length > 0 && (
+              <div className="absolute top-full left-0 right-0 z-10 mt-1 bg-ink-800 border border-gold-500/20 rounded-lg shadow-lift overflow-hidden">
+                {suggestions.map(s => {
+                  const colors = REALM_COLORS[s.realm];
+                  return (
+                    <button
+                      key={s.name}
+                      className="w-full text-left px-3 py-2 text-sm hover:bg-gold-500/10 flex items-center justify-between gap-2"
+                      onClick={() => pickSuggestion(s)}
+                    >
+                      <span>{s.name}</span>
+                      <span className="text-[10px] px-1.5 py-0.5 rounded-full border" style={{ background: colors.bg, color: colors.text, borderColor: colors.border }}>
+                        {s.realm}
+                      </span>
+                    </button>
+                  );
+                })}
+              </div>
+            )}
+          </div>
+          <select
+            className="input text-sm w-full"
+            value={form.realm}
+            onChange={e => setForm(f => ({ ...f, realm: e.target.value as RitualRealm }))}
+          >
+            {RITUAL_REALM_ORDER.map(r => <option key={r} value={r}>{r}</option>)}
+          </select>
+          <input
+            className="input text-sm w-full"
+            placeholder="Notes (optional)"
+            value={form.notes}
+            onChange={e => setForm(f => ({ ...f, notes: e.target.value }))}
+          />
+          <div className="flex justify-end gap-2">
+            <button onClick={() => { setAdding(false); setSearch(''); }} className="btn btn-ghost btn-sm text-xs">Cancel</button>
+            <button onClick={addRitual} disabled={!form.ritual_name.trim() || busy} className="btn btn-primary btn-sm text-xs">
+              {busy ? 'Adding…' : 'Add Ritual'}
+            </button>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
