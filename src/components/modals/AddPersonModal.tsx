@@ -170,6 +170,8 @@ export function AddPersonModal({ data, initial, onClose, onSave, onUpsertCharInv
       {initial?.id && onUpsertRitual && onDeleteRitual && (
         <CharacterRitualsSection
           memberId={initial.id}
+          member={initial}
+          data={data}
           rituals={data.characterRituals.filter(r => r.member_id === initial.id)}
           onUpsert={onUpsertRitual}
           onDelete={onDeleteRitual}
@@ -386,160 +388,140 @@ function CharacterSkillsSection({
 
 function CharacterRitualsSection({
   memberId,
+  member,
+  data,
   rituals,
   onUpsert,
   onDelete,
 }: {
   memberId: string;
+  member: Partial<Member>;
+  data: LanceData;
   rituals: CharacterRitual[];
   onUpsert: (ritual: Omit<CharacterRitual, 'id'> & { id?: string }) => Promise<void>;
   onDelete: (id: string) => Promise<void>;
 }) {
+  const covenRealm = useMemo((): RitualRealm | null => {
+    if (!member.coven) return null;
+    const coven = data.covens.find(c => c.id === member.coven);
+    const domain = coven?.domain;
+    if (domain && (RITUAL_REALM_ORDER as string[]).includes(domain)) return domain as RitualRealm;
+    return null;
+  }, [member.coven, data.covens]);
+
   const [adding, setAdding] = useState(false);
-  const [search, setSearch] = useState('');
-  const [newRitual, setNewRitual] = useState({ ritual_name: '', realm: 'Spring' as RitualRealm, notes: '' });
+  const [realm, setRealm] = useState<RitualRealm>(covenRealm ?? 'Spring');
+  const [ritualName, setRitualName] = useState('');
+  const [notes, setNotes] = useState('');
   const [busy, setBusy] = useState(false);
 
-  const suggestions = useMemo(() => {
-    if (!search) return [];
-    const q = search.toLowerCase();
-    return RITUALS_CATALOGUE.filter(r => r.name.toLowerCase().includes(q)).slice(0, 6);
-  }, [search]);
+  const availableRituals = useMemo(
+    () => RITUALS_CATALOGUE.filter(r => r.realm === realm),
+    [realm]
+  );
 
-  function pickSuggestion(r: typeof RITUALS_CATALOGUE[number]) {
-    setNewRitual({ ritual_name: r.name, realm: r.realm, notes: '' });
-    setSearch(r.name);
+  function openAdding() {
+    setRealm(covenRealm ?? 'Spring');
+    setRitualName('');
+    setNotes('');
+    setAdding(true);
   }
 
   async function addRitual() {
-    if (!newRitual.ritual_name.trim() || busy) return;
+    if (!ritualName || busy) return;
     setBusy(true);
     try {
-      await onUpsert({
-        member_id: memberId,
-        ritual_name: newRitual.ritual_name.trim(),
-        realm: newRitual.realm,
-        notes: newRitual.notes.trim() || null,
-      });
-      setSearch('');
-      setNewRitual({ ritual_name: '', realm: 'Spring', notes: '' });
+      await onUpsert({ member_id: memberId, ritual_name: ritualName, realm, notes: notes.trim() || null });
+      setRitualName('');
+      setNotes('');
       setAdding(false);
     } finally {
       setBusy(false);
     }
   }
 
-  const grouped = useMemo(() => {
-    const map = new Map<string, CharacterRitual[]>();
-    for (const r of rituals) {
-      const realm = r.realm || 'Spring';
-      if (!map.has(realm)) map.set(realm, []);
-      map.get(realm)!.push(r);
-    }
-    return map;
-  }, [rituals]);
-
-  const orderedRealms = [
-    ...RITUAL_REALM_ORDER.filter(realm => grouped.has(realm)),
-    ...[...grouped.keys()].filter(realm => !(RITUAL_REALM_ORDER as string[]).includes(realm)),
-  ];
-
   return (
     <div className="mt-5 pt-5 border-t border-gold-500/15">
       <div className="flex items-center justify-between mb-3">
         <span className="text-xs uppercase tracking-widest font-bold text-gold-300">Mastered Rituals</span>
-        <button onClick={() => setAdding(a => !a)} className="btn btn-ghost btn-sm text-xs">
+        <button onClick={openAdding} className="btn btn-ghost btn-sm text-xs">
           <Icons.Plus size={13} />
           Add Ritual
         </button>
       </div>
 
-      {orderedRealms.map(realm => {
-        const realmRituals = grouped.get(realm)!;
-        const colors = REALM_COLORS[(realm as RitualRealm)] ?? REALM_COLORS.Spring;
-        return (
-          <div key={realm} className="mb-3">
-            <div className="text-[10px] uppercase tracking-widest text-ink-100/40 mb-1.5">{realm}</div>
-            <div className="flex flex-wrap gap-1.5">
-              {realmRituals.map(rt => (
-                <div
-                  key={rt.id}
-                  className="flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-medium border"
-                  style={{ background: colors.bg, color: colors.text, borderColor: colors.border }}
-                  title={rt.notes ?? undefined}
-                >
-                  <span>{rt.ritual_name}</span>
-                  <button
-                    onClick={() => onDelete(rt.id)}
-                    className="ml-0.5 opacity-50 hover:opacity-100 transition-opacity"
-                    title="Remove ritual"
-                  >
-                    <Icons.X size={11} />
-                  </button>
-                </div>
-              ))}
-            </div>
-          </div>
-        );
-      })}
-
       {rituals.length === 0 && !adding && (
         <p className="text-xs text-ink-100/40 text-center py-2">No rituals mastered · click Add Ritual to begin</p>
       )}
 
-      {adding && (
-        <div className="bg-ink-800/30 rounded-lg p-3 space-y-2 mb-2 border border-gold-500/10 mt-2">
-          <div className="relative">
-            <input
-              autoFocus
-              className="input text-sm w-full"
-              placeholder="Ritual name (e.g. Raise the Drowned Levy…)"
-              value={search}
-              onChange={e => {
-                setSearch(e.target.value);
-                setNewRitual(n => ({ ...n, ritual_name: e.target.value }));
-              }}
-              onKeyDown={e => e.key === 'Enter' && !suggestions.length && addRitual()}
-            />
-            {suggestions.length > 0 && (
-              <div className="absolute top-full left-0 right-0 z-10 mt-1 bg-ink-800 border border-gold-500/20 rounded-lg shadow-lift overflow-hidden">
-                {suggestions.map(s => {
-                  const colors = REALM_COLORS[s.realm];
-                  return (
-                    <button
-                      key={s.name}
-                      className="w-full text-left px-3 py-2 text-sm hover:bg-gold-500/10 flex items-center justify-between gap-2"
-                      onClick={() => pickSuggestion(s)}
-                    >
-                      <span>{s.name}</span>
-                      <span className="text-[10px] px-1.5 py-0.5 rounded-full border" style={{ background: colors.bg, color: colors.text, borderColor: colors.border }}>
-                        {s.realm}
-                      </span>
-                    </button>
-                  );
-                })}
+      {rituals.length > 0 && (
+        <div className="space-y-1.5 mb-2">
+          {rituals.map(rt => {
+            const colors = REALM_COLORS[(rt.realm as RitualRealm)] ?? REALM_COLORS.Spring;
+            return (
+              <div key={rt.id} className="flex items-start gap-3 py-1.5 border-b border-gold-500/8 last:border-0">
+                <span
+                  className="shrink-0 mt-0.5 text-[10px] uppercase tracking-wider font-semibold px-2 py-0.5 rounded border"
+                  style={{ background: colors.bg, color: colors.text, borderColor: colors.border }}
+                >
+                  {rt.realm}
+                </span>
+                <div className="flex-1 min-w-0">
+                  <div className="text-sm text-ink-100">{rt.ritual_name}</div>
+                  {rt.notes && <div className="text-xs text-ink-100/50 mt-0.5">{rt.notes}</div>}
+                </div>
+                <button onClick={() => onDelete(rt.id)} className="shrink-0 opacity-40 hover:opacity-100 transition-opacity mt-0.5">
+                  <Icons.X size={14} />
+                </button>
               </div>
-            )}
+            );
+          })}
+        </div>
+      )}
+
+      {adding && (
+        <div className="bg-ink-800/30 rounded-lg p-3 space-y-2 border border-gold-500/10 mt-2">
+          <div className="flex gap-2">
+            <div className="flex-1">
+              <label className="text-[10px] uppercase tracking-widest text-ink-100/40 block mb-1">Realm</label>
+              <select
+                className="input text-sm"
+                value={realm}
+                onChange={e => { setRealm(e.target.value as RitualRealm); setRitualName(''); }}
+                disabled={!!covenRealm}
+              >
+                {RITUAL_REALM_ORDER.map(r => <option key={r} value={r}>{r}</option>)}
+              </select>
+            </div>
+            <div className="flex-[2]">
+              <label className="text-[10px] uppercase tracking-widest text-ink-100/40 block mb-1">Ritual</label>
+              <select
+                autoFocus
+                className="input text-sm"
+                value={ritualName}
+                onChange={e => setRitualName(e.target.value)}
+              >
+                <option value="">— choose ritual —</option>
+                {availableRituals.map(r => (
+                  <option key={r.name} value={r.name}>{r.name}</option>
+                ))}
+              </select>
+            </div>
           </div>
-
-          <select
-            className="input text-sm w-full"
-            value={newRitual.realm}
-            onChange={e => setNewRitual(n => ({ ...n, realm: e.target.value as RitualRealm }))}
-          >
-            {RITUAL_REALM_ORDER.map(r => <option key={r} value={r}>{r}</option>)}
-          </select>
-
+          {ritualName && (
+            <p className="text-xs text-ink-100/50 px-0.5">
+              {availableRituals.find(r => r.name === ritualName)?.effect}
+            </p>
+          )}
           <input
             className="input text-sm w-full"
             placeholder="Notes (optional)"
-            value={newRitual.notes}
-            onChange={e => setNewRitual(n => ({ ...n, notes: e.target.value }))}
+            value={notes}
+            onChange={e => setNotes(e.target.value)}
           />
-
           <div className="flex justify-end gap-2">
-            <button onClick={() => { setAdding(false); setSearch(''); }} className="btn btn-ghost btn-sm text-xs">Cancel</button>
-            <button onClick={addRitual} disabled={!newRitual.ritual_name.trim() || busy} className="btn btn-primary btn-sm text-xs">
+            <button onClick={() => setAdding(false)} className="btn btn-ghost btn-sm text-xs">Cancel</button>
+            <button onClick={addRitual} disabled={!ritualName || busy} className="btn btn-primary btn-sm text-xs">
               {busy ? 'Adding…' : 'Add Ritual'}
             </button>
           </div>
