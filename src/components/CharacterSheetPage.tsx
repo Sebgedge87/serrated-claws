@@ -1238,8 +1238,6 @@ function RitualsSection({
     ...[...grouped.keys()].filter(r => !(RITUAL_REALM_ORDER as string[]).includes(r)),
   ];
 
-  if (rituals.length === 0 && !canEdit) return null;
-
   return (
     <div className="card px-5 py-5">
       <div className="flex items-center justify-between mb-3">
