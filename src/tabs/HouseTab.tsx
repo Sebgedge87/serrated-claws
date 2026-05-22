@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import type { CharInventoryItem, CharacterSkill, House, LanceData, Member } from '@/lib/types';
+import type { CharInventoryItem, CharacterRitual, CharacterSkill, House, LanceData, Member } from '@/lib/types';
 import { Icons } from '@/components/Icons';
 import { MemberCard } from '@/components/MemberCard';
 import { AddPersonModal } from '@/components/modals/AddPersonModal';
@@ -17,9 +17,11 @@ interface Props {
   onDeleteCharInventory?: (id: string) => Promise<void>;
   onUpsertSkill?: (skill: Omit<CharacterSkill, 'id'> & { id?: string }) => Promise<void>;
   onDeleteSkill?: (id: string) => Promise<void>;
+  onUpsertRitual?: (ritual: Omit<CharacterRitual, 'id'> & { id?: string }) => Promise<void>;
+  onDeleteRitual?: (id: string) => Promise<void>;
 }
 
-export function HouseTab({ house, data, search, isAdmin, onUpsert, onUnassign, onDelete, onUpsertCharInventory, onDeleteCharInventory, onUpsertSkill, onDeleteSkill }: Props) {
+export function HouseTab({ house, data, search, isAdmin, onUpsert, onUnassign, onDelete, onUpsertCharInventory, onDeleteCharInventory, onUpsertSkill, onDeleteSkill, onUpsertRitual, onDeleteRitual }: Props) {
   const [editing, setEditing] = useState<Member | null>(null);
   const c = house.primary_color ?? '#d4b46d';
 
@@ -87,6 +89,8 @@ export function HouseTab({ house, data, search, isAdmin, onUpsert, onUnassign, o
           onDeleteCharInventory={onDeleteCharInventory}
           onUpsertSkill={onUpsertSkill}
           onDeleteSkill={onDeleteSkill}
+          onUpsertRitual={onUpsertRitual}
+          onDeleteRitual={onDeleteRitual}
         />
       )}
     </div>

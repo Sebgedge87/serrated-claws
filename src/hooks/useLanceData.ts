@@ -3,6 +3,7 @@ import { supabase } from '@/lib/supabase';
 import type {
   Business,
   CharInventoryItem,
+  CharacterRitual,
   CharacterSkill,
   CraftingQueueItem,
   Coven,
@@ -35,6 +36,7 @@ export function useLanceData() {
     events: [],
     characterInventory: [],
     characterSkills: [],
+    characterRituals: [],
     magicItemsStock: [],
     craftingQueue: []
   });
@@ -47,7 +49,7 @@ export function useLanceData() {
     if (!silent) setLoading(true);
     setError(null);
     try {
-      const [houses, members, covens, fns, biz, bizOwners, inv, invLog, profs, evts, charInv, charSkills, magicStock, craftingQ] = await Promise.all([
+      const [houses, members, covens, fns, biz, bizOwners, inv, invLog, profs, evts, charInv, charSkills, charRituals, magicStock, craftingQ] = await Promise.all([
         supabase.from('houses').select('*').order('sort_order'),
         supabase.from('members').select('*').order('is_noble', { ascending: false }).order('name'),
         supabase.from('covens').select('*'),
@@ -60,6 +62,7 @@ export function useLanceData() {
         supabase.from('events').select('*').order('sort_order'),
         supabase.from('character_inventory').select('*'),
         supabase.from('character_skills').select('*'),
+        supabase.from('character_rituals').select('*'),
         supabase.from('magic_items_stock').select('*').order('created_at', { ascending: false }),
         supabase.from('crafting_queue').select('*').order('created_at', { ascending: false })
       ]);
@@ -82,6 +85,7 @@ export function useLanceData() {
         events: (evts.data ?? []) as LanceEvent[],
         characterInventory: (charInv.data ?? []) as CharInventoryItem[],
         characterSkills: (charSkills.data ?? []) as CharacterSkill[],
+        characterRituals: (charRituals.data ?? []) as CharacterRitual[],
         magicItemsStock: (magicStock.data ?? []) as MagicItemStock[],
         craftingQueue: (craftingQ.data ?? []) as CraftingQueueItem[]
       });
@@ -263,6 +267,19 @@ export function useLanceData() {
     await reload(true);
   }, [reload]);
 
+  // ---- Character Rituals ----
+  const upsertCharacterRitual = useCallback(async (ritual: Omit<CharacterRitual, 'id'> & { id?: string }) => {
+    const { error: err } = await supabase.from('character_rituals').upsert(ritual);
+    if (err) throw new Error(err.message);
+    await reload(true);
+  }, [reload]);
+
+  const deleteCharacterRitual = useCallback(async (id: string) => {
+    const { error: err } = await supabase.from('character_rituals').delete().eq('id', id);
+    if (err) throw new Error(err.message);
+    await reload(true);
+  }, [reload]);
+
   // ---- Lance Settings ----
   const upsertSettings = useCallback(async (updates: Partial<Omit<LanceSettings, 'id'>>) => {
     const { error: err } = await supabase.from('lance_settings').upsert({ id: 'default', ...updates });
@@ -355,6 +372,8 @@ export function useLanceData() {
     deleteCharInventory,
     upsertCharacterSkill,
     deleteCharacterSkill,
+    upsertCharacterRitual,
+    deleteCharacterRitual,
     upsertMagicItemStock,
     deleteMagicItemStock,
     upsertCraftingQueueItem,
