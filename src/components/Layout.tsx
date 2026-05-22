@@ -306,6 +306,8 @@ export function Layout() {
             onDeleteSkill={lance.deleteCharacterSkill}
             onUpsertSpell={lance.upsertCharacterSpell}
             onDeleteSpell={lance.deleteCharacterSpell}
+            onUpsertRitual={lance.upsertCharacterRitual}
+            onDeleteRitual={lance.deleteCharacterRitual}
             onUpsertCharInventory={lance.upsertCharInventory}
             onDeleteCharInventory={lance.deleteCharInventory}
           />
