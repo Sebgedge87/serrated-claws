@@ -206,8 +206,8 @@ export function Layout() {
 
       {/* Action bar */}
       <div className="sticky top-0 z-40 bg-ink-900/40 backdrop-blur-xl border-b border-gold-500/15">
-      <div className="page-wrap py-3 flex flex-wrap gap-3 items-center">
-        <div className="relative flex-1 min-w-[280px]">
+      <div className="page-wrap py-3 flex gap-3 items-center">
+        <div className="relative flex-1 min-w-[160px]">
           <Icons.Search size={18} className="absolute left-3.5 top-1/2 -translate-y-1/2 text-ink-100/40 pointer-events-none" />
           <input
             value={search}
@@ -216,24 +216,25 @@ export function Layout() {
             className="input pl-11"
           />
         </div>
-        {isAdmin && (
-          <>
-            <button onClick={() => setShowAddPerson(true)} className="btn btn-primary">
-              <Icons.Plus size={16} />
-              Add Person
-            </button>
-            <button onClick={() => setShowAddHouse(true)} className="btn btn-secondary">
-              <Icons.Plus size={16} />
-              House
-            </button>
-            {/* Delete-house moved into the HouseTab ribbon — it's contextual,
-                not a global action. */}
-          </>
-        )}
-        <button onClick={exportCsv} className="btn btn-ghost">
-          <Icons.Download size={16} />
-          Export
-        </button>
+        {/* Button group — wraps as a unit so nothing strands on its own row */}
+        <div className="flex gap-2 items-center flex-shrink-0">
+          {isAdmin && (
+            <>
+              <button onClick={() => setShowAddPerson(true)} className="btn btn-primary">
+                <Icons.Plus size={16} />
+                <span className="hidden sm:inline">Add Person</span>
+              </button>
+              <button onClick={() => setShowAddHouse(true)} className="btn btn-secondary" title="Add house">
+                <Icons.Plus size={16} />
+                <span className="hidden sm:inline">House</span>
+              </button>
+            </>
+          )}
+          <button onClick={exportCsv} className="btn btn-ghost" title="Export CSV">
+            <Icons.Download size={16} />
+            <span className="hidden sm:inline">Export</span>
+          </button>
+        </div>
       </div></div>
 
       {/* Tabs */}
