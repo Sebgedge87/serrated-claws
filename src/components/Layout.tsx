@@ -1,13 +1,14 @@
-import { useMemo, useState } from 'react';
+import { useState } from 'react';
 import { useAuth } from '@/hooks/useAuth';
 import { useLanceData } from '@/hooks/useLanceData';
 import { useLances } from '@/hooks/useLances';
 import { usePermissions } from '@/hooks/usePermissions';
 import { Icons } from '@/components/Icons';
 import { useConfirm } from '@/components/ConfirmDialog';
+import { HeaderUserMenu } from '@/components/HeaderUserMenu';
 import { LanceGate } from '@/components/LanceGate';
-import { OverviewTab } from '@/tabs/OverviewTab';
-import { HouseTab } from '@/tabs/HouseTab';
+import { OverviewTab } from '@/components/tabs/OverviewTab';
+import { HouseTab } from '@/components/tabs/HouseTab';
 import { UnassignedTab } from '@/tabs/UnassignedTab';
 import { CovensTab } from '@/tabs/CovensTab';
 import { FunctionsTab } from '@/tabs/FunctionsTab';
@@ -18,7 +19,7 @@ import { AddHouseModal } from '@/components/modals/AddHouseModal';
 import { AddPersonModal } from '@/components/modals/AddPersonModal';
 import { CharacterSheetPage } from '@/components/CharacterSheetPage';
 import { CreateCharacterScreen } from '@/components/CreateCharacterScreen';
-import { cx } from '@/lib/utils';
+import { cx, monogramOf } from '@/lib/utils';
 import type { Member } from '@/lib/types';
 
 const WIKI_URL = 'https://www.profounddecisions.co.uk/empire-wiki/Skills';
@@ -37,21 +38,27 @@ export function Layout() {
   const [showAddPerson, setShowAddPerson] = useState(false);
   const [selectedMember, setSelectedMember] = useState<Member | null>(null);
   const [showCreateCharacter, setShowCreateCharacter] = useState(false);
-  const { confirm, Dialog: ConfirmDialog } = useConfirm();
+  const { Dialog: ConfirmDialog } = useConfirm();
 
-  const filteredMembers = useMemo(() => {
-    const q = search.trim().toLowerCase();
-    if (!q) return lance.data.members;
-    return lance.data.members.filter(m =>
-      [m.name, m.player_name, m.rank, m.function, m.military_function]
-        .filter(Boolean)
-        .some(v => v!.toLowerCase().includes(q))
-    );
-  }, [lance.data.members, search]);
 
-  const tabs = [
+  type TabDef = {
+    id: string;
+    label: string;
+    Icon: typeof Icons.House;
+    /** house primary_color, drives both monogram tile and active underline */
+    color?: string;
+    /** 2-letter house monogram (renders instead of an icon when set) */
+    monogram?: string;
+  };
+  const tabs: TabDef[] = [
     { id: 'overview', label: 'Overview', Icon: Icons.House },
-    ...lance.data.houses.map(h => ({ id: h.id, label: h.name.replace('House ', ''), Icon: Icons.Shield })),
+    ...lance.data.houses.map(h => ({
+      id: h.id,
+      label: h.name.replace('House ', ''),
+      Icon: Icons.Shield,
+      color: h.primary_color,
+      monogram: monogramOf(h.name),
+    })),
     { id: 'unassigned', label: 'Unassigned', Icon: Icons.Question },
     { id: 'covens', label: 'Covens', Icon: Icons.Sparkles },
     { id: 'functions', label: 'Functions', Icon: Icons.Swords },
@@ -158,65 +165,39 @@ export function Layout() {
               <p className="text-xs uppercase tracking-[0.15em] text-ink-100/50 mt-1">Lance Management System</p>
             </div>
           </div>
+          {/* AFTER: one primary action + avatar dropdown. Everything else lives
+              behind the dropdown so the header reads at a glance. */}
           <div className="flex items-center gap-3">
-            {/* Lance switcher for users with multiple lances */}
-            {lances.memberships.length > 1 && (
-              <select
-                value={lances.currentLanceId ?? ''}
-                onChange={e => lances.setCurrentLanceId(e.target.value)}
-                className="px-2.5 py-1.5 bg-black/40 border border-gold-500/15 rounded text-sm text-gold-300 cursor-pointer"
-              >
-                {lances.memberships.map(m => (
-                  <option key={m.lance_id} value={m.lance_id}>{m.lance.name}</option>
-                ))}
-              </select>
-            )}
-            {profile && (
-              <div className="text-right hidden sm:block">
-                <div className="text-sm text-ink-100">{profile.display_name ?? user?.email}</div>
-                <div className="text-[10px] uppercase tracking-widest text-gold-300/80">{currentMembership?.role ?? profile.role}</div>
-              </div>
-            )}
             {currentMembership?.member_id ? (
               <button
                 onClick={() => {
                   const me = lance.data.members.find(m => m.id === currentMembership.member_id);
                   if (me) setSelectedMember(me);
                 }}
-                className="btn btn-ghost btn-sm"
+                className="btn btn-primary"
               >
-                <Icons.Users size={14} />
-                My Character
+                <Icons.Users size={15} />
+                <span className="hidden sm:inline">My Character</span>
               </button>
             ) : (
-              <button
-                onClick={() => setShowCreateCharacter(true)}
-                className="btn btn-ghost btn-sm"
-              >
-                <Icons.Plus size={14} />
-                Add Character
+              <button onClick={() => setShowCreateCharacter(true)} className="btn btn-primary">
+                <Icons.Plus size={15} />
+                <span className="hidden sm:inline">Add Character</span>
               </button>
             )}
-            <a href={WIKI_URL} target="_blank" rel="noopener noreferrer" className="btn btn-ghost btn-sm">
-              <Icons.BookOpen size={14} />
-              Empire Wiki
-            </a>
-            <button
-              onClick={async () => {
-                if (!lances.currentLanceId) return;
-                const confirmed = await confirm({ title: `Leave "${lances.currentLance?.name}"?`, body: 'You will lose access until re-invited.', danger: true, confirmLabel: 'Leave' });
-                if (confirmed) await lances.leaveLance(lances.currentLanceId);
+            <HeaderUserMenu
+              profile={profile}
+              user={user ?? null}
+              currentMembership={currentMembership ?? null}
+              memberships={lances.memberships}
+              currentLance={lances.currentLance ?? null}
+              onSwitchLance={lances.setCurrentLanceId}
+              onLeaveLance={async () => {
+                if (lances.currentLanceId) await lances.leaveLance(lances.currentLanceId);
               }}
-              className="btn btn-ghost btn-sm text-red-400/70 hover:text-red-400"
-              title="Leave this lance"
-            >
-              <Icons.LogOut size={14} />
-              Leave Lance
-            </button>
-            <button onClick={signOut} className="btn btn-ghost btn-sm">
-              <Icons.LogOut size={14} />
-              Sign out
-            </button>
+              onSignOut={signOut}
+              wikiUrl={WIKI_URL}
+            />
           </div>
         </div>
       </header>
@@ -243,20 +224,8 @@ export function Layout() {
               <Icons.Plus size={16} />
               House
             </button>
-            {activeHouse && (
-              <button
-                onClick={async () => {
-                  if (await confirm({ title: `Delete ${activeHouse.name}?`, body: 'Members will be unassigned.', danger: true })) {
-                    await lance.deleteHouse(activeHouse.id);
-                    setActiveTab('overview');
-                  }
-                }}
-                className="btn btn-danger"
-              >
-                <Icons.Trash size={16} />
-                Delete House
-              </button>
-            )}
+            {/* Delete-house moved into the HouseTab ribbon — it's contextual,
+                not a global action. */}
           </>
         )}
         <button onClick={exportCsv} className="btn btn-ghost">
@@ -268,18 +237,42 @@ export function Layout() {
       {/* Tabs */}
       <nav className="bg-ink-950/50 backdrop-blur border-b border-gold-500/15">
         <div className="page-wrap !px-2 sm:!px-4">
-          <div className="flex overflow-x-auto scrollbar-hide">
-            {tabs.map(t => (
-              <button
-                key={t.id}
-                title={t.label}
-                onClick={() => { setActiveTab(t.id); setSelectedMember(null); }}
-                className={cx('tab-btn', activeTab === t.id && 'active')}
-              >
-                <t.Icon size={15} />
-                <span className="hidden xl:inline">{t.label}</span>
-              </button>
-            ))}
+          <div className="flex overflow-x-auto scrollbar-hide" role="tablist">
+            {tabs.map(t => {
+              const isActive = activeTab === t.id;
+              const accent = t.color ?? 'rgb(212,180,109)'; // gold-300 fallback
+              return (
+                <button
+                  key={t.id}
+                  role="tab"
+                  aria-selected={isActive}
+                  title={t.label}
+                  onClick={() => { setActiveTab(t.id); setSelectedMember(null); }}
+                  className={cx('tab-btn', isActive && 'active')}
+                  /* House-coloured underline/text when the tab is a house and active */
+                  style={isActive && t.color
+                    ? { color: t.color, borderBottomColor: t.color }
+                    : undefined}
+                >
+                  {t.monogram ? (
+                    <span
+                      aria-hidden="true"
+                      className="font-display font-bold text-[10px] grid place-items-center rounded w-5 h-5 flex-shrink-0"
+                      style={{
+                        background: `linear-gradient(135deg, ${accent}55, ${accent}20)`,
+                        border: `1px solid ${accent}88`,
+                        color: accent,
+                      }}
+                    >
+                      {t.monogram}
+                    </span>
+                  ) : (
+                    <t.Icon size={15} />
+                  )}
+                  <span>{t.label}</span>
+                </button>
+              );
+            })}
           </div>
         </div>
       </nav>
@@ -316,8 +309,30 @@ export function Layout() {
 
         {!lance.loading && !lance.error && !selectedMember && (
           <>
-            {activeTab === 'overview' && <OverviewTab data={lance.data} filteredMembers={filteredMembers} isAdmin={isAdmin} onNavigate={setActiveTab} />}
-            {activeHouse && <HouseTab house={activeHouse} data={lance.data} search={search} isAdmin={isAdmin} canManageHouse={perms.canManageHouse(activeHouse.id)} onUpsert={lance.upsertMember} onUnassign={lance.unassignMember} onDelete={lance.deleteMember} onUpsertCharInventory={lance.upsertCharInventory} onDeleteCharInventory={lance.deleteCharInventory} onUpsertSkill={lance.upsertCharacterSkill} onDeleteSkill={lance.deleteCharacterSkill} onUpsertRitual={lance.upsertCharacterRitual} onDeleteRitual={lance.deleteCharacterRitual} onViewMember={setSelectedMember} />}
+            {activeTab === 'overview' && <OverviewTab data={lance.data} />}
+            {activeHouse && (
+              <HouseTab
+                house={activeHouse}
+                data={lance.data}
+                search={search}
+                isAdmin={isAdmin}
+                canManageHouse={perms.canManageHouse(activeHouse.id)}
+                onUpsert={lance.upsertMember}
+                onUnassign={lance.unassignMember}
+                onDelete={lance.deleteMember}
+                onDeleteHouse={async () => {
+                  await lance.deleteHouse(activeHouse.id);
+                  setActiveTab('overview');
+                }}
+                onUpsertCharInventory={lance.upsertCharInventory}
+                onDeleteCharInventory={lance.deleteCharInventory}
+                onUpsertSkill={lance.upsertCharacterSkill}
+                onDeleteSkill={lance.deleteCharacterSkill}
+                onUpsertRitual={lance.upsertCharacterRitual}
+                onDeleteRitual={lance.deleteCharacterRitual}
+                onViewMember={setSelectedMember}
+              />
+            )}
             {activeTab === 'unassigned' && <UnassignedTab data={lance.data} isAdmin={isAdmin} onUpsert={lance.upsertMember} onDelete={lance.deleteMember} onUpsertCharInventory={lance.upsertCharInventory} onDeleteCharInventory={lance.deleteCharInventory} onUpsertSkill={lance.upsertCharacterSkill} onDeleteSkill={lance.deleteCharacterSkill} onUpsertRitual={lance.upsertCharacterRitual} onDeleteRitual={lance.deleteCharacterRitual} onViewMember={setSelectedMember} />}
             {activeTab === 'covens' && <CovensTab data={lance.data} isAdmin={isAdmin} canManageCoven={perms.canManageCoven} onUpsert={lance.upsertCoven} onDelete={lance.deleteCoven} onUpsertRitual={lance.upsertCovenRitual} onDeleteRitual={lance.deleteCovenRitual} />}
             {activeTab === 'functions' && <FunctionsTab data={lance.data} isAdmin={isAdmin} canManageFunction={perms.canManageFunction} onUpsert={lance.upsertFunction} onDelete={lance.deleteFunction} />}
@@ -355,6 +370,22 @@ export function Layout() {
           </>
         )}
       </div></main>
+
+      {/* Mobile-only FAB for adding a person. Hidden on ≥ sm where the
+          action bar carries the button directly. */}
+      {isAdmin && (
+        <button
+          onClick={() => setShowAddPerson(true)}
+          className="sm:hidden fixed bottom-5 right-5 w-14 h-14 rounded-full grid place-items-center z-40 text-ink-900"
+          style={{
+            background: 'linear-gradient(180deg, #d4b46d, #b8954c)',
+            boxShadow: '0 12px 30px -8px rgba(201,169,97,0.55), 0 1px 0 rgba(255,255,255,0.3) inset',
+          }}
+          aria-label="Add person"
+        >
+          <Icons.Plus size={26} />
+        </button>
+      )}
 
       {showAddHouse && (
         <AddHouseModal

@@ -21,17 +21,26 @@ export function Modal({ onClose, title, subtitle, icon, accent = '#d4b46d', chil
   }, [onClose]);
 
   return (
-    <div className="fixed inset-0 z-50 grid place-items-center p-5 bg-black/75 backdrop-blur-md" onClick={onClose}>
+    <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center sm:p-5 bg-black/75 backdrop-blur-md" onClick={onClose}>
       <div
         onClick={e => e.stopPropagation()}
+        role="dialog"
+        aria-modal="true"
+        aria-labelledby="modal-title"
         className={cx(
-          'w-full max-h-[90vh] overflow-auto bg-gradient-to-b from-ink-800/95 to-ink-900/95 border border-gold-500/30 rounded-2xl animate-fade-in',
-          width === 'sm' && 'max-w-md',
-          width === 'md' && 'max-w-xl',
-          width === 'lg' && 'max-w-2xl'
+          'w-full max-h-[92vh] overflow-auto bg-gradient-to-b from-ink-800/95 to-ink-900/95 border border-gold-500/30 animate-fade-in',
+          // Bottom-sheet on mobile, centred dialog on ≥ sm
+          'rounded-t-2xl sm:rounded-2xl',
+          width === 'sm' && 'sm:max-w-md',
+          width === 'md' && 'sm:max-w-xl',
+          width === 'lg' && 'sm:max-w-2xl'
         )}
         style={{ boxShadow: '0 30px 80px -20px rgba(0,0,0,0.8), 0 0 0 1px rgba(201, 169, 97, 0.15)' }}
       >
+        {/* Sheet grabber — only visible on mobile */}
+        <div className="sm:hidden flex justify-center pt-2.5 pb-1" aria-hidden="true">
+          <div className="w-9 h-1 rounded-full bg-gold-500/35" />
+        </div>
         <header className="px-7 pt-6 pb-5 border-b border-gold-500/15 flex items-center gap-3.5" style={{ background: `linear-gradient(180deg, ${accent}15, transparent)` }}>
           {icon && (
             <div
@@ -46,7 +55,7 @@ export function Modal({ onClose, title, subtitle, icon, accent = '#d4b46d', chil
             </div>
           )}
           <div>
-            <h2 className="text-xl font-display font-bold m-0 text-ink-100">{title}</h2>
+            <h2 id="modal-title" className="text-xl font-display font-bold m-0 text-ink-100">{title}</h2>
             {subtitle && <p className="text-xs text-ink-100/60 m-0">{subtitle}</p>}
           </div>
         </header>

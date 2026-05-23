@@ -38,6 +38,16 @@ export function houseIdFromName(name: string): string {
     .replace(/^-+|-+$/g, '') || `house-${Date.now()}`;
 }
 
+/** "House Du Hyre" → "DH", "House de la Montagne" → "dM". Used for tab + ribbon monograms.
+ *  Preserves source casing so two-word lowercased prefixes like "de la" stay lowercase. */
+export function monogramOf(name: string): string {
+  const stripped = name.replace(/^House\s+/i, '').trim();
+  const words = stripped.split(/\s+/).filter(Boolean);
+  if (words.length === 0) return '??';
+  if (words.length === 1) return words[0].slice(0, 2);
+  return (words[0][0] ?? '') + (words[1][0] ?? '');
+}
+
 /** Class names helper. */
 export function cx(...classes: Array<string | false | null | undefined>): string {
   return classes.filter(Boolean).join(' ');

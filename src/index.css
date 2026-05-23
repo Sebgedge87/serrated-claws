@@ -105,6 +105,14 @@
   .page-wrap {
     @apply max-w-[1440px] mx-auto w-full px-4 sm:px-8 lg:px-12;
   }
+
+  /* HeaderUserMenu dropdown items */
+  .menu-item {
+    @apply flex items-center gap-2.5 px-4 py-2.5 text-sm text-ink-100 cursor-pointer
+           border-b border-gold-500/10 text-left bg-transparent;
+  }
+  .menu-item:hover { background: rgba(201, 169, 97, 0.06); }
+  .menu-item:last-child { @apply border-b-0; }
 }
 
 .scrollbar-hide::-webkit-scrollbar { display: none; }
