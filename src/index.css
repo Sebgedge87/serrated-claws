@@ -97,10 +97,18 @@
   .pill-kia { @apply text-red-300 border border-red-500/40; background: rgba(180, 50, 50, 0.15); }
 
   .tab-btn {
-    @apply inline-flex items-center gap-2 px-4 py-3.5 text-sm font-medium tracking-wide bg-transparent text-ink-100/50 border-b-2 border-transparent transition-colors hover:text-ink-100 cursor-pointer;
+    @apply inline-flex flex-shrink-0 items-center gap-1.5 px-3 py-3.5 text-sm font-medium tracking-wide bg-transparent text-ink-100/50 border-b-2 border-transparent transition-colors hover:text-ink-100 cursor-pointer whitespace-nowrap;
   }
   .tab-btn.active { @apply text-gold-300 border-b-gold-300 font-semibold; }
+
+  /* Full-bleed sections use this to constrain their inner content */
+  .page-wrap {
+    @apply max-w-[1440px] mx-auto w-full px-4 sm:px-8 lg:px-12;
+  }
 }
+
+.scrollbar-hide::-webkit-scrollbar { display: none; }
+.scrollbar-hide { -ms-overflow-style: none; scrollbar-width: none; }
 
 ::-webkit-scrollbar { width: 10px; height: 10px; }
 ::-webkit-scrollbar-track { background: rgba(0, 0, 0, 0.2); }

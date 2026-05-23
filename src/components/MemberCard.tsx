@@ -1,23 +1,25 @@
 import type { Member } from '@/lib/types';
 import { Icons } from '@/components/Icons';
 import { StatField } from '@/components/StatField';
-import { initials, cx } from '@/lib/utils';
+import { useConfirm } from '@/components/ConfirmDialog';
+import { initials, cx, formatIncome } from '@/lib/utils';
 
 interface Props {
   member: Member;
   isAdmin: boolean;
   canEditSelf?: boolean;
-  onEdit: (m: Member) => void;
+  onEdit?: (m: Member) => void;
   onUnassign?: (id: string) => void;
   onDelete?: (id: string) => void;
+  onViewSheet?: (m: Member) => void;
 }
 
-export function MemberCard({ member, isAdmin, canEditSelf, onEdit, onUnassign, onDelete }: Props) {
+export function MemberCard({ member, isAdmin, onUnassign, onDelete, onViewSheet }: Props) {
   const accent = member.is_noble ? '#d4b46d' : member.status === 'active' ? '#6dd47e' : member.status === 'KIA' ? '#ff7a7a' : '#999';
-
-  const canEdit = isAdmin || canEditSelf;
+  const { confirm, Dialog: ConfirmDialog } = useConfirm();
 
   return (
+    <>
     <div className="card card-lift overflow-hidden relative">
       <div className="h-[3px]" style={{ background: `linear-gradient(90deg, ${accent}, ${accent}40 60%, transparent)` }} />
       <div className="px-5 py-4 border-b border-gold-500/15 flex flex-wrap items-center justify-between gap-4 bg-gradient-to-b from-white/[0.03] to-transparent">
@@ -55,24 +57,27 @@ export function MemberCard({ member, isAdmin, canEditSelf, onEdit, onUnassign, o
             </div>
           </div>
         </div>
-        {canEdit && (
-          <div className="flex gap-1.5 flex-shrink-0">
-            <button onClick={() => onEdit(member)} className="btn btn-secondary btn-sm">
-              <Icons.Edit size={13} />
-              Edit
+        <div className="flex gap-1.5 flex-shrink-0">
+          {onViewSheet && (
+            <button onClick={() => onViewSheet(member)} className="btn btn-secondary btn-sm">
+              <Icons.BookOpen size={13} />
+              Open
             </button>
-            {isAdmin && onUnassign && member.house_id && (
-              <button onClick={() => onUnassign(member.id)} className="btn btn-ghost btn-sm" title="Move to Unassigned">
-                <Icons.Question size={13} />
-              </button>
-            )}
-            {isAdmin && onDelete && (
-              <button onClick={() => confirm(`Permanently delete ${member.name}?`) && onDelete(member.id)} className="btn btn-danger btn-sm" title="Delete">
-                <Icons.Trash size={13} />
-              </button>
-            )}
-          </div>
-        )}
+          )}
+          {isAdmin && onUnassign && member.house_id && (
+            <button onClick={() => onUnassign(member.id)} className="btn btn-ghost btn-sm" title="Move to Unassigned">
+              <Icons.Question size={13} />
+            </button>
+          )}
+          {isAdmin && onDelete && (
+            <button onClick={async () => {
+              if (await confirm({ title: `Delete ${member.name}?`, body: 'This cannot be undone.', danger: true }))
+                onDelete(member.id);
+            }} className="btn btn-danger btn-sm" title="Delete">
+              <Icons.Trash size={13} />
+            </button>
+          )}
+        </div>
       </div>
 
       <div className="px-5 py-4">
@@ -83,7 +88,9 @@ export function MemberCard({ member, isAdmin, canEditSelf, onEdit, onUnassign, o
           {member.hp != null && <StatField icon={Icons.Heart} label="HP" value={member.hp} color="#ff7a7a" />}
           {member.mp != null && <StatField icon={Icons.Zap} label="MP" value={member.mp} color="#7eb0ff" />}
           {member.resource && <StatField icon={Icons.Gem} label="Resource" value={member.resource} color="#7ed4ae" />}
-          {member.coin_per_event && <StatField icon={Icons.Coins} label="Coin / Event" value={member.coin_per_event} color="#e0c66d" />}
+          {formatIncome(member.rings_per_event, member.crowns_per_event, member.thrones_per_event) && (
+            <StatField icon={Icons.Coins} label="Income / Event" value={formatIncome(member.rings_per_event, member.crowns_per_event, member.thrones_per_event)!} color="#e0c66d" />
+          )}
         </div>
         {member.notes && (
           <div className="mt-3.5 px-3.5 py-3 bg-black/25 rounded-lg border-l-[3px] border-gold-500/40 text-sm leading-relaxed">
@@ -93,5 +100,7 @@ export function MemberCard({ member, isAdmin, canEditSelf, onEdit, onUnassign, o
         )}
       </div>
     </div>
+    {ConfirmDialog}
+    </>
   );
 }

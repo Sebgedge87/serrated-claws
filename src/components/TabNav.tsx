@@ -33,22 +33,23 @@ export function TabNav({ active, onChange, houses }: Props) {
   ];
 
   return (
-    <nav className="bg-black/40 backdrop-blur-md border-b border-gold-500/15 px-12 flex gap-0.5 overflow-x-auto">
+    <nav className="bg-black/40 backdrop-blur-md border-b border-gold-500/15 px-2 sm:px-6 flex gap-0 overflow-x-auto scrollbar-hide">
       {items.map(({ id, label, Icon }) => {
         const isActive = active === id;
         return (
           <button
             key={id}
             onClick={() => onChange(id)}
+            title={label}
             className={cn(
-              'inline-flex items-center gap-2 px-4 py-3.5 text-sm font-medium tracking-wide transition-colors whitespace-nowrap relative border-b-2',
+              'inline-flex flex-shrink-0 items-center gap-1.5 px-2.5 sm:px-3.5 py-3.5 text-sm font-medium tracking-wide transition-colors whitespace-nowrap relative border-b-2',
               isActive
                 ? 'text-gold-400 border-gold-400 font-semibold'
                 : 'text-ink-300 border-transparent hover:text-ink-100'
             )}
           >
-            <Icon size={16} />
-            {label}
+            <Icon size={15} />
+            <span className="hidden md:inline">{label}</span>
           </button>
         );
       })}
