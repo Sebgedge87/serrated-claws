@@ -3,6 +3,7 @@ import { useLances } from '@/hooks/useLances';
 import { SignIn } from '@/components/SignIn';
 import { Layout } from '@/components/Layout';
 import { CreateCharacterScreen } from '@/components/CreateCharacterScreen';
+import { UpdatePrompt } from '@/components/UpdatePrompt';
 
 function Gate() {
   const { loading, session, profile, user } = useAuth();
@@ -33,6 +34,7 @@ export function App() {
   return (
     <AuthProvider>
       <Gate />
+      <UpdatePrompt />
     </AuthProvider>
   );
 }
