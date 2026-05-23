@@ -73,9 +73,8 @@ export function MemberLedgerRow({
 
         {/* Actions — stop propagation so row click doesn't fire too */}
         <div className="flex justify-end gap-1.5" onClick={e => e.stopPropagation()}>
-          <button onClick={onView} className="btn btn-ghost btn-sm" aria-label={`Open ${member.name}`}>
+          <button onClick={onView} className="btn btn-ghost btn-sm" aria-label={`Open ${member.name}`} title="Open character sheet">
             <Icons.BookOpen size={12} />
-            <span className="hidden lg:inline">Open</span>
           </button>
           {isAdmin && onUnassign && member.house_id && (
             <button
