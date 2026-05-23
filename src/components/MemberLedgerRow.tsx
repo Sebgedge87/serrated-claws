@@ -33,7 +33,7 @@ export function MemberLedgerRow({
         tabIndex={0}
         onClick={onView}
         onKeyDown={e => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); onView(); } }}
-        className="grid grid-cols-[36px_1.4fr_90px_1fr_100px_72px_104px] gap-3.5 items-center
+        className="grid grid-cols-[36px_1.4fr_90px_1fr_100px_88px_104px] gap-3.5 items-center
                    px-4 py-2.5 text-sm border-b border-gold-500/8 cursor-pointer
                    transition-colors hover:bg-gold-500/5
                    focus:outline-none focus:bg-gold-500/8"

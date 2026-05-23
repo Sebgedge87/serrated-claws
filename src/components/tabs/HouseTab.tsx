@@ -284,8 +284,8 @@ function Roster({
   return (
     <div className="card p-0 overflow-hidden">
       <div className="overflow-x-auto">
-        <div className="min-w-[640px]">
-          <div className="grid grid-cols-[36px_1.4fr_90px_1fr_100px_72px_104px] gap-3.5 px-4 py-2
+        <div className="min-w-[660px]">
+          <div className="grid grid-cols-[36px_1.4fr_90px_1fr_100px_88px_104px] gap-3.5 px-4 py-2
                           text-[10px] uppercase tracking-[0.16em] text-ink-300 font-bold
                           border-b border-gold-500/15">
             <span /><span>Member</span><span>Rank</span><span>Function</span>
