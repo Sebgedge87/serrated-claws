@@ -53,12 +53,13 @@ export function OverviewTab({ data }: Props) {
   const incomeRings = data.members.reduce((sum, m) => sum + memberIncomeRings(m.rings_per_event, m.crowns_per_event, m.thrones_per_event), 0);
   const stipendCount = data.members.filter(m => memberIncomeRings(m.rings_per_event, m.crowns_per_event, m.thrones_per_event) > 0).length;
 
+  // 4 tiles, not 5: coven membership rolled into Members as a sub-stat to
+  // remove the visual collision with Nobles (both gold accents previously).
   const stats = [
-    { label: 'Total Members', value: totalMembers,         Icon: Icons.Users,     color: '#d4b46d' },
-    { label: 'Coven Members', value: covenMembers,         Icon: Icons.Sparkles,  color: '#b56eb5' },
-    { label: 'Nobles',        value: nobles,               Icon: Icons.Crown,     color: '#e0c66d' },
-    { label: 'Active',        value: active,               Icon: Icons.Heart,     color: '#6dd47e' },
-    { label: 'Businesses',    value: data.businesses.length, Icon: Icons.Briefcase, color: '#7eb0d4' },
+    { label: 'Members',    value: totalMembers,           Icon: Icons.Users,     color: '#d4b46d', sub: covenMembers ? `${covenMembers} in covens` : undefined },
+    { label: 'Nobles',     value: nobles,                 Icon: Icons.Crown,     color: '#e0c66d', sub: undefined as string | undefined },
+    { label: 'Active',     value: active,                 Icon: Icons.Heart,     color: '#6dd47e', sub: undefined as string | undefined },
+    { label: 'Businesses', value: data.businesses.length, Icon: Icons.Briefcase, color: '#7eb0d4', sub: undefined as string | undefined },
   ];
 
   return (
@@ -82,6 +83,7 @@ export function OverviewTab({ data }: Props) {
             </div>
             <div className="font-display font-bold text-4xl leading-none mb-1.5">{s.value}</div>
             <div className="text-[11px] text-ink-300 uppercase tracking-widest font-semibold">{s.label}</div>
+            {s.sub && <div className="text-[10px] text-ink-300/70 mt-1">{s.sub}</div>}
           </div>
         ))}
       </div>
@@ -98,18 +100,15 @@ export function OverviewTab({ data }: Props) {
             </div>
             <h3 className="text-sm font-bold text-[#e0c66d] uppercase tracking-widest font-sans">Treasury</h3>
           </div>
-          <div className="grid grid-cols-3 gap-3 mb-4">
-            <CoinTile label="Rings"   value={rings}   color="#c0a060" />
-            <CoinTile label="Crowns"  value={crowns}  color="#d4b46d" />
-            <CoinTile label="Thrones" value={thrones} color="#f0d488" />
+          {/* One canonical total. Sub-stacks below; conversions on hover. */}
+          <div className="font-display font-bold text-4xl text-gold-50 leading-none mb-4" title={`≈ ${(totalRings/20).toFixed(1)} crowns · ${(totalRings/160).toFixed(2)} thrones`}>
+            {totalRings.toLocaleString()}
+            <span className="font-sans text-base font-medium text-ink-300 ml-3">rings · total</span>
           </div>
-          <div className="px-3.5 py-3 bg-black/30 rounded-lg text-xs flex justify-between flex-wrap gap-2">
-            <div><span className="text-ink-300">Total: </span><span className="text-[#e0c66d] font-bold">{totalRings.toLocaleString()} r</span></div>
-            <div className="text-ink-300">
-              ≈ <span className="text-ink-100 font-semibold">{(totalRings/20).toFixed(1)} c</span>
-              <span> · </span>
-              <span className="text-ink-100 font-semibold">{(totalRings/160).toFixed(2)} t</span>
-            </div>
+          <div className="flex flex-wrap gap-2.5">
+            <CoinStack label="rings"   value={rings}   color="#c0a060" />
+            <CoinStack label="crowns"  value={crowns}  color="#d4b46d" />
+            <CoinStack label="thrones" value={thrones} color="#f0d488" />
           </div>
         </div>
 
@@ -195,12 +194,13 @@ export function OverviewTab({ data }: Props) {
   );
 }
 
-function CoinTile({ label, value, color }: { label: string; value: number; color: string }) {
+function CoinStack({ label, value, color }: { label: string; value: number; color: string }) {
   return (
-    <div className="bg-black/25 rounded-lg px-3 py-2.5 text-center" style={{ border: `1px solid ${color}30` }}>
-      <div className="text-[10px] text-ink-300 uppercase tracking-wider mb-1">{label}</div>
-      <div className="font-display font-bold text-[22px] leading-none" style={{ color }}>{value}</div>
-    </div>
+    <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs bg-black/30 border border-gold-500/15">
+      <span className="w-2 h-2 rounded-full" style={{ background: color }} />
+      <strong className="font-mono text-ink-100">{value}</strong>
+      <span className="text-ink-300">{label}</span>
+    </span>
   );
 }
 

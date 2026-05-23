@@ -2,10 +2,16 @@ import { useState, type FormEvent } from 'react';
 import { useAuth } from '@/hooks/useAuth';
 import { Icons } from '@/components/Icons';
 
+/**
+ * Sign-in screen — Google as the single primary CTA, with email/password
+ * collapsed behind a disclosure so the page reads as "tap Google to start"
+ * by default. Magic-link/signup are sub-toggles inside the disclosure.
+ */
 export function SignIn() {
   const { signInWithGoogle, signInWithMagicLink, signInWithPassword, signUpWithPassword } = useAuth();
-  const [mode, setMode] = useState<'password' | 'magic'>('password');
+  const [showPwd, setShowPwd] = useState(false);
   const [isSignup, setIsSignup] = useState(false);
+  const [useMagic, setUseMagic] = useState(false);
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [busy, setBusy] = useState(false);
@@ -18,7 +24,7 @@ export function SignIn() {
     setMsg(null);
     setBusy(true);
     try {
-      if (mode === 'magic') {
+      if (useMagic) {
         const { error } = await signInWithMagicLink(email);
         if (error) setErr(error);
         else setMsg('Check your email for a sign-in link.');
@@ -37,93 +43,81 @@ export function SignIn() {
 
   return (
     <div className="min-h-screen grid place-items-center p-6">
-      <div className="w-full max-w-md card p-8 relative overflow-hidden">
-        <div className="absolute -top-12 -right-12 w-48 h-48 rounded-full bg-gold-500/10 blur-3xl pointer-events-none" />
+      <div className="w-full max-w-md card p-9 relative overflow-hidden">
+        <div className="absolute -top-12 -right-12 w-48 h-48 rounded-full bg-gold-500/10 blur-3xl pointer-events-none" aria-hidden="true" />
 
-        <div className="flex items-center gap-3 mb-1">
-          <div className="w-12 h-12 rounded-xl border border-gold-500/40 grid place-items-center bg-gradient-to-b from-gold-300/30 to-gold-300/10 text-gold-300 shadow-glow">
-            <Icons.Swords size={24} />
+        <div className="grid place-items-center mb-6">
+          <div
+            className="w-14 h-14 rounded-2xl bg-gradient-to-br from-gold-300 to-gold-700 text-ink-900 grid place-items-center
+                       shadow-[0_8px_24px_-8px_rgba(201,169,97,0.6),0_1px_0_rgba(255,255,255,0.3)_inset]"
+            aria-hidden="true"
+          >
+            <Icons.Swords size={28} />
           </div>
-          <div>
-            <h1 className="text-2xl font-display font-bold bg-gradient-to-b from-gold-50 to-gold-500 text-transparent bg-clip-text">
-              The Serrated Claws
-            </h1>
-            <p className="text-xs text-ink-100/60 uppercase tracking-[0.18em]">Lance Management</p>
-          </div>
+          <h1 className="text-2xl font-display font-bold mt-3.5 bg-gradient-to-b from-gold-50 to-gold-500
+                         text-transparent bg-clip-text text-center">
+            The Serrated Claws
+          </h1>
+          <p className="text-[10px] text-ink-100/50 uppercase tracking-[0.18em] mt-1">Lance Management</p>
         </div>
-
-        <p className="text-sm text-ink-100/60 mt-3 mb-6">
-          Sign in to view rosters, holdings, and the inventory log.
-        </p>
 
         <button
           type="button"
           onClick={signInWithGoogle}
-          className="btn btn-secondary w-full justify-center mb-3"
+          className="btn btn-primary w-full justify-center py-3.5 text-sm"
         >
           <Icons.Google />
           Continue with Google
         </button>
 
-        <div className="flex items-center gap-3 my-4">
-          <div className="flex-1 h-px bg-gold-500/15" />
-          <span className="text-[10px] uppercase tracking-widest text-ink-100/40">or</span>
-          <div className="flex-1 h-px bg-gold-500/15" />
-        </div>
+        <button
+          type="button"
+          onClick={() => setShowPwd(v => !v)}
+          aria-expanded={showPwd}
+          className="mt-3.5 w-full text-xs text-ink-100/55 hover:text-gold-300 transition-colors py-2"
+        >
+          {showPwd ? '— Hide email & password —' : '— Use email & password instead —'}
+        </button>
 
-        <form onSubmit={onSubmit} className="space-y-3">
-          <div>
-            <label className="text-[10px] uppercase tracking-widest text-ink-100/60 block mb-1.5">Email</label>
-            <input
-              type="email"
-              required
-              value={email}
-              onChange={e => setEmail(e.target.value)}
-              className="input"
-              placeholder="[email protected]"
-            />
-          </div>
-
-          {mode === 'password' && (
+        {showPwd && (
+          <form onSubmit={onSubmit} className="mt-2 pt-4 border-t border-gold-500/10 space-y-3 animate-fade-in">
             <div>
-              <label className="text-[10px] uppercase tracking-widest text-ink-100/60 block mb-1.5">Password</label>
+              <label className="text-[10px] uppercase tracking-widest text-ink-100/60 block mb-1.5">Email</label>
               <input
-                type="password"
-                required
-                value={password}
-                onChange={e => setPassword(e.target.value)}
-                className="input"
-                placeholder="••••••••"
+                type="email" required value={email} onChange={e => setEmail(e.target.value)}
+                className="input" placeholder="[email protected]"
               />
             </div>
-          )}
 
-          {err && <div className="text-xs text-red-300 bg-red-500/10 border border-red-500/30 rounded-md px-3 py-2">{err}</div>}
-          {msg && <div className="text-xs text-sage-500 bg-sage-500/10 border border-sage-500/30 rounded-md px-3 py-2">{msg}</div>}
+            {!useMagic && (
+              <div>
+                <label className="text-[10px] uppercase tracking-widest text-ink-100/60 block mb-1.5">Password</label>
+                <input
+                  type="password" required value={password} onChange={e => setPassword(e.target.value)}
+                  className="input" placeholder="••••••••"
+                />
+              </div>
+            )}
 
-          <button type="submit" disabled={busy} className="btn btn-primary w-full justify-center">
-            {busy ? 'Working…' : mode === 'magic' ? 'Send magic link' : isSignup ? 'Create account' : 'Sign in'}
-          </button>
-        </form>
+            {err && <div className="text-xs text-red-300 bg-red-500/10 border border-red-500/30 rounded-md px-3 py-2">{err}</div>}
+            {msg && <div className="text-xs text-sage-500 bg-sage-500/10 border border-sage-500/30 rounded-md px-3 py-2">{msg}</div>}
 
-        <div className="mt-5 flex items-center justify-between text-xs text-ink-100/50">
-          <button
-            type="button"
-            className="hover:text-gold-300 transition-colors"
-            onClick={() => setMode(m => (m === 'magic' ? 'password' : 'magic'))}
-          >
-            {mode === 'magic' ? 'Use password' : 'Use magic link'}
-          </button>
-          {mode === 'password' && (
-            <button
-              type="button"
-              className="hover:text-gold-300 transition-colors"
-              onClick={() => setIsSignup(v => !v)}
-            >
-              {isSignup ? 'Have an account? Sign in' : 'New here? Create account'}
+            <button type="submit" disabled={busy} className="btn btn-secondary w-full justify-center">
+              {busy ? 'Working…' : useMagic ? 'Send magic link' : isSignup ? 'Create account' : 'Sign in'}
             </button>
-          )}
-        </div>
+
+            <div className="flex items-center justify-between text-[11px] text-ink-100/45 pt-1">
+              <button type="button" onClick={() => setUseMagic(v => !v)} className="hover:text-gold-300 transition-colors">
+                {useMagic ? 'Use password instead' : 'Send me a magic link'}
+              </button>
+              {!useMagic && (
+                <button type="button" onClick={() => setIsSignup(v => !v)} className="hover:text-gold-300 transition-colors">
+                  {isSignup ? 'Have an account? Sign in' : 'New here? Create account'}
+                </button>
+              )}
+            </div>
+          </form>
+        )}
       </div>
     </div>
   );
