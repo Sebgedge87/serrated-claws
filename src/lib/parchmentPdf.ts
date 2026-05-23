@@ -1,6 +1,5 @@
 import jsPDF from 'jspdf';
 import type { LanceData, LanceEvent, CovenRitual } from './types';
-import { formatIncome } from './utils';
 
 // ── Palette ───────────────────────────────────────────────────────────────────
 const PARCHMENT: [number, number, number] = [244, 234, 208];
@@ -208,12 +207,13 @@ export async function exportRosterPdf(data: LanceData, nextEvent?: LanceEvent) {
 
   // Columns fit within CONTENT_W (174mm): last col right-edge = INNER+174 = PAGE_W-INNER
   const COLS: Col[] = [
-    { label: 'Character', x: INNER,       w: 37 },
-    { label: 'Player',    x: INNER + 38,  w: 32 },
-    { label: 'House',     x: INNER + 71,  w: 32 },
-    { label: 'Rank',      x: INNER + 104, w: 25 },
-    { label: 'Resource',  x: INNER + 130, w: 26 },
-    { label: 'Income',    x: INNER + 157, w: 17, align: 'right' },
+    { label: 'Character',   x: INNER,       w: 34 },
+    { label: 'Player',      x: INNER + 35,  w: 28 },
+    { label: 'House',       x: INNER + 64,  w: 28 },
+    { label: 'Rank',        x: INNER + 93,  w: 20 },
+    { label: 'Resource',    x: INNER + 114, w: 24 },
+    { label: 'Tithe Paid',  x: INNER + 139, w: 12, align: 'right' },
+    { label: 'Tithe Notes', x: INNER + 152, w: 22 },
   ];
 
   for (const [fn, members] of Object.entries(groups)) {
@@ -223,14 +223,14 @@ export async function exportRosterPdf(data: LanceData, nextEvent?: LanceEvent) {
     for (const m of members) {
       y = checkPage(doc, y);
       const house = data.houses.find(h => h.id === m.house_id)?.name ?? '—';
-      const income = formatIncome(m.rings_per_event, m.crowns_per_event, m.thrones_per_event) ?? '—';
       y = tableRow(doc, [
-        { value: m.name,               ...COLS[0] },
-        { value: m.player_name ?? '—', ...COLS[1] },
-        { value: house,                ...COLS[2] },
-        { value: m.rank ?? '—',   ...COLS[3] },
-        { value: m.resource ?? '—', ...COLS[4] },
-        { value: income,               ...COLS[5] },
+        { value: m.name,                ...COLS[0] },
+        { value: m.player_name ?? '—',  ...COLS[1] },
+        { value: house,                 ...COLS[2] },
+        { value: m.rank ?? '—',         ...COLS[3] },
+        { value: m.resource ?? '—',     ...COLS[4] },
+        { value: m.tithe_paid ? 'Y' : '—', ...COLS[5] },
+        { value: m.tithe_notes ?? '',   ...COLS[6] },
       ], y);
     }
     y += 5;
