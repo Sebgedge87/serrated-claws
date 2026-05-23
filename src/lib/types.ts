@@ -122,6 +122,8 @@ export interface Member {
   attending_event: boolean;
   territory: string | null;
   total_xp: number | null;
+  tithe_paid: boolean;
+  tithe_notes: string | null;
 }
 
 export interface Business {

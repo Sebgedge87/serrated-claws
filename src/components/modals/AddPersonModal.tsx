@@ -39,6 +39,8 @@ export function AddPersonModal({ data, initial, onClose, onSave, onUpsertCharInv
     attending_event: false,
     coven: null,
     notes: null,
+    tithe_paid: false,
+    tithe_notes: null,
     house_id: data.houses[0]?.id ?? null,
     ...initial
   });
@@ -152,6 +154,15 @@ export function AddPersonModal({ data, initial, onClose, onSave, onUpsertCharInv
             <input type="checkbox" checked={!!form.attending_event} onChange={e => set('attending_event', e.target.checked)} className="w-5 h-5 accent-gold-300" />
             <span className="text-sm">Will be at the next event</span>
           </label>
+        </Field>
+        <Field label="Tithe Paid">
+          <label className="flex items-center gap-2.5 mt-2.5 cursor-pointer">
+            <input type="checkbox" checked={!!form.tithe_paid} onChange={e => set('tithe_paid', e.target.checked)} className="w-5 h-5 accent-gold-300" />
+            <span className="text-sm">Tithe paid this event</span>
+          </label>
+        </Field>
+        <Field label="Tithe Notes" optional>
+          <input className="input" placeholder="What was paid…" value={form.tithe_notes ?? ''} onChange={e => set('tithe_notes', e.target.value || null)} />
         </Field>
         <Field label="Notes" optional span="full">
           <textarea className="input resize-y" rows={3} value={form.notes ?? ''} onChange={e => set('notes', e.target.value || null)} />
