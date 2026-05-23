@@ -20,7 +20,7 @@ import { StockModal } from '@/components/modals/StockModal';
 
 const ACCENT = '#e76eb5';
 
-type SubView = 'inventory' | 'stock' | 'queue' | 'catalogue' | 'spells' | 'rituals';
+type SubView = 'inventory' | 'stock' | 'queue' | 'catalogue' | 'magic';
 
 const TIER_PILL_COLORS: Record<ItemTier, { bg: string; text: string; border: string }> = {
   apprentice: { bg: 'rgba(212,180,109,0.15)', text: '#d4b46d', border: 'rgba(212,180,109,0.4)' },
@@ -71,9 +71,8 @@ const SUB_TABS: { id: SubView; label: string; Icon: typeof Icons.Package }[] = [
   { id: 'inventory', label: 'Inventory', Icon: Icons.Package },
   { id: 'stock',     label: 'Stock',     Icon: Icons.Shield },
   { id: 'queue',     label: 'Queue',     Icon: Icons.Sparkles },
-  { id: 'catalogue', label: 'Catalogue', Icon: Icons.Package },
-  { id: 'spells',    label: 'Spells',    Icon: Icons.Wand },
-  { id: 'rituals',   label: 'Rituals',   Icon: Icons.Gem },
+  { id: 'catalogue', label: 'Catalogue', Icon: Icons.BookOpen },
+  { id: 'magic',     label: 'Magic',     Icon: Icons.Wand },
 ];
 
 interface Props {
@@ -167,8 +166,7 @@ export function InventoryTab({
           onAddToQueue={item => { setQueueModal({ open: true, prefill: item }); setSubView('queue'); }}
         />
       )}
-      {subView === 'spells' && <SpellsView />}
-      {subView === 'rituals' && <RitualsView />}
+      {subView === 'magic' && <MagicView />}
 
       {stockModal.open && (
         <StockModal
@@ -220,6 +218,7 @@ function InventoryView({
   const [typeFilter, setTypeFilter] = useState<'All' | CatalogueType>('All');
   const [search, setSearch] = useState('');
   const [showAll, setShowAll] = useState(true);
+  const [openItem, setOpenItem] = useState<CatalogueEntry | null>(null);
 
   const invMap = useMemo(() => Object.fromEntries(data.inventory.map(i => [i.item, i])), [data.inventory]);
 
@@ -228,6 +227,22 @@ function InventoryView({
   [data.inventory]);
 
   const items = showAll ? EMPIRE_CATALOGUE : EMPIRE_CATALOGUE.filter(i => i.track);
+
+  const typeCounts = useMemo(() => {
+    const map = new Map<CatalogueType, { count: number; shortfalls: number }>();
+    for (const item of items) {
+      const stock = invMap[item.item];
+      const short = stock && stock.required_qty > 0 && stock.current_qty < stock.required_qty;
+      const cur = map.get(item.type) ?? { count: 0, shortfalls: 0 };
+      map.set(item.type, { count: cur.count + 1, shortfalls: cur.shortfalls + (short ? 1 : 0) });
+    }
+    return map;
+  }, [items, invMap]);
+
+  const allShortfalls = useMemo(() =>
+    items.filter(i => { const s = invMap[i.item]; return !!(s && s.required_qty > 0 && s.current_qty < s.required_qty); }).length,
+  [items, invMap]);
+
   const filtered = items.filter(i => {
     if (typeFilter !== 'All' && i.type !== typeFilter) return false;
     if (search) {
@@ -237,44 +252,41 @@ function InventoryView({
     return true;
   });
 
-  const grouped = new Map<CatalogueType, CatalogueEntry[]>();
-  filtered.forEach(i => {
-    const arr = grouped.get(i.type) ?? [];
-    arr.push(i);
-    grouped.set(i.type, arr);
-  });
-  const orderedTypes = INVENTORY_TYPES.filter(t => grouped.has(t));
-
   return (
     <div>
-      {/* Filters */}
-      <div className="flex gap-3 mb-6 flex-wrap items-center">
+      {/* Type sub-tabs with count badges and shortfall pips */}
+      <div className="flex gap-1 mb-5 overflow-x-auto scrollbar-hide pb-1 flex-wrap">
+        <TypeTabBtn
+          label="All"
+          count={items.length}
+          shortfalls={allShortfalls}
+          active={typeFilter === 'All'}
+          color="#d4b46d"
+          Icon={Icons.Package}
+          onClick={() => setTypeFilter('All')}
+        />
+        {INVENTORY_TYPES.filter(t => typeCounts.has(t)).map(t => {
+          const { count, shortfalls } = typeCounts.get(t)!;
+          return (
+            <TypeTabBtn
+              key={t}
+              label={t}
+              count={count}
+              shortfalls={shortfalls}
+              active={typeFilter === t}
+              color={TYPE_COLORS[t]}
+              Icon={TYPE_ICONS[t]}
+              onClick={() => setTypeFilter(t)}
+            />
+          );
+        })}
+      </div>
+
+      {/* Search + show all */}
+      <div className="flex gap-3 mb-5 flex-wrap items-center">
         <div className="relative flex-1 min-w-[240px]">
           <Icons.Search size={16} className="absolute left-3 top-1/2 -translate-y-1/2 text-ink-100/40 pointer-events-none" />
           <input className="input pl-10" placeholder="Search items, sub-types..." value={search} onChange={e => setSearch(e.target.value)} />
-        </div>
-        <div className="flex gap-1 flex-wrap">
-          {(['All', ...INVENTORY_TYPES] as const).map(t => {
-            const isActive = typeFilter === t;
-            const c = t === 'All' ? '#d4b46d' : TYPE_COLORS[t];
-            const TypeIcon = t !== 'All' ? TYPE_ICONS[t] : null;
-            return (
-              <button
-                key={t}
-                onClick={() => setTypeFilter(t)}
-                className="inline-flex items-center gap-1.5 px-3 py-2 text-xs font-medium rounded-lg border transition-all"
-                style={{
-                  background: isActive ? `linear-gradient(180deg, ${c}30, ${c}15)` : 'transparent',
-                  color: isActive ? c : 'rgba(232, 230, 227, 0.5)',
-                  borderColor: isActive ? `${c}50` : 'rgba(201, 169, 97, 0.15)',
-                  fontWeight: isActive ? 600 : 500
-                }}
-              >
-                {TypeIcon && <TypeIcon size={13} />}
-                {t}
-              </button>
-            );
-          })}
         </div>
         <label className="inline-flex items-center gap-2 px-3 py-2 border border-gold-500/15 rounded-lg cursor-pointer text-xs text-ink-100/60">
           <input type="checkbox" checked={showAll} onChange={e => setShowAll(e.target.checked)} />
@@ -294,124 +306,99 @@ function InventoryView({
         </div>
       )}
 
+      {/* Unified single table */}
       {filtered.length === 0 ? (
         <p className="text-center py-16 text-ink-100/50">No items match your filters</p>
       ) : (
-        <div className="grid grid-cols-1 xl:grid-cols-2 gap-6">
-          {orderedTypes.map(type => {
-            const list = grouped.get(type)!;
-            const TypeIcon = TYPE_ICONS[type];
-            const c = TYPE_COLORS[type];
-            return (
-              <div key={type}>
-                <div className="flex items-center gap-3 mb-3">
-                  <div className="w-8 h-8 rounded-lg grid place-items-center border" style={{ color: c, background: `linear-gradient(180deg, ${c}30, ${c}15)`, borderColor: `${c}40` }}>
-                    <TypeIcon size={16} />
-                  </div>
-                  <h3 className="text-sm uppercase tracking-widest font-bold m-0 font-sans" style={{ color: c }}>{type}</h3>
-                  <div className="flex-1 h-px" style={{ background: `linear-gradient(90deg, ${c}50, transparent)` }} />
-                  <span className="text-xs text-ink-100/50">{list.length}</span>
-                </div>
-                <div className="card overflow-hidden">
-                  <table className="w-full">
-                    <thead className="bg-gold-500/10">
-                      <tr>
-                        <Th>Item</Th>
-                        <Th center>Have</Th>
-                        <Th center>Need</Th>
-                        <Th center>Status</Th>
-                        <Th center>Price</Th>
-                        <Th center>Value</Th>
-                        {isAdmin && <Th center>±</Th>}
-                      </tr>
-                    </thead>
-                    <tbody>
-                      {list.map((item, idx) => {
-                        const stock = invMap[item.item] ?? { item: item.item, current_qty: 0, required_qty: 0, unit_value: 0 };
-                        const status = stock.required_qty === 0 ? null : stock.current_qty >= stock.required_qty ? 'OK' : `−${stock.required_qty - stock.current_qty}`;
-                        const totalVal = (stock.unit_value ?? 0) * stock.current_qty;
-                        return (
-                          <tr key={item.item} className={idx > 0 ? 'border-t border-gold-500/10' : ''}>
-                            <td className="px-3 py-2.5 text-sm font-semibold align-top">
-                              {item.item}
-                              {item.subType && <div className="text-[10px] text-ink-100/40 font-normal">{item.subType}</div>}
-                            </td>
-                            <td className="px-3 py-2.5 text-center">
-                              {isAdmin ? (
-                                <input
-                                  type="number"
-                                  defaultValue={stock.current_qty}
-                                  onBlur={e => {
-                                    const v = parseInt(e.target.value, 10) || 0;
-                                    if (v !== stock.current_qty) onSetInventory(item.item, v, stock.required_qty);
-                                  }}
-                                  className="w-14 px-1.5 py-1 bg-black/40 border border-gold-500/15 rounded text-sm font-bold text-center"
-                                />
-                              ) : (
-                                <span className="font-bold">{stock.current_qty}</span>
-                              )}
-                            </td>
-                            <td className="px-3 py-2.5 text-center">
-                              {isAdmin ? (
-                                <input
-                                  type="number"
-                                  defaultValue={stock.required_qty}
-                                  onBlur={e => {
-                                    const v = parseInt(e.target.value, 10) || 0;
-                                    if (v !== stock.required_qty) onSetInventory(item.item, stock.current_qty, v);
-                                  }}
-                                  className="w-14 px-1.5 py-1 bg-black/40 border border-gold-500/15 rounded text-sm text-ink-100/70 text-center"
-                                />
-                              ) : (
-                                <span className="text-ink-100/70">{stock.required_qty}</span>
-                              )}
-                            </td>
-                            <td className="px-3 py-2.5 text-center">
-                              {status && (
-                                <span className={status === 'OK' ? 'pill pill-active' : 'pill pill-kia'}>
-                                  {status === 'OK' ? '✓' : status}
-                                </span>
-                              )}
-                            </td>
-                            <td className="px-3 py-2.5 text-center">
-                              {isAdmin ? (
-                                <input
-                                  type="number"
-                                  min={0}
-                                  defaultValue={stock.unit_value ?? 0}
-                                  onBlur={e => {
-                                    const v = parseInt(e.target.value, 10) || 0;
-                                    if (v !== (stock.unit_value ?? 0)) onSetInventoryPrice(item.item, v);
-                                  }}
-                                  className="w-16 px-1.5 py-1 bg-black/40 border border-gold-500/15 rounded text-sm text-gold-300/80 text-center"
-                                  title="Market price in rings (20r = 1 crown)"
-                                />
-                              ) : (
-                                <span className="text-xs text-gold-300/70">{fmtRings(stock.unit_value ?? 0)}</span>
-                              )}
-                            </td>
-                            <td className="px-3 py-2.5 text-center">
-                              <span className={`text-xs font-semibold ${totalVal > 0 ? 'text-gold-300' : 'text-ink-100/25'}`}>
-                                {totalVal > 0 ? fmtRings(totalVal) : '—'}
-                              </span>
-                            </td>
-                            {isAdmin && (
-                              <td className="px-3 py-2.5 text-center">
-                                <div className="inline-flex gap-1">
-                                  <button onClick={() => onLogInventory(item.item, 1, 'In')} className="px-2 py-1 bg-sage-500/15 text-sage-500 border border-sage-500/30 rounded font-bold text-sm">+</button>
-                                  <button onClick={() => onLogInventory(item.item, 1, 'Out')} disabled={stock.current_qty <= 0} className="px-2 py-1 bg-red-500/15 text-red-300 border border-red-500/30 rounded font-bold text-sm disabled:opacity-30">−</button>
-                                </div>
-                              </td>
-                            )}
-                          </tr>
-                        );
-                      })}
-                    </tbody>
-                  </table>
-                </div>
-              </div>
-            );
-          })}
+        <div className="card overflow-hidden">
+          <table className="w-full">
+            <thead className="bg-gold-500/10">
+              <tr>
+                {typeFilter === 'All' && <Th>Type</Th>}
+                <Th>Item</Th>
+                <Th center>Have</Th>
+                <Th center>Need</Th>
+                <Th center>Status</Th>
+                {isAdmin && <Th center>Adjust</Th>}
+                <Th center>Detail</Th>
+              </tr>
+            </thead>
+            <tbody>
+              {filtered.map((item, idx) => {
+                const stock = invMap[item.item] ?? { item: item.item, current_qty: 0, required_qty: 0, unit_value: 0 };
+                const status = stock.required_qty === 0 ? null : stock.current_qty >= stock.required_qty ? 'OK' : `−${stock.required_qty - stock.current_qty}`;
+                const c = TYPE_COLORS[item.type];
+                const TypeIcon = TYPE_ICONS[item.type];
+                return (
+                  <tr key={item.item} className={idx > 0 ? 'border-t border-gold-500/10' : ''}>
+                    {typeFilter === 'All' && (
+                      <td className="px-3 py-2.5 align-middle">
+                        <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded text-[10px] font-bold border whitespace-nowrap"
+                          style={{ background: `${c}20`, color: c, borderColor: `${c}40` }}>
+                          <TypeIcon size={10} />
+                          {item.type}
+                        </span>
+                      </td>
+                    )}
+                    <td className="px-3 py-2.5 text-sm font-semibold align-top">
+                      {item.item}
+                      {item.subType && <div className="text-[10px] text-ink-100/40 font-normal">{item.subType}</div>}
+                    </td>
+                    <td className="px-3 py-2.5 text-center">
+                      {isAdmin ? (
+                        <input
+                          type="number"
+                          defaultValue={stock.current_qty}
+                          onBlur={e => {
+                            const v = parseInt(e.target.value, 10) || 0;
+                            if (v !== stock.current_qty) onSetInventory(item.item, v, stock.required_qty);
+                          }}
+                          className="w-14 px-1.5 py-1 bg-black/40 border border-gold-500/15 rounded text-sm font-bold text-center"
+                        />
+                      ) : (
+                        <span className="font-bold">{stock.current_qty}</span>
+                      )}
+                    </td>
+                    <td className="px-3 py-2.5 text-center">
+                      {isAdmin ? (
+                        <input
+                          type="number"
+                          defaultValue={stock.required_qty}
+                          onBlur={e => {
+                            const v = parseInt(e.target.value, 10) || 0;
+                            if (v !== stock.required_qty) onSetInventory(item.item, stock.current_qty, v);
+                          }}
+                          className="w-14 px-1.5 py-1 bg-black/40 border border-gold-500/15 rounded text-sm text-ink-100/70 text-center"
+                        />
+                      ) : (
+                        <span className="text-ink-100/70">{stock.required_qty}</span>
+                      )}
+                    </td>
+                    <td className="px-3 py-2.5 text-center">
+                      {status && (
+                        <span className={status === 'OK' ? 'pill pill-active' : 'pill pill-kia'}>
+                          {status === 'OK' ? '✓' : status}
+                        </span>
+                      )}
+                    </td>
+                    {isAdmin && (
+                      <td className="px-3 py-2.5 text-center">
+                        <div className="inline-flex gap-1">
+                          <button onClick={() => onLogInventory(item.item, 1, 'In')} className="px-2 py-1 bg-sage-500/15 text-sage-500 border border-sage-500/30 rounded font-bold text-sm">+</button>
+                          <button onClick={() => onLogInventory(item.item, 1, 'Out')} disabled={stock.current_qty <= 0} className="px-2 py-1 bg-red-500/15 text-red-300 border border-red-500/30 rounded font-bold text-sm disabled:opacity-30">−</button>
+                        </div>
+                      </td>
+                    )}
+                    <td className="px-3 py-2.5 text-center">
+                      <button onClick={() => setOpenItem(item)} className="btn btn-ghost btn-sm" title="View details">
+                        <Icons.BookOpen size={13} />
+                      </button>
+                    </td>
+                  </tr>
+                );
+              })}
+            </tbody>
+          </table>
         </div>
       )}
 
@@ -447,7 +434,182 @@ function InventoryView({
           </div>
         </div>
       )}
+
+      {openItem && (
+        <ItemDetailModal
+          item={openItem}
+          stock={invMap[openItem.item] ?? { item: openItem.item, current_qty: 0, required_qty: 0, unit_value: 0 }}
+          isAdmin={isAdmin}
+          onSetInventoryPrice={onSetInventoryPrice}
+          onLogInventory={onLogInventory}
+          onClose={() => setOpenItem(null)}
+        />
+      )}
     </div>
+  );
+}
+
+function TypeTabBtn({
+  label, count, shortfalls, active, color, Icon, onClick
+}: {
+  label: string;
+  count: number;
+  shortfalls: number;
+  active: boolean;
+  color: string;
+  Icon: typeof Icons.Package;
+  onClick: () => void;
+}) {
+  return (
+    <button
+      onClick={onClick}
+      className="relative inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium rounded-lg border transition-all whitespace-nowrap"
+      style={{
+        background: active ? `linear-gradient(180deg, ${color}30, ${color}15)` : 'transparent',
+        color: active ? color : 'rgba(232,230,227,0.5)',
+        borderColor: active ? `${color}50` : 'rgba(201,169,97,0.15)',
+        fontWeight: active ? 600 : 500,
+      }}
+    >
+      <Icon size={12} />
+      {label}
+      <span
+        className="px-1.5 py-0.5 rounded text-[9px] font-bold ml-0.5"
+        style={{
+          background: active ? `${color}25` : 'rgba(255,255,255,0.07)',
+          color: active ? color : 'rgba(232,230,227,0.35)',
+        }}
+      >
+        {count}
+      </span>
+      {shortfalls > 0 && (
+        <span className="absolute -top-1.5 -right-1.5 w-4 h-4 rounded-full bg-red-500 border border-ink-900 text-[8px] grid place-items-center text-white font-bold leading-none">
+          {shortfalls > 9 ? '9+' : shortfalls}
+        </span>
+      )}
+    </button>
+  );
+}
+
+function ItemDetailModal({
+  item, stock, isAdmin, onSetInventoryPrice, onLogInventory, onClose
+}: {
+  item: CatalogueEntry;
+  stock: { item: string; current_qty: number; required_qty: number; unit_value?: number | null };
+  isAdmin: boolean;
+  onSetInventoryPrice: (item: string, value: number) => Promise<void>;
+  onLogInventory: (item: string, amount: number, direction: 'In' | 'Out' | 'Adjustment', notes?: string) => Promise<void>;
+  onClose: () => void;
+}) {
+  const [price, setPrice] = useState(stock.unit_value ?? 0);
+  const [logAmount, setLogAmount] = useState(1);
+  const [logNotes, setLogNotes] = useState('');
+  const [busy, setBusy] = useState(false);
+  const c = TYPE_COLORS[item.type];
+  const TypeIcon = TYPE_ICONS[item.type];
+  const totalVal = price * stock.current_qty;
+  const status = stock.required_qty === 0 ? null
+    : stock.current_qty >= stock.required_qty ? 'OK'
+    : `Short ${stock.required_qty - stock.current_qty}`;
+
+  return (
+    <Modal
+      onClose={onClose}
+      title={item.item}
+      subtitle={item.type + (item.subType ? ` · ${item.subType}` : '')}
+      icon={<TypeIcon size={20} />}
+      accent={c}
+      footer={<button onClick={onClose} className="btn btn-ghost">Close</button>}
+    >
+      <div className="space-y-5">
+        <div className="grid grid-cols-3 gap-3">
+          <div className="card p-3 text-center">
+            <div className="text-[10px] uppercase tracking-wider font-bold text-ink-300 mb-1">In Stock</div>
+            <div className="font-display font-bold text-2xl" style={{ color: c }}>{stock.current_qty}</div>
+          </div>
+          <div className="card p-3 text-center">
+            <div className="text-[10px] uppercase tracking-wider font-bold text-ink-300 mb-1">Required</div>
+            <div className="font-display font-bold text-2xl text-ink-100/60">{stock.required_qty}</div>
+          </div>
+          <div className="card p-3 text-center">
+            <div className="text-[10px] uppercase tracking-wider font-bold text-ink-300 mb-1">Status</div>
+            <div className="mt-1">
+              {status ? (
+                <span className={status === 'OK' ? 'pill pill-active' : 'pill pill-kia'}>{status}</span>
+              ) : (
+                <span className="text-sm text-ink-100/40">—</span>
+              )}
+            </div>
+          </div>
+        </div>
+
+        <div>
+          <div className="text-[10px] uppercase tracking-widest font-bold text-gold-300/70 mb-2">Unit Price</div>
+          {isAdmin ? (
+            <div className="flex gap-2 items-center flex-wrap">
+              <input
+                type="number"
+                min={0}
+                value={price}
+                onChange={e => setPrice(parseInt(e.target.value, 10) || 0)}
+                className="input w-28 text-center"
+              />
+              <span className="text-xs text-ink-100/50">rings ({(price / 20).toFixed(1)} crowns)</span>
+              {totalVal > 0 && <span className="text-xs text-gold-300/70 ml-auto">Stock value: {fmtRings(totalVal)}</span>}
+              <button
+                onClick={async () => { setBusy(true); try { await onSetInventoryPrice(item.item, price); } finally { setBusy(false); } }}
+                disabled={busy || price === (stock.unit_value ?? 0)}
+                className="btn btn-sm btn-primary"
+              >
+                {busy ? 'Saving…' : 'Save Price'}
+              </button>
+            </div>
+          ) : (
+            <div className="flex items-center gap-3">
+              <span className="text-gold-300 font-semibold">{fmtRings(price)}</span>
+              <span className="text-xs text-ink-100/50">per unit</span>
+              {totalVal > 0 && <span className="text-xs text-gold-300/70 ml-auto">Stock value: {fmtRings(totalVal)}</span>}
+            </div>
+          )}
+        </div>
+
+        {isAdmin && (
+          <div>
+            <div className="text-[10px] uppercase tracking-widest font-bold text-gold-300/70 mb-2">Quick Adjust</div>
+            <div className="flex gap-2 flex-wrap items-center">
+              <input
+                type="number"
+                min={1}
+                value={logAmount}
+                onChange={e => setLogAmount(Math.max(1, parseInt(e.target.value, 10) || 1))}
+                className="input w-20 text-center"
+                placeholder="Qty"
+              />
+              <input
+                className="input flex-1 min-w-[140px]"
+                placeholder="Notes (optional)"
+                value={logNotes}
+                onChange={e => setLogNotes(e.target.value)}
+              />
+              <button
+                onClick={async () => { await onLogInventory(item.item, logAmount, 'In', logNotes || undefined); onClose(); }}
+                className="btn btn-sm"
+                style={{ background: 'rgba(109,212,126,0.2)', color: '#6dd47e', border: '1px solid rgba(109,212,126,0.35)' }}
+              >
+                + In
+              </button>
+              <button
+                onClick={async () => { await onLogInventory(item.item, logAmount, 'Out', logNotes || undefined); onClose(); }}
+                disabled={stock.current_qty <= 0}
+                className="btn btn-sm btn-danger"
+              >
+                − Out
+              </button>
+            </div>
+          </div>
+        )}
+      </div>
+    </Modal>
   );
 }
 
@@ -1082,6 +1244,31 @@ function RitualsView() {
           })}
         </div>
       )}
+    </div>
+  );
+}
+
+// ============================================================
+// MAGIC VIEW (Spells + Rituals combined)
+// ============================================================
+function MagicView() {
+  const [inner, setInner] = useState<'spells' | 'rituals'>('spells');
+  return (
+    <div>
+      <div className="flex gap-1 mb-5 border-b border-gold-500/10 pb-0">
+        {(['spells', 'rituals'] as const).map(v => (
+          <button
+            key={v}
+            onClick={() => setInner(v)}
+            className="tab-btn"
+            style={inner === v ? { color: ACCENT, borderBottomColor: ACCENT, fontWeight: 600 } : {}}
+          >
+            {v === 'spells' ? <Icons.Wand size={14} /> : <Icons.Gem size={14} />}
+            {v === 'spells' ? 'Spells' : 'Rituals'}
+          </button>
+        ))}
+      </div>
+      {inner === 'spells' ? <SpellsView /> : <RitualsView />}
     </div>
   );
 }

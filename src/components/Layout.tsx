@@ -49,6 +49,8 @@ export function Layout() {
     color?: string;
     /** 2-letter house monogram (renders instead of an icon when set) */
     monogram?: string;
+    /** renders a thin vertical divider before this tab to separate clusters */
+    separator?: boolean;
   };
   const tabs: TabDef[] = [
     { id: 'overview', label: 'Overview', Icon: Icons.House },
@@ -62,9 +64,9 @@ export function Layout() {
     { id: 'unassigned', label: 'Unassigned', Icon: Icons.Question },
     { id: 'covens', label: 'Covens', Icon: Icons.Sparkles },
     { id: 'functions', label: 'Functions', Icon: Icons.Swords },
-    { id: 'businesses', label: 'Businesses', Icon: Icons.Briefcase },
+    { id: 'businesses', label: 'Businesses', Icon: Icons.Briefcase, separator: true },
     { id: 'inventory', label: 'Inventory', Icon: Icons.Package },
-    ...(isAdmin ? [{ id: 'admin', label: 'Admin', Icon: Icons.Shield }] : [])
+    ...(isAdmin ? [{ id: 'admin', label: 'Admin', Icon: Icons.Shield, separator: true }] : [])
   ];
 
   function exportCsv() {
@@ -238,10 +240,10 @@ export function Layout() {
       <nav className="bg-ink-950/50 backdrop-blur border-b border-gold-500/15">
         <div className="page-wrap !px-2 sm:!px-4">
           <div className="flex overflow-x-auto scrollbar-hide" role="tablist">
-            {tabs.map(t => {
+            {tabs.flatMap(t => {
               const isActive = activeTab === t.id;
               const accent = t.color ?? 'rgb(212,180,109)'; // gold-300 fallback
-              return (
+              const btn = (
                 <button
                   key={t.id}
                   role="tab"
@@ -272,6 +274,11 @@ export function Layout() {
                   <span>{t.label}</span>
                 </button>
               );
+              if (!t.separator) return [btn];
+              return [
+                <div key={`sep-${t.id}`} className="flex-shrink-0 w-px my-3 mx-1 bg-gold-500/20 self-stretch" />,
+                btn,
+              ];
             })}
           </div>
         </div>
