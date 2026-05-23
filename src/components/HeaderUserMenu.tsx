@@ -15,6 +15,8 @@ interface Props {
   onLeaveLance: () => Promise<void>;
   onSignOut: () => void;
   wikiUrl: string;
+  isAdmin?: boolean;
+  onAdmin?: () => void;
 }
 
 /**
@@ -25,7 +27,7 @@ interface Props {
  */
 export function HeaderUserMenu({
   profile, user, currentMembership, memberships, currentLance,
-  onSwitchLance, onLeaveLance, onSignOut, wikiUrl,
+  onSwitchLance, onLeaveLance, onSignOut, wikiUrl, isAdmin, onAdmin,
 }: Props) {
   const [open, setOpen] = useState(false);
   const [switching, setSwitching] = useState(false);
@@ -132,6 +134,16 @@ export function HeaderUserMenu({
               Empire Wiki
               <Icons.ExternalLink size={11} className="ml-auto text-ink-300" />
             </a>
+
+            {isAdmin && onAdmin && (
+              <>
+                <MenuLabel>Management</MenuLabel>
+                <MenuItem onClick={() => { setOpen(false); onAdmin(); }}>
+                  <Icons.Settings size={14} className="text-ink-300" />
+                  Admin panel
+                </MenuItem>
+              </>
+            )}
 
             <MenuLabel>Account</MenuLabel>
             <MenuItem

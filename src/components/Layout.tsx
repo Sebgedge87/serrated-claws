@@ -199,6 +199,8 @@ export function Layout() {
               }}
               onSignOut={signOut}
               wikiUrl={WIKI_URL}
+              isAdmin={isAdmin}
+              onAdmin={() => setActiveTab('admin')}
             />
           </div>
         </div>
@@ -220,12 +222,12 @@ export function Layout() {
         <div className="flex gap-2 items-center flex-shrink-0">
           {isAdmin && (
             <>
-              <button onClick={() => setShowAddPerson(true)} className="btn btn-primary">
-                <Icons.Plus size={16} />
+              <button onClick={() => setShowAddPerson(true)} className="btn btn-primary" title="Add person">
+                <Icons.Users size={16} />
                 <span className="hidden sm:inline">Add Person</span>
               </button>
               <button onClick={() => setShowAddHouse(true)} className="btn btn-secondary" title="Add house">
-                <Icons.Plus size={16} />
+                <Icons.Shield size={16} />
                 <span className="hidden sm:inline">House</span>
               </button>
             </>
