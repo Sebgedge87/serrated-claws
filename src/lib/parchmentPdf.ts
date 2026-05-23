@@ -207,13 +207,12 @@ export async function exportRosterPdf(data: LanceData, nextEvent?: LanceEvent) {
 
   // Columns fit within CONTENT_W (174mm): last col right-edge = INNER+174 = PAGE_W-INNER
   const COLS: Col[] = [
-    { label: 'Character',   x: INNER,       w: 34 },
-    { label: 'Player',      x: INNER + 35,  w: 28 },
-    { label: 'House',       x: INNER + 64,  w: 28 },
-    { label: 'Rank',        x: INNER + 93,  w: 20 },
-    { label: 'Resource',    x: INNER + 114, w: 24 },
-    { label: 'Tithe Paid',  x: INNER + 139, w: 12, align: 'right' },
-    { label: 'Tithe Notes', x: INNER + 152, w: 22 },
+    { label: 'Character',   x: INNER,       w: 38 },
+    { label: 'Player',      x: INNER + 39,  w: 32 },
+    { label: 'House',       x: INNER + 72,  w: 32 },
+    { label: 'Rank',        x: INNER + 105, w: 25 },
+    { label: 'Tithe Paid',  x: INNER + 131, w: 15, align: 'right' },
+    { label: 'Tithe Notes', x: INNER + 147, w: 27 },
   ];
 
   for (const [fn, members] of Object.entries(groups)) {
@@ -224,13 +223,12 @@ export async function exportRosterPdf(data: LanceData, nextEvent?: LanceEvent) {
       y = checkPage(doc, y);
       const house = data.houses.find(h => h.id === m.house_id)?.name ?? '—';
       y = tableRow(doc, [
-        { value: m.name,                ...COLS[0] },
-        { value: m.player_name ?? '—',  ...COLS[1] },
-        { value: house,                 ...COLS[2] },
-        { value: m.rank ?? '—',         ...COLS[3] },
-        { value: m.resource ?? '—',     ...COLS[4] },
-        { value: m.tithe_paid ? 'Y' : '—', ...COLS[5] },
-        { value: m.tithe_notes ?? '',   ...COLS[6] },
+        { value: m.name,                    ...COLS[0] },
+        { value: m.player_name ?? '—',      ...COLS[1] },
+        { value: house,                     ...COLS[2] },
+        { value: m.rank ?? '—',             ...COLS[3] },
+        { value: m.tithe_paid ? 'Y' : '—',  ...COLS[4] },
+        { value: m.tithe_notes ?? '',       ...COLS[5] },
       ], y);
     }
     y += 5;
