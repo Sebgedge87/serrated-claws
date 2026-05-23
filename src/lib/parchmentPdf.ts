@@ -221,14 +221,14 @@ export async function exportRosterPdf(data: LanceData, nextEvent?: LanceEvent) {
     y = tableHeader(doc, COLS, y);
     for (const m of members) {
       y = checkPage(doc, y);
-      const house = data.houses.find(h => h.id === m.house_id)?.name ?? '—';
+      const house = data.houses.find(h => h.id === m.house_id)?.name ?? '';
       y = tableRow(doc, [
-        { value: m.name,                    ...COLS[0] },
-        { value: m.player_name ?? '—',      ...COLS[1] },
-        { value: house,                     ...COLS[2] },
-        { value: m.rank ?? '—',             ...COLS[3] },
-        { value: m.tithe_paid ? 'Y' : '—',  ...COLS[4] },
-        { value: m.tithe_notes ?? '',       ...COLS[5] },
+        { value: m.name,                         ...COLS[0] },
+        { value: m.player_name ?? '',            ...COLS[1] },
+        { value: house,                          ...COLS[2] },
+        { value: m.rank ?? '',                   ...COLS[3] },
+        { value: m.tithe_paid ? 'Y' : '',        ...COLS[4] },
+        { value: m.tithe_notes ?? '',            ...COLS[5] },
       ], y);
     }
     y += 5;
