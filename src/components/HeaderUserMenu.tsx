@@ -5,6 +5,12 @@ import { initials, cx } from '@/lib/utils';
 import type { MembershipWithLance } from '@/hooks/useLances';
 import type { Profile, LanceMembership, Lance } from '@/lib/types';
 
+interface NavTab {
+  id: string;
+  label: string;
+  active: boolean;
+}
+
 interface Props {
   profile: Profile | null;
   user: { email?: string | null } | null;
@@ -15,19 +21,13 @@ interface Props {
   onLeaveLance: () => Promise<void>;
   onSignOut: () => void;
   wikiUrl: string;
-  isAdmin?: boolean;
-  onAdmin?: () => void;
+  navTabs?: NavTab[];
+  onNavigate?: (id: string) => void;
 }
 
-/**
- * Single avatar-dropdown that collects every non-primary header action:
- * Switch Lance · Empire Wiki · Settings · Leave lance · Sign out.
- *
- * The bare header right-side becomes: <My Character> <Avatar▾>.
- */
 export function HeaderUserMenu({
   profile, user, currentMembership, memberships, currentLance,
-  onSwitchLance, onLeaveLance, onSignOut, wikiUrl, isAdmin, onAdmin,
+  onSwitchLance, onLeaveLance, onSignOut, wikiUrl, navTabs, onNavigate,
 }: Props) {
   const [open, setOpen] = useState(false);
   const [switching, setSwitching] = useState(false);
@@ -77,12 +77,13 @@ export function HeaderUserMenu({
         {open && (
           <div
             role="menu"
-            className="absolute right-0 top-[calc(100%+8px)] w-60 z-50
+            className="absolute right-0 top-[calc(100%+8px)] w-72 z-50 max-h-[80vh] overflow-y-auto
                        bg-gradient-to-b from-ink-800/95 to-ink-900/95
                        border border-gold-500/25 rounded-xl
                        shadow-[0_30px_80px_-20px_rgba(0,0,0,0.8)]
-                       backdrop-blur-md overflow-hidden"
+                       backdrop-blur-md"
           >
+            {/* User info */}
             <div className="px-4 py-3 border-b border-gold-500/10">
               <div className="text-sm text-ink-100 truncate">{displayName}</div>
               <div className="text-[10px] uppercase tracking-[0.15em] text-gold-300 mt-0.5 truncate">
@@ -90,6 +91,30 @@ export function HeaderUserMenu({
               </div>
             </div>
 
+            {/* Navigation — full tab list for mobile */}
+            {navTabs && navTabs.length > 0 && onNavigate && (
+              <>
+                <MenuLabel>Navigate</MenuLabel>
+                <div className="grid grid-cols-2 gap-1 px-2 pb-2">
+                  {navTabs.map(t => (
+                    <button
+                      key={t.id}
+                      onClick={() => { onNavigate(t.id); setOpen(false); }}
+                      className={cx(
+                        'text-left text-xs px-3 py-2 rounded-lg truncate transition-colors',
+                        t.active
+                          ? 'bg-gold-500/20 text-gold-300 font-semibold'
+                          : 'text-ink-100/70 hover:bg-gold-500/10 hover:text-ink-100'
+                      )}
+                    >
+                      {t.label}
+                    </button>
+                  ))}
+                </div>
+              </>
+            )}
+
+            {/* Lance switcher */}
             {memberships.length > 1 && (
               <>
                 <MenuLabel>Lance</MenuLabel>
@@ -122,6 +147,7 @@ export function HeaderUserMenu({
               </>
             )}
 
+            {/* External links */}
             <a
               role="menuitem"
               href={wikiUrl}
@@ -135,16 +161,7 @@ export function HeaderUserMenu({
               <Icons.ExternalLink size={11} className="ml-auto text-ink-300" />
             </a>
 
-            {isAdmin && onAdmin && (
-              <>
-                <MenuLabel>Management</MenuLabel>
-                <MenuItem onClick={() => { setOpen(false); onAdmin(); }}>
-                  <Icons.Settings size={14} className="text-ink-300" />
-                  Admin panel
-                </MenuItem>
-              </>
-            )}
-
+            {/* Account */}
             <MenuLabel>Account</MenuLabel>
             <MenuItem
               danger

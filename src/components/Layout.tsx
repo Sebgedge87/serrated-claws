@@ -199,8 +199,8 @@ export function Layout() {
               }}
               onSignOut={signOut}
               wikiUrl={WIKI_URL}
-              isAdmin={isAdmin}
-              onAdmin={() => setActiveTab('admin')}
+              navTabs={tabs.map(t => ({ id: t.id, label: t.label, active: activeTab === t.id }))}
+              onNavigate={id => { setActiveTab(id); setSelectedMember(null); }}
             />
           </div>
         </div>
