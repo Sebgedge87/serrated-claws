@@ -309,7 +309,7 @@ export function Layout() {
 
         {!lance.loading && !lance.error && !selectedMember && (
           <>
-            {activeTab === 'overview' && <OverviewTab data={lance.data} />}
+            {activeTab === 'overview' && <OverviewTab data={lance.data} onNavigate={setActiveTab} />}
             {activeHouse && (
               <HouseTab
                 house={activeHouse}

@@ -3,6 +3,7 @@ import type { House, Member, LanceData } from '@/lib/types';
 import { Icons } from '@/components/Icons';
 import { MemberCard } from '@/components/MemberCard';
 import { MemberLedgerRow } from '@/components/MemberLedgerRow';
+import { AddPersonModal } from '@/components/modals/AddPersonModal';
 import { useConfirm } from '@/components/ConfirmDialog';
 import { cx } from '@/lib/utils';
 
@@ -32,9 +33,10 @@ const VIEW_STORAGE_KEY = 'serrated.viewMode';
 
 export function HouseTab({
   house, data, search, isAdmin, canManageHouse,
-  onUpsert: _onUpsert,
+  onUpsert,
   onUnassign, onDelete, onDeleteHouse, onViewMember,
 }: Props) {
+  const [editing, setEditing] = useState<Member | null>(null);
   const [view, setView] = useState<ViewMode>(() => {
     if (typeof localStorage === 'undefined') return 'ledger';
     return (localStorage.getItem(VIEW_STORAGE_KEY) as ViewMode) || 'ledger';
@@ -89,6 +91,7 @@ export function HouseTab({
             onView={onViewMember}
             onUnassign={onUnassign}
             onDelete={onDelete}
+            onEdit={canManageHouse ? setEditing : undefined}
           />
         </RosterSection>
       )}
@@ -111,6 +114,7 @@ export function HouseTab({
             onView={onViewMember}
             onUnassign={onUnassign}
             onDelete={onDelete}
+            onEdit={canManageHouse ? setEditing : undefined}
           />
         </RosterSection>
       )}
@@ -120,6 +124,14 @@ export function HouseTab({
       )}
 
       {Dialog}
+      {editing && (
+        <AddPersonModal
+          data={data}
+          initial={editing}
+          onClose={() => setEditing(null)}
+          onSave={async m => { await onUpsert({ ...editing, ...m }); setEditing(null); }}
+        />
+      )}
     </div>
   );
 }
@@ -241,7 +253,7 @@ function RosterSection({
 /* ─────────────────────────── Roster body ─────────────────────────── */
 
 function Roster({
-  view, members, isAdmin, houseColor, onView, onUnassign, onDelete,
+  view, members, isAdmin, houseColor, onView, onUnassign, onDelete, onEdit,
 }: {
   view: ViewMode;
   members: Member[];
@@ -250,6 +262,7 @@ function Roster({
   onView: (m: Member) => void;
   onUnassign: (id: string) => Promise<void>;
   onDelete: (id: string) => Promise<void>;
+  onEdit?: (m: Member) => void;
 }) {
   if (view === 'cards') {
     return (
@@ -259,6 +272,7 @@ function Roster({
             key={m.id}
             member={m}
             isAdmin={isAdmin}
+            onEdit={onEdit}
             onUnassign={onUnassign}
             onDelete={onDelete}
             onViewSheet={onView}

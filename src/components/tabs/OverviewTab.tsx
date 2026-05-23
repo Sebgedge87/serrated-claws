@@ -4,6 +4,7 @@ import { memberIncomeRings } from '@/lib/utils';
 
 interface Props {
   data: LanceData;
+  onNavigate?: (tab: string) => void;
 }
 
 const RESOURCE_META: Record<string, { color: string; Icon: typeof Icons.Gem }> = {
@@ -26,7 +27,7 @@ function resourceMetaFor(name: string) {
   return { color: '#d4b46d', Icon: Icons.Gem };
 }
 
-export function OverviewTab({ data }: Props) {
+export function OverviewTab({ data, onNavigate }: Props) {
   const totalMembers = data.members.filter(m => m.house_id).length;
   const covenMembers = data.members.filter(m => m.coven).length;
   const nobles = data.members.filter(m => m.is_noble).length;
@@ -56,10 +57,10 @@ export function OverviewTab({ data }: Props) {
   // 4 tiles, not 5: coven membership rolled into Members as a sub-stat to
   // remove the visual collision with Nobles (both gold accents previously).
   const stats = [
-    { label: 'Members',    value: totalMembers,           Icon: Icons.Users,     color: '#d4b46d', sub: covenMembers ? `${covenMembers} in covens` : undefined },
-    { label: 'Nobles',     value: nobles,                 Icon: Icons.Crown,     color: '#e0c66d', sub: undefined as string | undefined },
-    { label: 'Active',     value: active,                 Icon: Icons.Heart,     color: '#6dd47e', sub: undefined as string | undefined },
-    { label: 'Businesses', value: data.businesses.length, Icon: Icons.Briefcase, color: '#7eb0d4', sub: undefined as string | undefined },
+    { label: 'Members',    value: totalMembers,           Icon: Icons.Users,     color: '#d4b46d', sub: covenMembers ? `${covenMembers} in covens` : undefined, tab: null as string | null },
+    { label: 'Nobles',     value: nobles,                 Icon: Icons.Crown,     color: '#e0c66d', sub: undefined as string | undefined,                         tab: null },
+    { label: 'Active',     value: active,                 Icon: Icons.Heart,     color: '#6dd47e', sub: undefined as string | undefined,                         tab: null },
+    { label: 'Businesses', value: data.businesses.length, Icon: Icons.Briefcase, color: '#7eb0d4', sub: undefined as string | undefined,                         tab: 'businesses' },
   ];
 
   return (
@@ -70,7 +71,7 @@ export function OverviewTab({ data }: Props) {
       {/* Stat cards */}
       <div className="grid grid-cols-[repeat(auto-fit,minmax(200px,1fr))] gap-4 mb-10">
         {stats.map(s => (
-          <div key={s.label} className="card card-lift p-6 relative overflow-hidden">
+          <div key={s.label} onClick={() => s.tab && onNavigate?.(s.tab)} className={`card card-lift p-6 relative overflow-hidden${s.tab ? ' cursor-pointer hover:ring-1 hover:ring-gold-500/30 transition-shadow' : ''}`}>
             <div
               className="absolute -top-8 -right-8 w-32 h-32 pointer-events-none"
               style={{ background: `radial-gradient(circle, ${s.color}20, transparent 70%)` }}
@@ -143,7 +144,7 @@ export function OverviewTab({ data }: Props) {
             {resourceList.map(([name, count]) => {
               const meta = resourceMetaFor(name);
               return (
-                <div key={name} className="card card-lift p-4 flex items-center gap-3.5">
+                <div key={name} onClick={() => onNavigate?.('inventory')} className="card card-lift p-4 flex items-center gap-3.5 cursor-pointer hover:ring-1 hover:ring-gold-500/30 transition-shadow">
                   <div className="w-11 h-11 rounded-xl flex items-center justify-center flex-shrink-0"
                        style={{ background: `linear-gradient(180deg, ${meta.color}30, ${meta.color}15)`, border: `1px solid ${meta.color}40`, color: meta.color }}>
                     <meta.Icon size={22} />
@@ -166,7 +167,7 @@ export function OverviewTab({ data }: Props) {
           const houseMembers = data.members.filter(m => m.house_id === house.id);
           const houseNobles = houseMembers.filter(m => m.is_noble).length;
           return (
-            <div key={house.id} className="card card-lift p-6 relative overflow-hidden">
+            <div key={house.id} onClick={() => onNavigate?.(house.id)} className="card card-lift p-6 relative overflow-hidden cursor-pointer hover:ring-1 hover:ring-gold-500/30 transition-shadow">
               <div className="absolute top-0 left-0 right-0 h-[3px]"
                    style={{ background: `linear-gradient(90deg, ${house.primary_color}, transparent)` }} />
               <div className="flex items-center gap-3 mb-3.5">
