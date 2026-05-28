@@ -160,6 +160,18 @@ export interface InventoryLogEntry {
   actor: string | null;
 }
 
+export interface BardWork {
+  id: string;
+  lance_id: string;
+  house_id: string;
+  author_member_id: string;
+  title: string;
+  work_type: 'story' | 'feat' | 'song' | 'poem' | 'other';
+  content: string;
+  created_at: string;
+  updated_at: string;
+}
+
 /** Aggregated lance data shape returned by useLanceData. */
 export interface LanceData {
   houses: House[];
@@ -177,6 +189,7 @@ export interface LanceData {
   magicItemsStock: MagicItemStock[];
   craftingQueue: CraftingQueueItem[];
   covenRituals: CovenRitual[];
+  bardWorks: BardWork[];
 }
 
 export interface MagicItemStock {

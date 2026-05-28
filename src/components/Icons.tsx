@@ -221,6 +221,23 @@ export const Icons = {
   Moon: base(
     <path d="M12 3a6 6 0 0 0 9 9 9 9 0 1 1-9-9z" />
   ),
+  Feather: base(
+    <>
+      <path d="M20.24 12.24a6 6 0 0 0-8.49-8.49L5 10.5V19h8.5z" />
+      <line x1="16" y1="8" x2="2" y2="22" />
+      <line x1="17.5" y1="15" x2="9" y2="15" />
+    </>
+  ),
+  Scroll: base(
+    <>
+      <path d="M8 21h12a2 2 0 0 0 2-2v-2H10v2a2 2 0 1 1-4 0V5a2 2 0 1 0-4 0v3h4" />
+      <path d="M19 3H4.5A2.5 2.5 0 0 0 2 5.5V8h17V5a2 2 0 0 0-2-2" />
+      <path d="M15 11h-5" />
+      <path d="M19 11h-2" />
+      <path d="M15 15h-5" />
+      <path d="M19 15h-2" />
+    </>
+  ),
   Google: ({ size = 18, ...props }: IconProps) => (
     <svg width={size} height={size} viewBox="0 0 24 24" {...props}>
       <path d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92a5.06 5.06 0 0 1-2.2 3.32v2.77h3.57c2.08-1.92 3.27-4.74 3.27-8.1z" fill="#4285F4" />

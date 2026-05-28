@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useState } from 'react';
 import { supabase } from '@/lib/supabase';
 import type {
+  BardWork,
   Business,
   CharInventoryItem,
   CharacterRitual,
@@ -42,7 +43,8 @@ export function useLanceData(lanceId: string | null) {
     characterSpells: [],
     magicItemsStock: [],
     craftingQueue: [],
-    covenRituals: []
+    covenRituals: [],
+    bardWorks: []
   });
   const [memberships, setMemberships] = useState<LanceMembership[]>([]);
   const [settings, setSettings] = useState<LanceSettings | null>(null);
@@ -54,7 +56,7 @@ export function useLanceData(lanceId: string | null) {
     if (!silent) setLoading(true);
     setError(null);
     try {
-      const [houses, members, covens, fns, biz, bizOwners, inv, invLog, ms, evts, charInv, charSkills, charSpells, charRituals, magicStock, craftingQ, covenRituals] = await Promise.all([
+      const [houses, members, covens, fns, biz, bizOwners, inv, invLog, ms, evts, charInv, charSkills, charSpells, charRituals, magicStock, craftingQ, covenRituals, bardWorksRes] = await Promise.all([
         supabase.from('houses').select('*').eq('lance_id', lanceId).order('sort_order'),
         supabase.from('members').select('*').eq('lance_id', lanceId).order('is_noble', { ascending: false }).order('name'),
         supabase.from('covens').select('*').eq('lance_id', lanceId),
@@ -71,7 +73,8 @@ export function useLanceData(lanceId: string | null) {
         supabase.from('character_rituals').select('*'),
         supabase.from('magic_items_stock').select('*').eq('lance_id', lanceId).order('created_at', { ascending: false }),
         supabase.from('crafting_queue').select('*').eq('lance_id', lanceId).order('created_at', { ascending: false }),
-        supabase.from('coven_rituals').select('*')
+        supabase.from('coven_rituals').select('*'),
+        supabase.from('bard_works').select('*')
       ]);
 
       // Scope character tables (no lance_id column) to this lance's members/covens
@@ -100,7 +103,8 @@ export function useLanceData(lanceId: string | null) {
         characterRituals:   ((charRituals.data ?? []) as CharacterRitual[]).filter(r => memberIds.has(r.member_id)),
         magicItemsStock: (magicStock.data ?? []) as MagicItemStock[],
         craftingQueue: (craftingQ.data ?? []) as CraftingQueueItem[],
-        covenRituals: ((covenRituals.data ?? []) as CovenRitual[]).filter(r => covenIds.has(r.coven_id))
+        covenRituals: ((covenRituals.data ?? []) as CovenRitual[]).filter(r => covenIds.has(r.coven_id)),
+        bardWorks: ((bardWorksRes.data ?? []) as BardWork[]).filter(r => memberIds.has(r.author_member_id))
       });
       setMemberships((ms.data ?? []) as LanceMembership[]);
 
@@ -404,6 +408,19 @@ export function useLanceData(lanceId: string | null) {
     await reload(true);
   }, [reload]);
 
+  // ---- Bard Works ----
+  const upsertBardWork = useCallback(async (work: Omit<BardWork, 'id' | 'created_at' | 'updated_at'> & { id?: string }) => {
+    const { error: err } = await supabase.from('bard_works').upsert({ ...work, updated_at: new Date().toISOString() });
+    if (err) throw new Error(err.message);
+    await reload(true);
+  }, [reload]);
+
+  const deleteBardWork = useCallback(async (id: string) => {
+    const { error: err } = await supabase.from('bard_works').delete().eq('id', id);
+    if (err) throw new Error(err.message);
+    await reload(true);
+  }, [reload]);
+
   // ---- Danger Zone ----
   const resetInventoryQty = useCallback(async () => {
     const { error: err } = await supabase.from('inventory').update({ current_qty: 0 }).eq('lance_id', lanceId).not('item', 'is', null);
@@ -495,6 +512,8 @@ export function useLanceData(lanceId: string | null) {
     deleteCraftingQueueItem,
     upsertCovenRitual,
     deleteCovenRitual,
-    updateCovenMana
+    updateCovenMana,
+    upsertBardWork,
+    deleteBardWork
   };
 }
