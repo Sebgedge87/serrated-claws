@@ -37,6 +37,14 @@ export interface CharacterSpell {
   notes: string | null;
 }
 
+export interface CharacterRitual {
+  id: string;
+  member_id: string;
+  ritual_name: string;
+  realm: string;
+  notes: string | null;
+}
+
 export interface LanceSettings {
   id: string;
   name: string;
@@ -114,6 +122,8 @@ export interface Member {
   attending_event: boolean;
   territory: string | null;
   total_xp: number | null;
+  tithe_paid: boolean;
+  tithe_notes: string | null;
 }
 
 export interface Business {
@@ -155,6 +165,7 @@ export interface LanceData {
   characterInventory: CharInventoryItem[];
   characterSkills: CharacterSkill[];
   characterSpells: CharacterSpell[];
+  characterRituals: CharacterRitual[];
   magicItemsStock: MagicItemStock[];
   craftingQueue: CraftingQueueItem[];
   covenRituals: CovenRitual[];

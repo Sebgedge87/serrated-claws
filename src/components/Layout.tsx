@@ -293,6 +293,8 @@ export function Layout() {
             onDeleteSpell={lance.deleteCharacterSpell}
             onUpsertCharInventory={lance.upsertCharInventory}
             onDeleteCharInventory={lance.deleteCharInventory}
+            onUpsertRitual={lance.upsertCharacterRitual}
+            onDeleteRitual={lance.deleteCharacterRitual}
           />
           );
         })()}

@@ -32,6 +32,8 @@ export function AddPersonModal({ data, initial, onClose, onSave, onUpsertCharInv
     rings_per_event: null as number | null,
     crowns_per_event: null as number | null,
     thrones_per_event: null as number | null,
+    tithe_paid: false,
+    tithe_notes: null,
     attending_event: false,
     coven: null,
     notes: null,
@@ -124,6 +126,15 @@ export function AddPersonModal({ data, initial, onClose, onSave, onUpsertCharInv
           </div>
         </div>
       </Field>
+        <Field label="Tithe Paid">
+          <label className="flex items-center gap-2.5 mt-2.5 cursor-pointer">
+            <input type="checkbox" checked={!!form.tithe_paid} onChange={e => set('tithe_paid', e.target.checked)} className="w-5 h-5 accent-gold-300" />
+            <span className="text-sm">Tithe has been paid</span>
+          </label>
+        </Field>
+        <Field label="Tithe Notes" optional>
+          <input className="input" placeholder="Any tithe notes…" value={form.tithe_notes ?? ''} onChange={e => set('tithe_notes', e.target.value || null)} />
+        </Field>
         <Field label="Coven">
           <select className="input" value={form.coven ?? ''} onChange={e => set('coven', e.target.value || null)}>
             <option value="">None</option>
