@@ -34,6 +34,9 @@ export function Layout() {
   const lance = useLanceData(lances.currentLanceId);
   const perms = usePermissions(lances.currentMembership, lance.data);
   const isAdmin = lances.currentMembership?.role === 'admin' || lances.currentMembership?.role === 'super_admin' || profile?.role === 'super_admin';
+  const currentMember = lance.data.members.find(m => m.id === (profile?.member_id ?? null));
+  const isBard = !!currentMember && (currentMember.function?.toLowerCase().includes('bard') ?? false);
+  const canAccessBards = isAdmin || isBard;
   const [activeTab, setActiveTab] = useState<TabId>('overview');
   const [search, setSearch] = useState('');
   const [showAddHouse, setShowAddHouse] = useState(false);
@@ -69,7 +72,7 @@ export function Layout() {
     { id: 'functions', label: 'Functions', Icon: Icons.Swords },
     { id: 'businesses', label: 'Businesses', Icon: Icons.Briefcase, separator: true },
     { id: 'inventory', label: 'Inventory', Icon: Icons.Package },
-    { id: 'bards', label: 'Bards', Icon: Icons.Feather, separator: true },
+    ...(canAccessBards ? [{ id: 'bards', label: 'Bards', Icon: Icons.Feather, separator: true } as TabDef] : []),
     ...(isAdmin ? [{ id: 'admin', label: 'Admin', Icon: Icons.Shield }] : [])
   ];
 
@@ -348,9 +351,11 @@ export function Layout() {
                 onUpsertRitual={lance.upsertCharacterRitual}
                 onDeleteRitual={lance.deleteCharacterRitual}
                 onViewMember={setSelectedMember}
-                currentMemberIdForBard={profile?.member_id ?? null}
-                onUpsertBardWork={lance.upsertBardWork}
-                onDeleteBardWork={lance.deleteBardWork}
+                {...(canAccessBards ? {
+                  currentMemberIdForBard: profile?.member_id ?? null,
+                  onUpsertBardWork: lance.upsertBardWork,
+                  onDeleteBardWork: lance.deleteBardWork,
+                } : {})}
               />
             )}
             {activeTab === 'unassigned' && <UnassignedTab data={lance.data} isAdmin={isAdmin} onUpsert={lance.upsertMember} onDelete={lance.deleteMember} onUpsertCharInventory={lance.upsertCharInventory} onDeleteCharInventory={lance.deleteCharInventory} onUpsertSkill={lance.upsertCharacterSkill} onDeleteSkill={lance.deleteCharacterSkill} onUpsertRitual={lance.upsertCharacterRitual} onDeleteRitual={lance.deleteCharacterRitual} onViewMember={setSelectedMember} />}
