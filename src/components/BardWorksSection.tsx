@@ -140,12 +140,14 @@ export function BardWorksSection({ houseId, data, currentMemberId, isAdmin, onUp
     .filter(w => w.house_id === houseId)
     .sort((a, b) => new Date(b.updated_at).getTime() - new Date(a.updated_at).getTime());
 
-  // Check if current user has a Bard function in this house
+  const bardFunctionIds = new Set(
+    data.functions.filter(f => f.name.toLowerCase().includes('bard')).map(f => f.id)
+  );
   const isBardInHouse = currentMemberId
     ? data.members.some(m =>
         m.id === currentMemberId &&
         m.house_id === houseId &&
-        (m.function?.toLowerCase().includes('bard') ?? false)
+        !!m.function && bardFunctionIds.has(m.function)
       )
     : false;
 

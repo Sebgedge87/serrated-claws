@@ -130,11 +130,12 @@ export function BardTab({ data, currentMemberId, isAdmin, onUpsert, onDelete }: 
   const [editorOpen, setEditorOpen] = useState(false);
   const [editingWork, setEditingWork] = useState<BardWork | null>(null);
 
-  // Check if current user has Bard function in any house
-  const myBardHouseId = currentMemberId
-    ? data.members.find(m => m.id === currentMemberId && (m.function?.toLowerCase().includes('bard') ?? false))?.house_id ?? null
-    : null;
-  const canAdd = (myBardHouseId != null) || isAdmin;
+  const bardFunctionIds = new Set(
+    data.functions.filter(f => f.name.toLowerCase().includes('bard')).map(f => f.id)
+  );
+  const myMember = currentMemberId ? data.members.find(m => m.id === currentMemberId) : null;
+  const isBard = !!myMember?.function && bardFunctionIds.has(myMember.function);
+  const canAdd = isBard || isAdmin;
 
   const filtered = data.bardWorks
     .filter(w => filterType === 'all' || w.work_type === filterType)
@@ -279,7 +280,7 @@ export function BardTab({ data, currentMemberId, isAdmin, onUpsert, onDelete }: 
         <BardWorkEditor
           initial={editingWork}
           lanceId={editingWork?.lance_id ?? lanceId}
-          houseId={editingWork?.house_id ?? (myBardHouseId ?? data.houses[0]?.id ?? '')}
+          houseId={editingWork?.house_id ?? (myMember?.house_id ?? data.houses[0]?.id ?? '')}
           authorMemberId={editingWork?.author_member_id ?? (currentMemberId ?? '')}
           onSave={onUpsert}
           onClose={() => { setEditorOpen(false); setEditingWork(null); }}

@@ -28,15 +28,16 @@ drop policy if exists bard_works_update        on public.bard_works;
 drop policy if exists bard_works_delete_author on public.bard_works;
 drop policy if exists bard_works_delete_admin  on public.bard_works;
 
--- SELECT: bards in the lance or admins only
+-- SELECT: members whose assigned function is named 'bard' (case-insensitive), or admins
 create policy bard_works_select_bard on public.bard_works
   for select using (
     exists (
       select 1 from public.profiles pr
-      join public.members m on m.id = pr.member_id
+      join public.members m  on m.id  = pr.member_id
+      join public.functions fn on fn.id = m.function
       where pr.id = auth.uid()
         and m.lance_id = bard_works.lance_id
-        and lower(m.function) like '%bard%'
+        and lower(fn.name) like '%bard%'
     )
   );
 
@@ -55,11 +56,12 @@ create policy bard_works_insert_bard on public.bard_works
   for insert with check (
     exists (
       select 1 from public.profiles pr
-      join public.members m on m.id = pr.member_id
+      join public.members m  on m.id  = pr.member_id
+      join public.functions fn on fn.id = m.function
       where pr.id = auth.uid()
         and pr.member_id = bard_works.author_member_id
         and m.lance_id = bard_works.lance_id
-        and lower(m.function) like '%bard%'
+        and lower(fn.name) like '%bard%'
     )
   );
 
@@ -73,7 +75,7 @@ create policy bard_works_insert_admin on public.bard_works
     )
   );
 
--- UPDATE: author only (bard status at insert time is sufficient)
+-- UPDATE: author only (bard status at write time is sufficient)
 create policy bard_works_update on public.bard_works
   for update using (
     exists (

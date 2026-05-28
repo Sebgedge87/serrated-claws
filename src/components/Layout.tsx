@@ -35,7 +35,8 @@ export function Layout() {
   const perms = usePermissions(lances.currentMembership, lance.data);
   const isAdmin = lances.currentMembership?.role === 'admin' || lances.currentMembership?.role === 'super_admin' || profile?.role === 'super_admin';
   const currentMember = lance.data.members.find(m => m.id === (profile?.member_id ?? null));
-  const isBard = !!currentMember && (currentMember.function?.toLowerCase().includes('bard') ?? false);
+  const bardFunctionIds = new Set(lance.data.functions.filter(f => f.name.toLowerCase().includes('bard')).map(f => f.id));
+  const isBard = !!currentMember?.function && bardFunctionIds.has(currentMember.function);
   const canAccessBards = isAdmin || isBard;
   const [activeTab, setActiveTab] = useState<TabId>('overview');
   const [search, setSearch] = useState('');
