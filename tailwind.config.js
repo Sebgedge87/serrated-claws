@@ -4,66 +4,44 @@ export default {
   theme: {
     extend: {
       fontFamily: {
-        display: ['Cinzel', 'Georgia', 'serif'],
+        display: ['Cinzel', 'serif'],
         sans: ['Inter', 'system-ui', 'sans-serif'],
       },
       colors: {
-        gold: {
-          200: '#f6e9c7',
-          300: '#f0e0bc',
-          400: '#d4b46d',
-          500: '#c9a961',
-          600: '#b8954c',
-          700: '#8e6d2e',
-        },
         ink: {
-          900: '#0a0a0f',
-          800: '#14110e',
-          750: '#1a1612',
-          700: '#1f1a14',
-          600: '#2a2318',
-          500: '#3a3328',
-          400: '#5a4f3e',
-          300: '#8a7f70',
-          200: '#b3a99a',
-          100: '#e8e6e3',
+          950: ({ opacityValue }) => opacityValue !== undefined ? `rgb(var(--ink-950) / ${opacityValue})` : 'rgb(var(--ink-950))',
+          900: ({ opacityValue }) => opacityValue !== undefined ? `rgb(var(--ink-900) / ${opacityValue})` : 'rgb(var(--ink-900))',
+          800: ({ opacityValue }) => opacityValue !== undefined ? `rgb(var(--ink-800) / ${opacityValue})` : 'rgb(var(--ink-800))',
+          700: ({ opacityValue }) => opacityValue !== undefined ? `rgb(var(--ink-700) / ${opacityValue})` : 'rgb(var(--ink-700))',
+          300: ({ opacityValue }) => opacityValue !== undefined ? `rgb(var(--ink-300) / ${opacityValue})` : 'rgb(var(--ink-300))',
+          100: ({ opacityValue }) => opacityValue !== undefined ? `rgb(var(--ink-100) / ${opacityValue})` : 'rgb(var(--ink-100))',
         },
-        danger: {
-          400: '#c45a58',
-          500: '#a8413f',
-          600: '#7a2a28',
+        gold: {
+          50:  'rgb(240 224 188 / <alpha-value>)',
+          100: 'rgb(232 213 183 / <alpha-value>)',
+          300: 'rgb(212 180 109 / <alpha-value>)',
+          400: 'rgb(212 180 109 / <alpha-value>)',
+          500: 'rgb(201 169 97 / <alpha-value>)',
+          700: 'rgb(184 149 76 / <alpha-value>)',
+          900: 'rgb(107 84 41 / <alpha-value>)',
         },
-        success: {
-          400: '#6dd47e',
-          500: '#46b464',
+        crimson: {
+          500: 'rgb(168 65 63 / <alpha-value>)',
+          700: 'rgb(122 42 40 / <alpha-value>)',
         },
-        info: {
-          400: '#7eb0d4',
-        },
-        mystic: {
-          400: '#b56eb5',
-        },
-        sage: {
-          500: '#6dd47e',
-        },
-      },
-      backgroundImage: {
-        'gold-gradient': 'linear-gradient(180deg, #d4b46d, #b8954c)',
-        'gold-text': 'linear-gradient(180deg, #f0e0bc 0%, #c9a961 100%)',
+        sage:      { 500: 'rgb(109 212 126 / <alpha-value>)' },
+        sky:       { 500: 'rgb(126 176 212 / <alpha-value>)' },
+        amethyst:  { 500: 'rgb(181 110 181 / <alpha-value>)' },
+        success:   { 400: 'rgb(109 212 126 / <alpha-value>)', 500: 'rgb(109 212 126 / <alpha-value>)' },
+        danger:    { 400: 'rgb(255 122 122 / <alpha-value>)', 500: 'rgb(220 80 80 / <alpha-value>)' },
       },
       boxShadow: {
-        'card': '0 1px 0 rgba(255,255,255,0.04) inset, 0 8px 24px -12px rgba(0,0,0,0.4)',
-        'lift': '0 1px 0 rgba(255,255,255,0.06) inset, 0 30px 60px -20px rgba(0,0,0,0.6), 0 0 0 1px rgba(201,169,97,0.1)',
+        glow: '0 0 24px rgba(212, 180, 109, 0.25)',
+        card: '0 1px 0 rgba(255,255,255,0.04) inset, 0 8px 24px -12px rgba(0,0,0,0.4)',
+        lift: '0 1px 0 rgba(255,255,255,0.06) inset, 0 30px 60px -20px rgba(0,0,0,0.6), 0 0 0 1px rgba(201, 169, 97, 0.1)',
       },
-      keyframes: {
-        'fade-in': {
-          '0%': { opacity: '0', transform: 'translateY(8px)' },
-          '100%': { opacity: '1', transform: 'translateY(0)' },
-        },
-      },
-      animation: {
-        'fade-in': 'fade-in 0.3s cubic-bezier(0.2, 0.8, 0.2, 1)',
-      },
+      animation: { 'fade-in': 'fadeIn 0.3s cubic-bezier(0.2, 0.8, 0.2, 1)' },
+      keyframes: { fadeIn: { '0%': { opacity: '0', transform: 'translateY(8px)' }, '100%': { opacity: '1', transform: 'translateY(0)' } } },
     },
   },
   plugins: [],

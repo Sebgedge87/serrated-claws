@@ -167,6 +167,33 @@
   background: linear-gradient(180deg, rgba(250, 244, 230, 0.95), rgba(242, 235, 218, 0.9));
 }
 
+/* ── Light mode pill & accent overrides (contrast WCAG AA) ──────────────── */
+[data-theme="light"] .pill-noble {
+  color: #6b4f0e;
+  background: rgba(107, 79, 14, 0.1);
+  border-color: rgba(107, 79, 14, 0.3);
+  box-shadow: none;
+}
+[data-theme="light"] .pill-active {
+  color: #1a5c25;
+  background: rgba(26, 92, 37, 0.1);
+  border-color: rgba(26, 92, 37, 0.3);
+}
+[data-theme="light"] .pill-inactive {
+  color: #4a4a4a;
+  background: rgba(74, 74, 74, 0.1);
+  border-color: rgba(74, 74, 74, 0.25);
+}
+[data-theme="light"] .pill-kia {
+  color: #7a1515;
+  background: rgba(122, 21, 21, 0.1);
+  border-color: rgba(122, 21, 21, 0.3);
+}
+
+/* Gold accent text is too faint on parchment — darken for light mode */
+[data-theme="light"] .tab-btn.active { color: #7a5a10; border-bottom-color: #7a5a10; }
+[data-theme="light"] .text-gold-300 { color: #7a5a10; }
+
 .scrollbar-hide::-webkit-scrollbar { display: none; }
 .scrollbar-hide { -ms-overflow-style: none; scrollbar-width: none; }
 

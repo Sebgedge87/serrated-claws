@@ -10,12 +10,12 @@ export default {
       },
       colors: {
         ink: {
-          950: 'rgb(var(--ink-950) / <alpha-value>)',
-          900: 'rgb(var(--ink-900) / <alpha-value>)',
-          800: 'rgb(var(--ink-800) / <alpha-value>)',
-          700: 'rgb(var(--ink-700) / <alpha-value>)',
-          300: 'rgb(var(--ink-300) / <alpha-value>)',
-          100: 'rgb(var(--ink-100) / <alpha-value>)',
+          950: ({ opacityValue }: { opacityValue?: string }) => opacityValue !== undefined ? `rgb(var(--ink-950) / ${opacityValue})` : 'rgb(var(--ink-950))',
+          900: ({ opacityValue }: { opacityValue?: string }) => opacityValue !== undefined ? `rgb(var(--ink-900) / ${opacityValue})` : 'rgb(var(--ink-900))',
+          800: ({ opacityValue }: { opacityValue?: string }) => opacityValue !== undefined ? `rgb(var(--ink-800) / ${opacityValue})` : 'rgb(var(--ink-800))',
+          700: ({ opacityValue }: { opacityValue?: string }) => opacityValue !== undefined ? `rgb(var(--ink-700) / ${opacityValue})` : 'rgb(var(--ink-700))',
+          300: ({ opacityValue }: { opacityValue?: string }) => opacityValue !== undefined ? `rgb(var(--ink-300) / ${opacityValue})` : 'rgb(var(--ink-300))',
+          100: ({ opacityValue }: { opacityValue?: string }) => opacityValue !== undefined ? `rgb(var(--ink-100) / ${opacityValue})` : 'rgb(var(--ink-100))',
         },
         gold: {
           50:  'rgb(240 224 188 / <alpha-value>)',
