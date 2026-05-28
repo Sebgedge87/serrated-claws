@@ -10,12 +10,12 @@ export default {
       },
       colors: {
         ink: {
-          950: 'rgb(10 10 15 / <alpha-value>)',
-          900: 'rgb(20 17 14 / <alpha-value>)',
-          800: 'rgb(26 22 18 / <alpha-value>)',
-          700: 'rgb(42 35 24 / <alpha-value>)',
-          300: 'rgb(180 170 156 / <alpha-value>)',
-          100: 'rgb(232 230 227 / <alpha-value>)',
+          950: 'rgb(var(--ink-950) / <alpha-value>)',
+          900: 'rgb(var(--ink-900) / <alpha-value>)',
+          800: 'rgb(var(--ink-800) / <alpha-value>)',
+          700: 'rgb(var(--ink-700) / <alpha-value>)',
+          300: 'rgb(var(--ink-300) / <alpha-value>)',
+          100: 'rgb(var(--ink-100) / <alpha-value>)',
         },
         gold: {
           50:  'rgb(240 224 188 / <alpha-value>)',

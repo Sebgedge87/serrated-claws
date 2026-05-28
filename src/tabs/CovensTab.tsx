@@ -543,7 +543,7 @@ function RitualModal({ covenId, domain, initial, onClose, onSave }: {
 
       <Field label="Magnitude">
         <input type="number" min={1} className="input" value={magnitude}
-          onChange={e => setMagnitude(parseInt(e.target.value) || 1)} disabled={!selected} />
+          onChange={e => setMagnitude(parseInt(e.target.value, 10) || 1)} disabled={!selected} />
       </Field>
 
       <Field label="Casting Wording" optional>

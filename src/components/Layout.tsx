@@ -3,6 +3,7 @@ import { useAuth } from '@/hooks/useAuth';
 import { useLanceData } from '@/hooks/useLanceData';
 import { useLances } from '@/hooks/useLances';
 import { usePermissions } from '@/hooks/usePermissions';
+import { useTheme } from '@/hooks/useTheme';
 import { Icons } from '@/components/Icons';
 import { useConfirm } from '@/components/ConfirmDialog';
 import { LanceGate } from '@/components/LanceGate';
@@ -38,6 +39,7 @@ export function Layout() {
   const [selectedMember, setSelectedMember] = useState<Member | null>(null);
   const [showCreateCharacter, setShowCreateCharacter] = useState(false);
   const { confirm, Dialog: ConfirmDialog } = useConfirm();
+  const { theme, toggleTheme } = useTheme();
 
   const filteredMembers = useMemo(() => {
     const q = search.trim().toLowerCase();
@@ -192,6 +194,9 @@ export function Layout() {
             >
               <Icons.LogOut size={14} />
               Leave Lance
+            </button>
+            <button onClick={toggleTheme} className="btn btn-ghost btn-sm" title={theme === 'dark' ? 'Switch to light mode' : 'Switch to dark mode'}>
+              {theme === 'dark' ? <Icons.Sun size={14} /> : <Icons.Moon size={14} />}
             </button>
             <button onClick={signOut} className="btn btn-ghost btn-sm">
               <Icons.LogOut size={14} />

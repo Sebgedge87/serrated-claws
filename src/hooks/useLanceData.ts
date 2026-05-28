@@ -71,6 +71,10 @@ export function useLanceData(lanceId: string | null) {
         supabase.from('coven_rituals').select('*')
       ]);
 
+      // Scope character tables (no lance_id column) to this lance's members/covens
+      const memberIds = new Set((members.data ?? []).map((m: { id: string }) => m.id));
+      const covenIds  = new Set((covens.data  ?? []).map((c: { id: string }) => c.id));
+
       const businesses: Business[] = (biz.data ?? []).map(b => ({
         ...(b as Omit<Business, 'owners'>),
         owners: (bizOwners.data ?? [])
@@ -87,12 +91,12 @@ export function useLanceData(lanceId: string | null) {
         inventory: (inv.data ?? []),
         inventoryLog: (invLog.data ?? []),
         events: (evts.data ?? []) as LanceEvent[],
-        characterInventory: (charInv.data ?? []) as CharInventoryItem[],
-        characterSkills: (charSkills.data ?? []) as CharacterSkill[],
-        characterSpells: (charSpells.data ?? []) as CharacterSpell[],
+        characterInventory: ((charInv.data ?? []) as CharInventoryItem[]).filter(r => memberIds.has(r.member_id)),
+        characterSkills:    ((charSkills.data ?? []) as CharacterSkill[]).filter(r => memberIds.has(r.member_id)),
+        characterSpells:    ((charSpells.data ?? []) as CharacterSpell[]).filter(r => memberIds.has(r.member_id)),
         magicItemsStock: (magicStock.data ?? []) as MagicItemStock[],
         craftingQueue: (craftingQ.data ?? []) as CraftingQueueItem[],
-        covenRituals: (covenRituals.data ?? []) as CovenRitual[]
+        covenRituals: ((covenRituals.data ?? []) as CovenRitual[]).filter(r => covenIds.has(r.coven_id))
       });
       setMemberships((ms.data ?? []) as LanceMembership[]);
 
@@ -191,7 +195,8 @@ export function useLanceData(lanceId: string | null) {
   }, [reload]);
 
   const deleteMember = useCallback(async (id: string) => {
-    await supabase.from('lance_memberships').update({ member_id: null }).eq('member_id', id);
+    const { error: membershipErr } = await supabase.from('lance_memberships').update({ member_id: null }).eq('member_id', id);
+    if (membershipErr) throw new Error(membershipErr.message);
     const { error: err } = await supabase.from('members').delete().eq('id', id);
     if (err) throw new Error(err.message);
     await reload(true);
@@ -248,14 +253,16 @@ export function useLanceData(lanceId: string | null) {
   // ---- Memberships / Profiles ----
   const upsertProfile = useCallback(async (id: string, updates: { role?: UserRole; member_id?: string | null; display_name?: string | null }) => {
     if (updates.display_name !== undefined) {
-      await supabase.from('profiles').update({ display_name: updates.display_name }).eq('id', id);
+      const { error: profileErr } = await supabase.from('profiles').update({ display_name: updates.display_name }).eq('id', id);
+      if (profileErr) throw new Error(profileErr.message);
     }
     const membershipUpdate: Record<string, unknown> = {};
     if (updates.role !== undefined) membershipUpdate.role = updates.role;
     if (updates.member_id !== undefined) membershipUpdate.member_id = updates.member_id;
     if (Object.keys(membershipUpdate).length > 0) {
-      await supabase.from('lance_memberships')
+      const { error: membershipErr } = await supabase.from('lance_memberships')
         .upsert({ lance_id: lanceId, profile_id: id, ...membershipUpdate }, { onConflict: 'lance_id,profile_id' });
+      if (membershipErr) throw new Error(membershipErr.message);
     }
     await reload(true);
   }, [lanceId, reload]);
@@ -418,11 +425,13 @@ export function useLanceData(lanceId: string | null) {
     const delta = direction === 'In' ? amount : direction === 'Out' ? -amount : 0;
     const existing = data.inventory.find(i => i.item === item);
     const nextQty = Math.max(0, (existing?.current_qty ?? 0) + delta);
-    await supabase.from('inventory').upsert(
+    const { error: upsertErr } = await supabase.from('inventory').upsert(
       { lance_id: lanceId, item, current_qty: nextQty, required_qty: existing?.required_qty ?? 0 },
       { onConflict: 'lance_id,item' }
     );
-    await supabase.from('inventory_log').insert({ lance_id: lanceId, item, amount, direction, notes: notes ?? null });
+    if (upsertErr) throw new Error(upsertErr.message);
+    const { error: logErr } = await supabase.from('inventory_log').insert({ lance_id: lanceId, item, amount, direction, notes: notes ?? null });
+    if (logErr) throw new Error(logErr.message);
     await reload(true);
   }, [lanceId, data.inventory, reload]);
 

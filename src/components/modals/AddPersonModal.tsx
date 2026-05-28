@@ -112,15 +112,15 @@ export function AddPersonModal({ data, initial, onClose, onSave, onUpsertCharInv
         <div className="grid grid-cols-3 gap-2">
           <div>
             <label className="text-[10px] text-ink-100/40 block mb-0.5">Rings</label>
-            <input type="number" min={0} className="input" placeholder="0" value={form.rings_per_event ?? ''} onChange={e => set('rings_per_event', e.target.value ? parseInt(e.target.value) : null)} />
+            <input type="number" min={0} className="input" placeholder="0" value={form.rings_per_event ?? ''} onChange={e => set('rings_per_event', e.target.value ? parseInt(e.target.value, 10) : null)} />
           </div>
           <div>
             <label className="text-[10px] text-ink-100/40 block mb-0.5">Crowns</label>
-            <input type="number" min={0} className="input" placeholder="0" value={form.crowns_per_event ?? ''} onChange={e => set('crowns_per_event', e.target.value ? parseInt(e.target.value) : null)} />
+            <input type="number" min={0} className="input" placeholder="0" value={form.crowns_per_event ?? ''} onChange={e => set('crowns_per_event', e.target.value ? parseInt(e.target.value, 10) : null)} />
           </div>
           <div>
             <label className="text-[10px] text-ink-100/40 block mb-0.5">Thrones</label>
-            <input type="number" min={0} className="input" placeholder="0" value={form.thrones_per_event ?? ''} onChange={e => set('thrones_per_event', e.target.value ? parseInt(e.target.value) : null)} />
+            <input type="number" min={0} className="input" placeholder="0" value={form.thrones_per_event ?? ''} onChange={e => set('thrones_per_event', e.target.value ? parseInt(e.target.value, 10) : null)} />
           </div>
         </div>
       </Field>
@@ -345,7 +345,7 @@ function CharacterSkillsSection({
                 max={10}
                 className="input text-sm flex-1"
                 value={newSkill.rank}
-                onChange={e => setNewSkill(n => ({ ...n, rank: Math.max(1, parseInt(e.target.value) || 1) }))}
+                onChange={e => setNewSkill(n => ({ ...n, rank: Math.max(1, parseInt(e.target.value, 10) || 1) }))}
               />
             </div>
           </div>
@@ -458,7 +458,7 @@ function CharInventorySection({
               className="input text-sm"
               min={1}
               value={newItem.qty}
-              onChange={e => setNewItem(n => ({ ...n, qty: parseInt(e.target.value) || 1 }))}
+              onChange={e => setNewItem(n => ({ ...n, qty: parseInt(e.target.value, 10) || 1 }))}
             />
           </div>
           <input
