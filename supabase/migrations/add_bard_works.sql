@@ -1,4 +1,6 @@
-create table if not exists public.bard_works (
+drop table if exists public.bard_works cascade;
+
+create table public.bard_works (
   id               uuid        primary key default gen_random_uuid(),
   lance_id         uuid        not null references public.lances(id) on delete cascade,
   house_id         text        not null references public.houses(id) on delete cascade,
