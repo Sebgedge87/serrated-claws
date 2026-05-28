@@ -45,14 +45,6 @@ export interface CharacterSpell {
   notes: string | null;
 }
 
-export interface CharacterRitual {
-  id: string;
-  member_id: string;
-  ritual_name: string;
-  realm: string;
-  notes: string | null;
-}
-
 export interface LanceSettings {
   id: string;
   name: string;
