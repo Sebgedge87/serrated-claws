@@ -16,6 +16,7 @@ import { FunctionsTab } from '@/tabs/FunctionsTab';
 import { BusinessesTab } from '@/tabs/BusinessesTab';
 import { InventoryTab } from '@/tabs/InventoryTab';
 import { AdminTab } from '@/tabs/AdminTab';
+import { BardTab } from '@/tabs/BardTab';
 import { AddHouseModal } from '@/components/modals/AddHouseModal';
 import { AddPersonModal } from '@/components/modals/AddPersonModal';
 import { CharacterSheetPage } from '@/components/CharacterSheetPage';
@@ -25,7 +26,7 @@ import type { Member } from '@/lib/types';
 
 const WIKI_URL = 'https://www.profounddecisions.co.uk/empire-wiki/Skills';
 
-type TabId = 'overview' | 'unassigned' | 'covens' | 'functions' | 'businesses' | 'inventory' | 'admin' | string;
+type TabId = 'overview' | 'unassigned' | 'covens' | 'functions' | 'businesses' | 'inventory' | 'admin' | 'bards' | string;
 
 export function Layout() {
   const { user, profile, signOut } = useAuth();
@@ -68,7 +69,8 @@ export function Layout() {
     { id: 'functions', label: 'Functions', Icon: Icons.Swords },
     { id: 'businesses', label: 'Businesses', Icon: Icons.Briefcase, separator: true },
     { id: 'inventory', label: 'Inventory', Icon: Icons.Package },
-    ...(isAdmin ? [{ id: 'admin', label: 'Admin', Icon: Icons.Shield, separator: true }] : [])
+    { id: 'bards', label: 'Bards', Icon: Icons.Feather, separator: true },
+    ...(isAdmin ? [{ id: 'admin', label: 'Admin', Icon: Icons.Shield }] : [])
   ];
 
   function exportCsv() {
@@ -346,6 +348,9 @@ export function Layout() {
                 onUpsertRitual={lance.upsertCharacterRitual}
                 onDeleteRitual={lance.deleteCharacterRitual}
                 onViewMember={setSelectedMember}
+                currentMemberIdForBard={profile?.member_id ?? null}
+                onUpsertBardWork={lance.upsertBardWork}
+                onDeleteBardWork={lance.deleteBardWork}
               />
             )}
             {activeTab === 'unassigned' && <UnassignedTab data={lance.data} isAdmin={isAdmin} onUpsert={lance.upsertMember} onDelete={lance.deleteMember} onUpsertCharInventory={lance.upsertCharInventory} onDeleteCharInventory={lance.deleteCharInventory} onUpsertSkill={lance.upsertCharacterSkill} onDeleteSkill={lance.deleteCharacterSkill} onUpsertRitual={lance.upsertCharacterRitual} onDeleteRitual={lance.deleteCharacterRitual} onViewMember={setSelectedMember} />}
@@ -363,6 +368,15 @@ export function Layout() {
                 onDeleteStock={lance.deleteMagicItemStock}
                 onUpsertQueue={lance.upsertCraftingQueueItem}
                 onDeleteQueue={lance.deleteCraftingQueueItem}
+              />
+            )}
+            {activeTab === 'bards' && (
+              <BardTab
+                data={lance.data}
+                currentMemberId={profile?.member_id ?? null}
+                isAdmin={isAdmin}
+                onUpsert={lance.upsertBardWork}
+                onDelete={lance.deleteBardWork}
               />
             )}
             {activeTab === 'admin' && isAdmin && (

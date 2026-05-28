@@ -1,9 +1,10 @@
 import { useState, type ReactNode } from 'react';
-import type { House, Member, LanceData } from '@/lib/types';
+import type { BardWork, House, Member, LanceData } from '@/lib/types';
 import { Icons } from '@/components/Icons';
 import { MemberCard } from '@/components/MemberCard';
 import { MemberLedgerRow } from '@/components/MemberLedgerRow';
 import { AddPersonModal } from '@/components/modals/AddPersonModal';
+import { BardWorksSection } from '@/components/BardWorksSection';
 import { useConfirm } from '@/components/ConfirmDialog';
 import { cx } from '@/lib/utils';
 
@@ -26,6 +27,10 @@ interface Props {
   onDeleteSkill?: unknown;
   onUpsertRitual?: unknown;
   onDeleteRitual?: unknown;
+  /** Bard works props */
+  currentMemberIdForBard?: string | null;
+  onUpsertBardWork?: (work: Omit<BardWork, 'id' | 'created_at' | 'updated_at'> & { id?: string }) => Promise<void>;
+  onDeleteBardWork?: (id: string) => Promise<void>;
 }
 
 type ViewMode = 'ledger' | 'cards';
@@ -35,6 +40,7 @@ export function HouseTab({
   house, data, search, isAdmin, canManageHouse,
   onUpsert,
   onUnassign, onDelete, onDeleteHouse, onViewMember,
+  currentMemberIdForBard, onUpsertBardWork, onDeleteBardWork,
 }: Props) {
   const [editing, setEditing] = useState<Member | null>(null);
   const [view, setView] = useState<ViewMode>(() => {
@@ -119,6 +125,18 @@ export function HouseTab({
 
       {filtered.length === 0 && (
         <p className="text-ink-300 text-center py-16">No members found</p>
+      )}
+
+      {/* Bard Chronicles section */}
+      {onUpsertBardWork && onDeleteBardWork && (
+        <BardWorksSection
+          houseId={house.id}
+          data={data}
+          currentMemberId={currentMemberIdForBard ?? null}
+          isAdmin={isAdmin}
+          onUpsertBardWork={onUpsertBardWork}
+          onDeleteBardWork={onDeleteBardWork}
+        />
       )}
 
       {Dialog}

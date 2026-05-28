@@ -1,5 +1,5 @@
 import jsPDF from 'jspdf';
-import type { LanceData, LanceEvent, CovenRitual } from './types';
+import type { BardWork, LanceData, LanceEvent, CovenRitual } from './types';
 
 // ── Palette ───────────────────────────────────────────────────────────────────
 const PARCHMENT: [number, number, number] = [244, 234, 208];
@@ -448,4 +448,160 @@ export async function exportRitualsPdf(
 
   footer(doc);
   doc.save(`rituals-${covenName.toLowerCase().replace(/[^a-z0-9]+/g, '-')}.pdf`);
+}
+
+// ── Bard Work PDF ─────────────────────────────────────────────────────────────
+
+const WORK_TYPE_LABELS: Record<string, string> = {
+  story: 'Story',
+  feat:  'Feat',
+  song:  'Song',
+  poem:  'Poem',
+  other: 'Work',
+};
+
+export function exportBardWorkPdf(work: BardWork, authorName: string, houseName: string): void {
+  const doc = new jsPDF({ orientation: 'portrait', unit: 'mm', format: 'a4' });
+  drawBackground(doc);
+
+  const typeLabel = WORK_TYPE_LABELS[work.work_type] ?? 'Work';
+  const subtitle = `A ${typeLabel} by ${authorName}  ·  ${houseName}`;
+  let y = docTitle(doc, work.title || 'Untitled', subtitle, MARGIN + 8);
+
+  // Decorative rule + date
+  y = checkPage(doc, y, 14);
+  rule(doc, y);
+  y += 5;
+  doc.setFont('times', 'italic');
+  doc.setFontSize(8);
+  doc.setTextColor(...INK_LIGHT);
+  doc.text(
+    new Date(work.updated_at).toLocaleDateString('en-GB', { day: 'numeric', month: 'long', year: 'numeric' }),
+    PAGE_W / 2, y, { align: 'center' }
+  );
+  y += 9;
+
+  // Render markdown as text paragraphs
+  const lines = work.content.split('\n');
+
+  for (const rawLine of lines) {
+    const line = rawLine;
+
+    // HR
+    if (/^---+$/.test(line.trim())) {
+      y = checkPage(doc, y, 8);
+      rule(doc, y);
+      y += 8;
+      continue;
+    }
+
+    // Heading 1
+    const h1 = line.match(/^# (.+)/);
+    if (h1) {
+      y = checkPage(doc, y, 14);
+      doc.setFont('times', 'bold');
+      doc.setFontSize(16);
+      doc.setTextColor(...INK);
+      const wrapped = doc.splitTextToSize(h1[1], CONTENT_W);
+      doc.text(wrapped, PAGE_W / 2, y, { align: 'center' });
+      y += wrapped.length * 7 + 4;
+      continue;
+    }
+
+    // Heading 2
+    const h2 = line.match(/^## (.+)/);
+    if (h2) {
+      y = checkPage(doc, y, 12);
+      doc.setFont('times', 'bold');
+      doc.setFontSize(13);
+      doc.setTextColor(...INK);
+      const wrapped = doc.splitTextToSize(h2[1], CONTENT_W);
+      doc.text(wrapped, INNER, y);
+      y += wrapped.length * 6 + 3;
+      continue;
+    }
+
+    // Heading 3
+    const h3 = line.match(/^### (.+)/);
+    if (h3) {
+      y = checkPage(doc, y, 10);
+      doc.setFont('times', 'bold');
+      doc.setFontSize(11);
+      doc.setTextColor(...INK_MID);
+      const wrapped = doc.splitTextToSize(h3[1], CONTENT_W);
+      doc.text(wrapped, INNER, y);
+      y += wrapped.length * 5.5 + 2;
+      continue;
+    }
+
+    // Blockquote
+    const bq = line.match(/^> (.+)/);
+    if (bq) {
+      y = checkPage(doc, y, 10);
+      doc.setFont('times', 'italic');
+      doc.setFontSize(9.5);
+      doc.setTextColor(...INK_MID);
+      const qw = CONTENT_W - 12;
+      const wrapped = doc.splitTextToSize(bq[1], qw);
+      // Draw left border
+      doc.setDrawColor(...RULE);
+      doc.setLineWidth(0.8);
+      doc.line(INNER + 2, y - 4, INNER + 2, y + wrapped.length * 5 + 1);
+      doc.text(wrapped, INNER + 8, y);
+      y += wrapped.length * 5 + 4;
+      continue;
+    }
+
+    // Bullet list
+    const ul = line.match(/^- (.+)/);
+    if (ul) {
+      y = checkPage(doc, y, 7);
+      doc.setFont('times', 'normal');
+      doc.setFontSize(10);
+      doc.setTextColor(...INK);
+      const wrapped = doc.splitTextToSize(ul[1], CONTENT_W - 8);
+      doc.text('•', INNER + 2, y);
+      doc.text(wrapped, INNER + 7, y);
+      y += wrapped.length * 5 + 1;
+      continue;
+    }
+
+    // Ordered list
+    const ol = line.match(/^(\d+)\. (.+)/);
+    if (ol) {
+      y = checkPage(doc, y, 7);
+      doc.setFont('times', 'normal');
+      doc.setFontSize(10);
+      doc.setTextColor(...INK);
+      const wrapped = doc.splitTextToSize(ol[2], CONTENT_W - 10);
+      doc.text(`${ol[1]}.`, INNER + 2, y);
+      doc.text(wrapped, INNER + 9, y);
+      y += wrapped.length * 5 + 1;
+      continue;
+    }
+
+    // Blank line
+    if (line.trim() === '') {
+      y += 4;
+      continue;
+    }
+
+    // Normal paragraph — strip simple markdown inline markers for PDF
+    const plain = line
+      .replace(/\*\*(.+?)\*\*/g, '$1')
+      .replace(/\*(.+?)\*/g, '$1')
+      .replace(/_(.+?)_/g, '$1');
+
+    y = checkPage(doc, y, 7);
+    doc.setFont('times', 'normal');
+    doc.setFontSize(10.5);
+    doc.setTextColor(...INK);
+    const wrapped = doc.splitTextToSize(plain, CONTENT_W);
+    doc.text(wrapped, INNER, y);
+    y += wrapped.length * 5.5 + 1;
+  }
+
+  footer(doc);
+  const safeTitle = (work.title || 'untitled').toLowerCase().replace(/[^a-z0-9]+/g, '-');
+  doc.save(`bard-${safeTitle}.pdf`);
 }
