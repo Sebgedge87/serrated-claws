@@ -132,7 +132,7 @@ export function CreateCharacterScreen({ userId, lanceId, onCreated, onClose }: P
                 min={0}
                 className="input"
                 value={form.total_xp}
-                onChange={e => setForm(f => ({ ...f, total_xp: parseInt(e.target.value) || 8 }))}
+                onChange={e => setForm(f => ({ ...f, total_xp: parseInt(e.target.value, 10) || 8 }))}
               />
               <p className="text-[11px] text-ink-100/40 mt-1">Starting characters begin at 8 XP</p>
             </div>

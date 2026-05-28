@@ -36,7 +36,7 @@ export function UnassignedTab({ data, isAdmin, onUpsert, onDelete, onUpsertCharI
 
       <div className="grid sm:grid-cols-2 gap-3.5">
         {unassigned.map(m => (
-          <MemberCard key={m.id} member={m} isAdmin={isAdmin} onEdit={setEditing} onDelete={onDelete} onViewSheet={onViewMember} />
+          <MemberCard key={m.id} member={m} isAdmin={isAdmin} onDelete={onDelete} onViewSheet={onViewMember} />
         ))}
         {unassigned.length === 0 && <p className="text-center py-16 text-ink-100/50">All sworn. No unassigned members.</p>}
       </div>

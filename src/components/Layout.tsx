@@ -3,6 +3,7 @@ import { useAuth } from '@/hooks/useAuth';
 import { useLanceData } from '@/hooks/useLanceData';
 import { useLances } from '@/hooks/useLances';
 import { usePermissions } from '@/hooks/usePermissions';
+import { useTheme } from '@/hooks/useTheme';
 import { Icons } from '@/components/Icons';
 import { useConfirm } from '@/components/ConfirmDialog';
 import { HeaderUserMenu } from '@/components/HeaderUserMenu';
@@ -39,6 +40,7 @@ export function Layout() {
   const [selectedMember, setSelectedMember] = useState<Member | null>(null);
   const [showCreateCharacter, setShowCreateCharacter] = useState(false);
   const { Dialog: ConfirmDialog } = useConfirm();
+  const { theme, toggleTheme } = useTheme();
 
 
   type TabDef = {
@@ -202,6 +204,9 @@ export function Layout() {
               navTabs={tabs.map(t => ({ id: t.id, label: t.label, active: activeTab === t.id }))}
               onNavigate={id => { setActiveTab(id); setSelectedMember(null); }}
             />
+            <button onClick={toggleTheme} className="btn btn-ghost btn-sm" title={theme === 'dark' ? 'Switch to light mode' : 'Switch to dark mode'}>
+              {theme === 'dark' ? <Icons.Sun size={14} /> : <Icons.Moon size={14} />}
+            </button>
           </div>
         </div>
       </header>

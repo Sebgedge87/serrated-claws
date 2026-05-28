@@ -91,7 +91,6 @@ export function HouseTab({
             onView={onViewMember}
             onUnassign={onUnassign}
             onDelete={onDelete}
-            onEdit={canManageHouse ? setEditing : undefined}
           />
         </RosterSection>
       )}
@@ -114,7 +113,6 @@ export function HouseTab({
             onView={onViewMember}
             onUnassign={onUnassign}
             onDelete={onDelete}
-            onEdit={canManageHouse ? setEditing : undefined}
           />
         </RosterSection>
       )}
@@ -253,7 +251,7 @@ function RosterSection({
 /* ─────────────────────────── Roster body ─────────────────────────── */
 
 function Roster({
-  view, members, isAdmin, houseColor, onView, onUnassign, onDelete, onEdit,
+  view, members, isAdmin, houseColor, onView, onUnassign, onDelete,
 }: {
   view: ViewMode;
   members: Member[];
@@ -262,7 +260,6 @@ function Roster({
   onView: (m: Member) => void;
   onUnassign: (id: string) => Promise<void>;
   onDelete: (id: string) => Promise<void>;
-  onEdit?: (m: Member) => void;
 }) {
   if (view === 'cards') {
     return (
@@ -272,7 +269,6 @@ function Roster({
             key={m.id}
             member={m}
             isAdmin={isAdmin}
-            onEdit={onEdit}
             onUnassign={onUnassign}
             onDelete={onDelete}
             onViewSheet={onView}

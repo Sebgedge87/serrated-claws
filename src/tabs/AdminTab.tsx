@@ -47,6 +47,7 @@ export function AdminTab({ data, memberships, settings, currentUserId, inviteCod
       <EventsSection events={data.events} data={data} onUpsert={onUpsertEvent} onDelete={onDeleteEvent} onClearAttending={onClearAttending} />
       <SettingsSection settings={settings} onSave={onUpsertSettings} />
       <RolesSection memberships={memberships} data={data} currentUserId={currentUserId} currentRole={currentRole} inviteCode={inviteCode} onUpdateProfile={onUpdateProfile} onRegenerateInviteCode={onRegenerateInviteCode} />
+      {isSuperAdmin && <ExportSection data={data} memberships={memberships} />}
       {isSuperAdmin && <DangerZone onResetInventoryQty={onResetInventoryQty} onClearInventoryLog={onClearInventoryLog} logCount={data.inventoryLog.length} />}
     </div>
   );
@@ -491,6 +492,63 @@ function RolesSection({ memberships, data, currentUserId, currentRole, inviteCod
             )}
           </tbody>
         </table>
+      </div>
+    </section>
+  );
+}
+
+// ── Export ────────────────────────────────────────────────────────────────────
+
+function ExportSection({ data, memberships }: { data: LanceData; memberships: LanceMembership[] }) {
+  const [busy, setBusy] = useState(false);
+
+  function exportJson() {
+    setBusy(true);
+    try {
+      const snapshot = {
+        exported_at: new Date().toISOString(),
+        members: data.members,
+        houses: data.houses,
+        covens: data.covens,
+        functions: data.functions,
+        businesses: data.businesses,
+        inventory: data.inventory,
+        inventoryLog: data.inventoryLog,
+        events: data.events,
+        characterInventory: data.characterInventory,
+        characterSkills: data.characterSkills,
+        characterSpells: data.characterSpells,
+        magicItemsStock: data.magicItemsStock,
+        craftingQueue: data.craftingQueue,
+        covenRituals: data.covenRituals,
+        memberships,
+      };
+      const blob = new Blob([JSON.stringify(snapshot, null, 2)], { type: 'application/json' });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = `serrated-claws-backup-${new Date().toISOString().split('T')[0]}.json`;
+      a.click();
+      URL.revokeObjectURL(url);
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  return (
+    <section>
+      <SectionHeading icon={<Icons.Download size={16} />} title="Backup" color="#7eb0d4" />
+      <div className="card p-5 flex flex-col sm:flex-row sm:items-center gap-4">
+        <div className="flex-1 min-w-0">
+          <div className="font-semibold text-ink-100">Export lance data</div>
+          <div className="text-sm text-ink-100/50 mt-0.5">
+            Downloads a full JSON snapshot of all lance data — members, inventory, character sheets, events, and more.
+          </div>
+        </div>
+        <button onClick={exportJson} disabled={busy} className="btn btn-secondary flex-shrink-0">
+          <Icons.Download size={15} />
+          {busy ? 'Exporting…' : 'Download JSON'}
+        </button>
       </div>
     </section>
   );

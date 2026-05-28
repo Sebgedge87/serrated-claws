@@ -1,5 +1,7 @@
+import React from 'react';
 import { AuthProvider, useAuth } from '@/hooks/useAuth';
 import { useLances } from '@/hooks/useLances';
+import { useTheme } from '@/hooks/useTheme';
 import { SignIn } from '@/components/SignIn';
 import { Layout } from '@/components/Layout';
 import { CreateCharacterScreen } from '@/components/CreateCharacterScreen';
@@ -30,11 +32,18 @@ function Gate() {
   return <Layout />;
 }
 
+function ThemeProvider({ children }: { children: React.ReactNode }) {
+  useTheme();
+  return <>{children}</>;
+}
+
 export function App() {
   return (
-    <AuthProvider>
-      <Gate />
-      <UpdatePrompt />
-    </AuthProvider>
+    <ThemeProvider>
+      <AuthProvider>
+        <Gate />
+        <UpdatePrompt />
+      </AuthProvider>
+    </ThemeProvider>
   );
 }

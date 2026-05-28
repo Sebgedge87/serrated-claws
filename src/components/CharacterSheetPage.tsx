@@ -1,5 +1,6 @@
 import { useMemo, useState } from 'react';
 import type { CharInventoryItem, CharacterRitual, CharacterSkill, CharacterSpell, CraftingQueueItem, LanceData, Member } from '@/lib/types';
+import { RITUALS_CATALOGUE, REALM_COLORS, RITUAL_REALM_ORDER, type RitualRealm } from '@/lib/ritualsCatalogue';
 import { Icons } from '@/components/Icons';
 import { SKILLS_CATALOGUE, SKILL_CATEGORY_COLORS, SKILL_CATEGORY_ORDER, skillXpCost } from '@/lib/skillsCatalogue';
 import type { SkillCategory } from '@/lib/skillsCatalogue';
@@ -8,8 +9,6 @@ import type { ResourceType } from '@/lib/personalResource';
 import { EMPIRE_CATALOGUE } from '@/lib/catalogue';
 import { spellsForRealm } from '@/lib/spellsCatalogue';
 import type { SpellRealm } from '@/lib/spellsCatalogue';
-import { RITUALS_CATALOGUE, REALM_COLORS, RITUAL_REALM_ORDER } from '@/lib/ritualsCatalogue';
-import type { RitualRealm } from '@/lib/ritualsCatalogue';
 import { cx, formatIncome } from '@/lib/utils';
 
 interface Props {
@@ -391,7 +390,7 @@ function StatsCard({
   const xpPct = totalXp > 0 ? Math.min(100, (xpSpent / totalXp) * 100) : 0;
 
   async function saveXp() {
-    const val = parseInt(xpInput) || 8;
+    const val = parseInt(xpInput, 10) || 8;
     setXpError(null);
     try {
       await onUpsertMember({ ...member, total_xp: val, name: member.name });
@@ -630,7 +629,7 @@ function PersonalFundsCard({
             {(['personal_thrones', 'personal_crowns', 'personal_rings'] as const).map(key => (
               <div key={key}>
                 <label className="text-[10px] text-ink-100/40 block mb-1 capitalize">{key.replace('personal_', '')}</label>
-                <input type="number" min={0} className="input text-sm py-1" value={form[key]} onChange={e => setForm(f => ({ ...f, [key]: parseInt(e.target.value) || 0 }))} />
+                <input type="number" min={0} className="input text-sm py-1" value={form[key]} onChange={e => setForm(f => ({ ...f, [key]: parseInt(e.target.value, 10) || 0 }))} />
               </div>
             ))}
           </div>
@@ -1148,7 +1147,7 @@ function SkillPicker({
             max={selectedEntry?.maxRank ?? 10}
             className="input text-sm w-20"
             value={draft.rank}
-            onChange={e => setDraft(d => ({ ...d, rank: Math.max(1, parseInt(e.target.value) || 1) }))}
+            onChange={e => setDraft(d => ({ ...d, rank: Math.max(1, parseInt(e.target.value, 10) || 1) }))}
           />
         </div>
       </div>
@@ -1524,7 +1523,7 @@ function SpellsSection({
             </div>
             <div>
               <label className="text-[10px] uppercase tracking-widest text-ink-100/40 block mb-1">Mag</label>
-              <input type="number" min={1} className="input text-sm w-16" value={magnitude} onChange={e => setMagnitude(Math.max(1, parseInt(e.target.value) || 1))} />
+              <input type="number" min={1} className="input text-sm w-16" value={magnitude} onChange={e => setMagnitude(Math.max(1, parseInt(e.target.value, 10) || 1))} />
             </div>
           </div>
 
@@ -1651,7 +1650,7 @@ function CharInventorySectionPage({
                 className="input text-sm"
                 min={1}
                 value={newItem.qty}
-                onChange={e => setNewItem(n => ({ ...n, qty: parseInt(e.target.value) || 1 }))}
+                onChange={e => setNewItem(n => ({ ...n, qty: parseInt(e.target.value, 10) || 1 }))}
               />
             </div>
           </div>
@@ -1687,6 +1686,7 @@ function CharInventorySectionPage({
     </div>
   );
 }
+
 
 // ── Crafting Section ──────────────────────────────────────────────────────────
 

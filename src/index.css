@@ -3,6 +3,24 @@
 @tailwind utilities;
 
 @layer base {
+  :root {
+    --ink-950: 10 10 15;
+    --ink-900: 20 17 14;
+    --ink-800: 26 22 18;
+    --ink-700: 42 35 24;
+    --ink-300: 180 170 156;
+    --ink-100: 232 230 227;
+  }
+
+  [data-theme="light"] {
+    --ink-950: 245 240 228;
+    --ink-900: 248 244 235;
+    --ink-800: 238 230 215;
+    --ink-700: 215 203 183;
+    --ink-300: 100 80 55;
+    --ink-100: 30 20 10;
+  }
+
   html, body, #root {
     min-height: 100vh;
   }
@@ -17,6 +35,14 @@
     -webkit-font-smoothing: antialiased;
     -moz-osx-font-smoothing: grayscale;
     font-family: 'Inter', system-ui, sans-serif;
+  }
+
+  [data-theme="light"] body {
+    background:
+      radial-gradient(ellipse at top left, rgba(201, 169, 97, 0.12), transparent 50%),
+      radial-gradient(ellipse at bottom right, rgba(139, 60, 0, 0.06), transparent 50%),
+      #f5f0e8;
+    color: #1e140a;
   }
 
   h1, h2, h3, h4 {
@@ -113,6 +139,32 @@
   }
   .menu-item:hover { background: rgba(201, 169, 97, 0.06); }
   .menu-item:last-child { @apply border-b-0; }
+}
+
+/* ── Light mode overrides for hardcoded dark values ─────────────────────── */
+[data-theme="light"] .btn-secondary {
+  background: linear-gradient(180deg, rgba(235, 225, 205, 0.95), rgba(220, 208, 185, 0.95));
+  color: #1e140a;
+  border: 1px solid rgba(140, 105, 55, 0.3);
+}
+[data-theme="light"] .btn-ghost {
+  color: #5a4535;
+  border-color: rgba(140, 105, 55, 0.2);
+}
+[data-theme="light"] .btn-ghost:hover {
+  color: #1e140a;
+  border-color: rgba(140, 105, 55, 0.5);
+}
+[data-theme="light"] .input {
+  background: rgba(255, 250, 240, 0.8);
+  border-color: rgba(140, 105, 55, 0.2);
+  color: #1e140a;
+}
+[data-theme="light"] .glass {
+  background: linear-gradient(180deg, rgba(245, 238, 220, 0.92), rgba(238, 230, 212, 0.88));
+}
+[data-theme="light"] .card {
+  background: linear-gradient(180deg, rgba(250, 244, 230, 0.95), rgba(242, 235, 218, 0.9));
 }
 
 .scrollbar-hide::-webkit-scrollbar { display: none; }
