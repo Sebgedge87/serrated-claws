@@ -56,5 +56,3 @@ create policy "Author or admin can delete bard_works" on public.bard_works
         and lm.role in ('admin', 'super_admin')
     )
   );
-
-notify pgrst, 'reload schema';
