@@ -89,11 +89,7 @@ export function MemberCard({ member, isAdmin, onUnassign, onDelete, onViewSheet 
           {formatIncome(member.rings_per_event, member.crowns_per_event, member.thrones_per_event) && (
             <StatField icon={Icons.Coins} label="Income / Event" value={formatIncome(member.rings_per_event, member.crowns_per_event, member.thrones_per_event)!} color="#e0c66d" />
           )}
-          {(member.tithe_paid || member.tithe_notes) && (
-            <StatField icon={Icons.Coins} label="Tithe"
-              value={member.tithe_paid ? 'Paid' : member.tithe_notes!}
-              color={member.tithe_paid ? '#6dd47e' : '#ff7a7a'} />
-          )}
+
         </div>
         {member.notes && (
           <div className="mt-3.5 px-3.5 py-3 bg-black/25 rounded-lg border-l-[3px] border-gold-500/40 text-sm leading-relaxed">

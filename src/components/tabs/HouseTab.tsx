@@ -7,12 +7,10 @@ interface Props {
   members: Member[];
   searchQuery: string;
   canEditAll: boolean;
-  myMemberId: string | null;
-  onEdit: (m: Member) => void;
   onRemove: (m: Member) => void;
 }
 
-export function HouseTab({ house, members, searchQuery, canEditAll, myMemberId, onEdit, onRemove }: Props) {
+export function HouseTab({ house, members, searchQuery, canEditAll, onRemove }: Props) {
   const houseMembers = members.filter(m => m.house_id === house.id);
   const filtered = !searchQuery ? houseMembers : houseMembers.filter(m => {
     const q = searchQuery.toLowerCase();
@@ -52,7 +50,7 @@ export function HouseTab({ house, members, searchQuery, canEditAll, myMemberId, 
       {nobles.length > 0 && (
         <Section icon={<Icons.Crown size={16} className="text-gold-400" />} label="Nobility" count={nobles.length} colorClass="text-gold-400">
           <div className="grid gap-3.5 mb-8">
-            {nobles.map(m => <MemberCard key={m.id} member={m} isAdmin={canEditAll} canEditSelf={m.id === myMemberId} onEdit={onEdit} onDelete={canEditAll ? (id) => { const mem = members.find(x => x.id === id); if (mem) onRemove(mem); } : undefined} />)}
+            {nobles.map(m => <MemberCard key={m.id} member={m} isAdmin={canEditAll} onDelete={canEditAll ? (id) => { const mem = members.find(x => x.id === id); if (mem) onRemove(mem); } : undefined} />)}
           </div>
         </Section>
       )}
@@ -60,7 +58,7 @@ export function HouseTab({ house, members, searchQuery, canEditAll, myMemberId, 
       {regulars.length > 0 && (
         <Section icon={<Icons.Users size={16} className="text-ink-300" />} label="Members" count={regulars.length} colorClass="text-ink-300">
           <div className="grid gap-3.5">
-            {regulars.map(m => <MemberCard key={m.id} member={m} isAdmin={canEditAll} canEditSelf={m.id === myMemberId} onEdit={onEdit} onDelete={canEditAll ? (id) => { const mem = members.find(x => x.id === id); if (mem) onRemove(mem); } : undefined} />)}
+            {regulars.map(m => <MemberCard key={m.id} member={m} isAdmin={canEditAll} onDelete={canEditAll ? (id) => { const mem = members.find(x => x.id === id); if (mem) onRemove(mem); } : undefined} />)}
           </div>
         </Section>
       )}

@@ -517,7 +517,6 @@ function ExportSection({ data, memberships }: { data: LanceData; memberships: La
         events: data.events,
         characterInventory: data.characterInventory,
         characterSkills: data.characterSkills,
-        characterRituals: data.characterRituals,
         characterSpells: data.characterSpells,
         magicItemsStock: data.magicItemsStock,
         craftingQueue: data.craftingQueue,

@@ -10,7 +10,7 @@ interface Props {
   data: LanceData;
   search: string;
   isAdmin: boolean;
-  canManageHouse: boolean;
+
   onUpsert: (m: Partial<Member> & { name: string }) => Promise<void>;
   onUnassign: (id: string) => Promise<void>;
   onDelete: (id: string) => Promise<void>;
@@ -21,7 +21,7 @@ interface Props {
   onViewMember?: (m: Member) => void;
 }
 
-export function HouseTab({ house, data, search, isAdmin, canManageHouse, onUpsert, onUnassign, onDelete, onUpsertCharInventory, onDeleteCharInventory, onUpsertSkill, onDeleteSkill, onViewMember }: Props) {
+export function HouseTab({ house, data, search, isAdmin, onUpsert, onUnassign, onDelete, onUpsertCharInventory, onDeleteCharInventory, onUpsertSkill, onDeleteSkill, onViewMember }: Props) {
   const [editing, setEditing] = useState<Member | null>(null);
   const c = house.primary_color ?? '#d4b46d';
 

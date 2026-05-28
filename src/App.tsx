@@ -5,6 +5,7 @@ import { useTheme } from '@/hooks/useTheme';
 import { SignIn } from '@/components/SignIn';
 import { Layout } from '@/components/Layout';
 import { CreateCharacterScreen } from '@/components/CreateCharacterScreen';
+import { UpdatePrompt } from '@/components/UpdatePrompt';
 
 function Gate() {
   const { loading, session, profile, user } = useAuth();
@@ -41,6 +42,7 @@ export function App() {
     <ThemeProvider>
       <AuthProvider>
         <Gate />
+        <UpdatePrompt />
       </AuthProvider>
     </ThemeProvider>
   );
