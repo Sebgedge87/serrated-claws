@@ -117,13 +117,14 @@ function BardWorkCard({ work, data, currentMemberId, isAdmin, onEdit, onDelete }
 
 interface Props {
   data: LanceData;
+  lanceId: string;
   currentMemberId: string | null;
   isAdmin: boolean;
   onUpsert: (work: Omit<BardWork, 'id' | 'created_at' | 'updated_at'> & { id?: string }) => Promise<void>;
   onDelete: (id: string) => Promise<void>;
 }
 
-export function BardTab({ data, currentMemberId, isAdmin, onUpsert, onDelete }: Props) {
+export function BardTab({ data, lanceId, currentMemberId, isAdmin, onUpsert, onDelete }: Props) {
   const [filterType, setFilterType] = useState<FilterType>('all');
   const [filterHouse, setFilterHouse] = useState<string>('all');
   const [groupByHouse, setGroupByHouse] = useState(false);
@@ -135,7 +136,7 @@ export function BardTab({ data, currentMemberId, isAdmin, onUpsert, onDelete }: 
   );
   const myMember = currentMemberId ? data.members.find(m => m.id === currentMemberId) : null;
   const isBard = !!myMember?.function && bardFunctionIds.has(myMember.function);
-  const canAdd = isBard || isAdmin;
+  const canAdd = (isBard || isAdmin) && !!currentMemberId;
 
   const filtered = data.bardWorks
     .filter(w => filterType === 'all' || w.work_type === filterType)
@@ -159,8 +160,6 @@ export function BardTab({ data, currentMemberId, isAdmin, onUpsert, onDelete }: 
     setEditingWork(work);
     setEditorOpen(true);
   }
-
-  const lanceId = data.bardWorks[0]?.lance_id ?? '';
 
   return (
     <div className="animate-fade-in">
@@ -276,7 +275,7 @@ export function BardTab({ data, currentMemberId, isAdmin, onUpsert, onDelete }: 
         </div>
       )}
 
-      {editorOpen && (currentMemberId || isAdmin) && (
+      {editorOpen && !!currentMemberId && (
         <BardWorkEditor
           initial={editingWork}
           lanceId={editingWork?.lance_id ?? lanceId}

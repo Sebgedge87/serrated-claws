@@ -518,9 +518,11 @@ function ExportSection({ data, memberships }: { data: LanceData; memberships: La
         characterInventory: data.characterInventory,
         characterSkills: data.characterSkills,
         characterSpells: data.characterSpells,
+        characterRituals: data.characterRituals,
         magicItemsStock: data.magicItemsStock,
         craftingQueue: data.craftingQueue,
         covenRituals: data.covenRituals,
+        bardWorks: data.bardWorks,
         memberships,
       };
       const blob = new Blob([JSON.stringify(snapshot, null, 2)], { type: 'application/json' });

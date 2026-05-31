@@ -410,7 +410,7 @@ export function useLanceData(lanceId: string | null) {
 
   // ---- Bard Works ----
   const upsertBardWork = useCallback(async (work: Omit<BardWork, 'id' | 'created_at' | 'updated_at'> & { id?: string }) => {
-    const { error: err } = await supabase.from('bard_works').upsert({ ...work, updated_at: new Date().toISOString() });
+    const { error: err } = await supabase.from('bard_works').upsert({ ...work, updated_at: new Date().toISOString() }, { onConflict: 'id' });
     if (err) throw new Error(err.message);
     await reload(true);
   }, [reload]);

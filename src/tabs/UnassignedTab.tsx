@@ -1,8 +1,6 @@
-import { useState } from 'react';
 import type { CharInventoryItem, CharacterRitual, CharacterSkill, LanceData, Member } from '@/lib/types';
 import { Icons } from '@/components/Icons';
 import { MemberCard } from '@/components/MemberCard';
-import { AddPersonModal } from '@/components/modals/AddPersonModal';
 
 interface Props {
   data: LanceData;
@@ -18,8 +16,7 @@ interface Props {
   onViewMember?: (m: Member) => void;
 }
 
-export function UnassignedTab({ data, isAdmin, onUpsert, onDelete, onUpsertCharInventory, onDeleteCharInventory, onUpsertSkill, onDeleteSkill, onUpsertRitual, onDeleteRitual, onViewMember }: Props) {
-  const [editing, setEditing] = useState<Member | null>(null);
+export function UnassignedTab({ data, isAdmin, onDelete, onViewMember }: Props) {
   const unassigned = data.members.filter(m => !m.house_id);
 
   return (
@@ -41,23 +38,6 @@ export function UnassignedTab({ data, isAdmin, onUpsert, onDelete, onUpsertCharI
         {unassigned.length === 0 && <p className="text-center py-16 text-ink-100/50">All sworn. No unassigned members.</p>}
       </div>
 
-      {editing && (
-        <AddPersonModal
-          data={data}
-          initial={editing}
-          onClose={() => setEditing(null)}
-          onSave={async m => {
-            await onUpsert({ ...editing, ...m });
-            setEditing(null);
-          }}
-          onUpsertCharInventory={onUpsertCharInventory}
-          onDeleteCharInventory={onDeleteCharInventory}
-          onUpsertSkill={onUpsertSkill}
-          onDeleteSkill={onDeleteSkill}
-          onUpsertRitual={onUpsertRitual}
-          onDeleteRitual={onDeleteRitual}
-        />
-      )}
     </div>
   );
 }

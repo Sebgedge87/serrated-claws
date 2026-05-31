@@ -166,20 +166,20 @@ export function BardWorkEditor({ initial, lanceId, houseId, authorMemberId, onSa
   }, []);
 
   const handleSlashCommand = useCallback((cmd: SlashCmd) => {
+    const ta = textareaRef.current;
+    if (!ta) return;
+    const currentContent = ta.value;
     if (cmd.action === 'type') {
       setWorkType(cmd.value as WorkType);
-      // Remove the slash text from the content
-      const ta = textareaRef.current;
-      if (ta && slashStartPosRef.current >= 0) {
-        const before = content.slice(0, slashStartPosRef.current);
-        const after = content.slice(ta.selectionStart);
+      if (slashStartPosRef.current >= 0) {
+        const before = currentContent.slice(0, slashStartPosRef.current);
+        const after = currentContent.slice(ta.selectionStart);
         setContent(before + after);
       }
     } else {
-      const ta = textareaRef.current;
-      if (!ta || slashStartPosRef.current < 0) return;
-      const before = content.slice(0, slashStartPosRef.current);
-      const after = content.slice(ta.selectionStart);
+      if (slashStartPosRef.current < 0) return;
+      const before = currentContent.slice(0, slashStartPosRef.current);
+      const after = currentContent.slice(ta.selectionStart);
       const next = before + cmd.value + after;
       setContent(next);
       requestAnimationFrame(() => {
@@ -192,7 +192,7 @@ export function BardWorkEditor({ initial, lanceId, houseId, authorMemberId, onSa
     }
     setSlashMenuOpen(false);
     slashStartPosRef.current = -1;
-  }, [content]);
+  }, []);
 
   function handleKeyDown(e: React.KeyboardEvent<HTMLTextAreaElement>) {
     if (slashMenuOpen) {

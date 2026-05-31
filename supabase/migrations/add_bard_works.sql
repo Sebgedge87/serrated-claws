@@ -75,13 +75,22 @@ create policy bard_works_insert_admin on public.bard_works
     )
   );
 
--- UPDATE: author only (bard status at write time is sufficient)
+-- UPDATE: author only; WITH CHECK prevents moving the work to a foreign lance
 create policy bard_works_update on public.bard_works
   for update using (
     exists (
       select 1 from public.profiles
       where id        = auth.uid()
         and member_id = bard_works.author_member_id
+    )
+  )
+  with check (
+    exists (
+      select 1 from public.profiles pr
+      join public.members m on m.id = pr.member_id
+      where pr.id             = auth.uid()
+        and pr.member_id      = bard_works.author_member_id
+        and m.lance_id        = bard_works.lance_id
     )
   );
 

@@ -125,6 +125,7 @@ function WorkCard({ work, data, currentMemberId, isAdmin, onEdit, onDelete }: Wo
 
 interface Props {
   houseId: string;
+  lanceId: string;
   data: LanceData;
   currentMemberId: string | null;
   isAdmin: boolean;
@@ -132,7 +133,7 @@ interface Props {
   onDeleteBardWork: (id: string) => Promise<void>;
 }
 
-export function BardWorksSection({ houseId, data, currentMemberId, isAdmin, onUpsertBardWork, onDeleteBardWork }: Props) {
+export function BardWorksSection({ houseId, lanceId, data, currentMemberId, isAdmin, onUpsertBardWork, onDeleteBardWork }: Props) {
   const [editorOpen, setEditorOpen] = useState(false);
   const [editingWork, setEditingWork] = useState<BardWork | null>(null);
 
@@ -151,7 +152,7 @@ export function BardWorksSection({ houseId, data, currentMemberId, isAdmin, onUp
       )
     : false;
 
-  const canAdd = isBardInHouse || isAdmin;
+  const canAdd = (isBardInHouse || isAdmin) && !!currentMemberId;
 
   function openNew() {
     setEditingWork(null);
@@ -162,10 +163,6 @@ export function BardWorksSection({ houseId, data, currentMemberId, isAdmin, onUp
     setEditingWork(work);
     setEditorOpen(true);
   }
-
-  const lanceId = data.houses.find(h => h.id === houseId)
-    ? (data.bardWorks.find(w => w.house_id === houseId)?.lance_id ?? '')
-    : '';
 
   return (
     <div className="mt-10">
@@ -207,7 +204,7 @@ export function BardWorksSection({ houseId, data, currentMemberId, isAdmin, onUp
         <BardWorkEditor
           initial={editingWork}
           lanceId={editingWork?.lance_id ?? lanceId}
-          houseId={houseId}
+          houseId={editingWork?.house_id ?? houseId}
           authorMemberId={editingWork?.author_member_id ?? currentMemberId}
           onSave={onUpsertBardWork}
           onClose={() => { setEditorOpen(false); setEditingWork(null); }}

@@ -3,7 +3,6 @@ import type { BardWork, House, Member, LanceData } from '@/lib/types';
 import { Icons } from '@/components/Icons';
 import { MemberCard } from '@/components/MemberCard';
 import { MemberLedgerRow } from '@/components/MemberLedgerRow';
-import { AddPersonModal } from '@/components/modals/AddPersonModal';
 import { BardWorksSection } from '@/components/BardWorksSection';
 import { useConfirm } from '@/components/ConfirmDialog';
 import { cx } from '@/lib/utils';
@@ -28,6 +27,7 @@ interface Props {
   onUpsertRitual?: unknown;
   onDeleteRitual?: unknown;
   /** Bard works props */
+  lanceId?: string;
   currentMemberIdForBard?: string | null;
   onUpsertBardWork?: (work: Omit<BardWork, 'id' | 'created_at' | 'updated_at'> & { id?: string }) => Promise<void>;
   onDeleteBardWork?: (id: string) => Promise<void>;
@@ -38,11 +38,9 @@ const VIEW_STORAGE_KEY = 'serrated.viewMode';
 
 export function HouseTab({
   house, data, search, isAdmin, canManageHouse,
-  onUpsert,
   onUnassign, onDelete, onDeleteHouse, onViewMember,
-  currentMemberIdForBard, onUpsertBardWork, onDeleteBardWork,
+  lanceId, currentMemberIdForBard, onUpsertBardWork, onDeleteBardWork,
 }: Props) {
-  const [editing, setEditing] = useState<Member | null>(null);
   const [view, setView] = useState<ViewMode>(() => {
     if (typeof localStorage === 'undefined') return 'ledger';
     return (localStorage.getItem(VIEW_STORAGE_KEY) as ViewMode) || 'ledger';
@@ -131,6 +129,7 @@ export function HouseTab({
       {onUpsertBardWork && onDeleteBardWork && (
         <BardWorksSection
           houseId={house.id}
+          lanceId={lanceId ?? ''}
           data={data}
           currentMemberId={currentMemberIdForBard ?? null}
           isAdmin={isAdmin}
@@ -140,14 +139,6 @@ export function HouseTab({
       )}
 
       {Dialog}
-      {editing && (
-        <AddPersonModal
-          data={data}
-          initial={editing}
-          onClose={() => setEditing(null)}
-          onSave={async m => { await onUpsert({ ...editing, ...m }); setEditing(null); }}
-        />
-      )}
     </div>
   );
 }

@@ -353,6 +353,7 @@ export function Layout() {
                 onDeleteRitual={lance.deleteCharacterRitual}
                 onViewMember={setSelectedMember}
                 {...(canAccessBards ? {
+                  lanceId: lances.currentLanceId ?? '',
                   currentMemberIdForBard: profile?.member_id ?? null,
                   onUpsertBardWork: lance.upsertBardWork,
                   onDeleteBardWork: lance.deleteBardWork,
@@ -379,6 +380,7 @@ export function Layout() {
             {activeTab === 'bards' && (
               <BardTab
                 data={lance.data}
+                lanceId={lances.currentLanceId ?? ''}
                 currentMemberId={profile?.member_id ?? null}
                 isAdmin={isAdmin}
                 onUpsert={lance.upsertBardWork}
