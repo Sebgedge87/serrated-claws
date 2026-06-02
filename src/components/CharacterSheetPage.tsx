@@ -916,7 +916,6 @@ function PersonalResourceCard({
 
 // ── Skills Section ────────────────────────────────────────────────────────────
 
-type CategoryFilter = SkillCategory | 'All';
 type PendingSkill = { skill_name: string; category: SkillCategory; rank: number; xpCost: number };
 
 function SkillsSection({
