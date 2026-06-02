@@ -2,210 +2,205 @@
 @tailwind components;
 @tailwind utilities;
 
+/* ════════════════════════════════════════════════════════════════════════
+   Serrated Claws — refined design system
+   Same dark + gold DNA, executed with restraint. Two layers:
+     1. TOKENS   — one source of truth, defined per theme below.
+     2. CLASSES  — every component composes from these (.card, .btn, .pill…),
+                   so the whole app changes when a token or class changes.
+   ════════════════════════════════════════════════════════════════════════ */
+
 @layer base {
   :root {
-    --ink-950: 10 10 15;
-    --ink-900: 20 17 14;
-    --ink-800: 26 22 18;
-    --ink-700: 42 35 24;
-    --ink-300: 180 170 156;
-    --ink-100: 232 230 227;
+    /* ── ink ramp (space-separated RGB for Tailwind rgb(var() / a)) ──── */
+    --ink-950: 16 13 9;     /* app background          */
+    --ink-900: 21 17 11;    /* recessed surfaces       */
+    --ink-800: 26 21 16;    /* panels / cards          */
+    --ink-700: 51 43 30;    /* raised insets           */
+    --ink-300: 179 168 143; /* secondary text          */
+    --ink-100: 236 228 211; /* primary text            */
+
+    /* ── refined tokens (used directly in CSS) ──────────────────────── */
+    --line:        rgba(203, 171, 104, 0.14);
+    --line-soft:   rgba(203, 171, 104, 0.08);
+    --line-strong: rgba(203, 171, 104, 0.30);
+    --gold:        #cbab68;
+    --gold-bright: #e6cf8e;
+    --gold-deep:   #97793c;
+    --inset:       rgba(0, 0, 0, 0.28);
+    --ok:          #82b78d;
+    --warn:        #cf8b66;
+    --danger:      #c4615b;
+
+    --r-sm: 7px; --r-md: 10px; --r-lg: 14px;
   }
 
   [data-theme="light"] {
-    --ink-950: 245 240 228;
-    --ink-900: 248 244 235;
-    --ink-800: 238 230 215;
+    --ink-950: 236 225 200;
+    --ink-900: 240 231 210;
+    --ink-800: 246 239 224;
     --ink-700: 215 203 183;
-    --ink-300: 100 80 55;
-    --ink-100: 30 20 10;
+    --ink-300: 91 77 54;
+    --ink-100: 43 33 20;
+
+    --line:        rgba(120, 92, 40, 0.20);
+    --line-soft:   rgba(120, 92, 40, 0.11);
+    --line-strong: rgba(120, 92, 40, 0.38);
+    --gold:        #8a6a26;
+    --gold-bright: #6f5014;
+    --gold-deep:   #b79a55;
+    --inset:       rgba(120, 92, 40, 0.06);
+    --ok:          #3c7a48;
+    --warn:        #9a5527;
+    --danger:      #97312c;
   }
 
-  html, body, #root {
-    min-height: 100vh;
-  }
+  html, body, #root { min-height: 100vh; }
 
+  /* flat warm ink — the radial-gradient glows are gone */
   body {
-    background:
-      radial-gradient(ellipse at top left, rgba(201, 169, 97, 0.08), transparent 50%),
-      radial-gradient(ellipse at bottom right, rgba(139, 0, 0, 0.06), transparent 50%),
-      radial-gradient(ellipse at center, rgba(28, 22, 14, 0.4), transparent 60%),
-      #0a0a0f;
-    color: #e8e6e3;
+    background: rgb(var(--ink-950));
+    color: rgb(var(--ink-100));
     -webkit-font-smoothing: antialiased;
     -moz-osx-font-smoothing: grayscale;
-    font-family: 'Inter', system-ui, sans-serif;
-  }
-
-  [data-theme="light"] body {
-    background:
-      radial-gradient(ellipse at top left, rgba(201, 169, 97, 0.12), transparent 50%),
-      radial-gradient(ellipse at bottom right, rgba(139, 60, 0, 0.06), transparent 50%),
-      #f5f0e8;
-    color: #1e140a;
+    font-family: 'Spectral', Georgia, serif;
+    font-feature-settings: "ss01";
   }
 
   h1, h2, h3, h4 {
-    font-family: 'Cinzel', serif;
+    font-family: 'Cormorant Garamond', Georgia, serif;
     letter-spacing: 0.01em;
+    font-weight: 600;
   }
+
+  /* one uppercase voice for ALL micro-labels — Figtree, not serif */
+  .eyebrow {
+    font-family: 'Figtree', system-ui, sans-serif;
+    font-size: 10px; font-weight: 600;
+    text-transform: uppercase; letter-spacing: 0.16em;
+    color: rgb(var(--ink-300));
+  }
+  .font-ui  { font-family: 'Figtree', system-ui, sans-serif; }
+  .num      { font-family: 'IBM Plex Mono', ui-monospace, monospace; font-variant-numeric: tabular-nums; }
 }
 
 @layer components {
+  /* ── surfaces ─────────────────────────────────────────────────────── */
   .glass {
-    @apply bg-gradient-to-b from-ink-800/85 to-ink-900/85 backdrop-blur-xl backdrop-saturate-150 border border-gold-500/15 shadow-card;
+    background: rgb(var(--ink-800) / 0.82);
+    border: 1px solid var(--line);
+    backdrop-filter: blur(14px);
+    @apply shadow-card;
   }
 
+  /* card: flat panel + hairline. No gradient, no bloom. */
   .card {
-    @apply bg-gradient-to-b from-ink-800/90 to-ink-900/85 border border-gold-500/15 rounded-2xl shadow-card transition-all duration-200;
+    background: rgb(var(--ink-800));
+    border: 1px solid var(--line);
+    border-radius: var(--r-lg);
+    transition: border-color 0.18s ease;
   }
+  /* lift is now a quiet border brighten — no translate, no glow */
+  .card-lift:hover { border-color: var(--line-strong); }
 
-  .card-lift:hover {
-    @apply -translate-y-0.5 border-gold-500/40 shadow-lift;
-  }
+  /* hairline rule for separating sections */
+  .hairline { height: 1px; background: var(--line); border: 0; }
+  .hairline-fade { height: 1px; border: 0;
+    background: linear-gradient(90deg, var(--gold), var(--line) 55%, transparent); }
 
+  /* ── buttons: ONE primary, the rest are quiet ghosts ──────────────── */
   .btn {
-    @apply inline-flex items-center gap-2 px-4 py-2.5 rounded-lg font-semibold text-sm cursor-pointer transition-all duration-150 whitespace-nowrap disabled:opacity-40 disabled:cursor-not-allowed;
+    font-family: 'Figtree', system-ui, sans-serif;
+    @apply inline-flex items-center gap-2 px-4 py-2.5 rounded-lg font-semibold text-[13px]
+           cursor-pointer transition-all duration-150 whitespace-nowrap
+           disabled:opacity-40 disabled:cursor-not-allowed;
   }
-  .btn:not(:disabled):hover { @apply -translate-y-px brightness-110; }
-  .btn:active { @apply translate-y-0; }
+  .btn:not(:disabled):hover { filter: brightness(1.06); }
 
   .btn-primary {
-    background: linear-gradient(180deg, #d4b46d, #b8954c);
-    color: #1a1410;
-    box-shadow:
-      0 1px 0 rgba(255, 255, 255, 0.3) inset,
-      0 -1px 0 rgba(0, 0, 0, 0.2) inset,
-      0 8px 20px -8px rgba(201, 169, 97, 0.5);
+    color: #1c1509;
+    border: 1px solid var(--gold-deep);
+    background: linear-gradient(180deg, var(--gold-bright), var(--gold));
+    box-shadow: 0 1px 0 rgba(255, 255, 255, 0.22) inset;
   }
-  .btn-secondary {
-    background: linear-gradient(180deg, rgba(60, 50, 40, 0.9), rgba(40, 32, 26, 0.9));
-    color: #e8e6e3;
-    border: 1px solid rgba(201, 169, 97, 0.2);
-    box-shadow: 0 1px 0 rgba(255, 255, 255, 0.05) inset;
+  /* secondary & ghost are now the SAME quiet hairline — there is no third loud button */
+  .btn-secondary, .btn-ghost {
+    background: transparent;
+    color: rgb(var(--ink-300));
+    border: 1px solid var(--line-strong);
+  }
+  .btn-secondary:hover, .btn-ghost:hover {
+    color: rgb(var(--ink-100)); border-color: var(--gold);
   }
   .btn-danger {
-    background: linear-gradient(180deg, #a8413f, #7a2a28);
-    color: #fff;
-    box-shadow: 0 1px 0 rgba(255, 255, 255, 0.2) inset, 0 8px 20px -8px rgba(139, 0, 0, 0.5);
+    color: #fff; border: 1px solid var(--danger);
+    background: color-mix(in oklab, var(--danger) 26%, transparent);
   }
-  .btn-ghost {
-    background: transparent;
-    color: #b3a99a;
-    border: 1px solid rgba(201, 169, 97, 0.15);
-  }
-  .btn-ghost:hover { border-color: rgba(201, 169, 97, 0.4); color: #e8e6e3; }
   .btn-sm { @apply px-3 py-1.5 text-xs; }
 
+  /* ── inputs (edit mode only — read mode is typography) ────────────── */
   .input {
-    @apply w-full px-3.5 py-2.5 bg-black/40 border border-gold-500/15 rounded-lg text-ink-100 text-sm outline-none transition-colors;
+    font-family: 'Spectral', Georgia, serif;
+    width: 100%;
+    padding: 9px 12px;
+    background: var(--inset);
+    border: 1px solid var(--line);
+    border-radius: var(--r-sm);
+    color: rgb(var(--ink-100));
+    font-size: 14px;
+    outline: none;
+    transition: border-color 0.15s;
   }
-  .input:focus { @apply border-gold-300; }
+  .input:focus { border-color: var(--gold); }
 
+  /* ── pills: hairline + dot, no glow ───────────────────────────────── */
   .pill {
-    @apply inline-flex items-center gap-1 px-2.5 py-0.5 rounded-xl text-[11px] font-bold uppercase tracking-wider;
+    font-family: 'Figtree', system-ui, sans-serif;
+    @apply inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-[10.5px] font-bold;
+    text-transform: uppercase; letter-spacing: 0.08em;
+    border: 1px solid var(--line-strong); color: rgb(var(--ink-300));
   }
-  .pill-noble {
-    @apply text-gold-300 border border-gold-500/40;
-    background: linear-gradient(180deg, rgba(201, 169, 97, 0.25), rgba(201, 169, 97, 0.1));
-    box-shadow: 0 0 12px rgba(201, 169, 97, 0.2);
-  }
-  .pill-active {
-    color: #6dd47e;
-    background: rgba(109, 212, 126, 0.15);
-    border: 1px solid rgba(109, 212, 126, 0.3);
-  }
-  .pill-inactive {
-    color: #9ca3af;
-    background: rgba(107, 114, 128, 0.15);
-    border: 1px solid rgba(107, 114, 128, 0.3);
-  }
-  .pill-kia { @apply text-red-300 border border-red-500/40; background: rgba(180, 50, 50, 0.15); }
+  .pill-noble    { color: var(--gold); border-color: color-mix(in oklab, var(--gold) 45%, transparent); }
+  .pill-active   { color: var(--ok);   border-color: color-mix(in oklab, var(--ok) 45%, transparent); }
+  .pill-inactive { color: rgb(var(--ink-300)); border-color: var(--line-strong); }
+  .pill-kia      { color: var(--danger); border-color: color-mix(in oklab, var(--danger) 50%, transparent); }
 
+  /* ── tabs: small-caps text, gold underline ────────────────────────── */
   .tab-btn {
-    @apply inline-flex flex-shrink-0 items-center gap-1.5 px-3 py-3.5 text-sm font-medium tracking-wide bg-transparent text-ink-100/50 border-b-2 border-transparent transition-colors hover:text-ink-100 cursor-pointer whitespace-nowrap;
+    font-family: 'Figtree', system-ui, sans-serif;
+    @apply inline-flex flex-shrink-0 items-center gap-1.5 px-3.5 py-3.5 text-[12px] font-semibold
+           bg-transparent border-b-2 border-transparent transition-colors cursor-pointer whitespace-nowrap;
+    letter-spacing: 0.04em; color: rgb(var(--ink-300));
   }
-  .tab-btn.active { @apply text-gold-300 border-b-gold-300 font-semibold; }
+  .tab-btn:hover { color: rgb(var(--ink-100)); }
+  .tab-btn.active { color: var(--gold); border-bottom-color: var(--gold); font-weight: 700; }
 
-  /* Full-bleed sections use this to constrain their inner content */
-  .page-wrap {
-    @apply max-w-[1440px] mx-auto w-full px-4 sm:px-8 lg:px-12;
-  }
+  .page-wrap { @apply max-w-[1280px] mx-auto w-full px-4 sm:px-8 lg:px-10; }
 
-  /* HeaderUserMenu dropdown items */
   .menu-item {
-    @apply flex items-center gap-2.5 px-4 py-2.5 text-sm text-ink-100 cursor-pointer
-           border-b border-gold-500/10 text-left bg-transparent;
+    font-family: 'Figtree', system-ui, sans-serif;
+    @apply flex items-center gap-2.5 px-4 py-2.5 text-sm cursor-pointer text-left bg-transparent;
+    color: rgb(var(--ink-100)); border-bottom: 1px solid var(--line-soft);
   }
-  .menu-item:hover { background: rgba(201, 169, 97, 0.06); }
-  .menu-item:last-child { @apply border-b-0; }
+  .menu-item:hover { background: var(--inset); }
+  .menu-item:last-child { border-bottom: 0; }
+
+  /* ── category / realm tick — the calm replacement for loud chips ───── */
+  .tick { width: 3px; border-radius: 2px; flex: 0 0 auto; background: var(--c, var(--gold)); align-self: stretch; }
+  .swatch-dot { width: 6px; height: 6px; border-radius: 50%; background: var(--c, var(--gold)); flex: 0 0 auto; }
 }
 
-/* ── Light mode overrides for hardcoded dark values ─────────────────────── */
-[data-theme="light"] .btn-secondary {
-  background: linear-gradient(180deg, rgba(235, 225, 205, 0.95), rgba(220, 208, 185, 0.95));
-  color: #1e140a;
-  border: 1px solid rgba(140, 105, 55, 0.3);
-}
-[data-theme="light"] .btn-ghost {
-  color: #5a4535;
-  border-color: rgba(140, 105, 55, 0.2);
-}
-[data-theme="light"] .btn-ghost:hover {
-  color: #1e140a;
-  border-color: rgba(140, 105, 55, 0.5);
-}
-[data-theme="light"] .input {
-  background: rgba(255, 250, 240, 0.8);
-  border-color: rgba(140, 105, 55, 0.2);
-  color: #1e140a;
-}
-[data-theme="light"] .glass {
-  background: linear-gradient(180deg, rgba(245, 238, 220, 0.92), rgba(238, 230, 212, 0.88));
-}
-[data-theme="light"] .card {
-  background: linear-gradient(180deg, rgba(250, 244, 230, 0.95), rgba(242, 235, 218, 0.9));
-}
+/* ── light-mode contrast fixes for fixed gold utilities ─────────────────── */
+[data-theme="light"] .text-gold-300,
+[data-theme="light"] .text-gold-400 { color: #7a5a10; }
 
-/* ── Light mode pill & accent overrides (contrast WCAG AA) ──────────────── */
-[data-theme="light"] .pill-noble {
-  color: #6b4f0e;
-  background: rgba(107, 79, 14, 0.1);
-  border-color: rgba(107, 79, 14, 0.3);
-  box-shadow: none;
-}
-[data-theme="light"] .pill-active {
-  color: #1a5c25;
-  background: rgba(26, 92, 37, 0.1);
-  border-color: rgba(26, 92, 37, 0.3);
-}
-[data-theme="light"] .pill-inactive {
-  color: #4a4a4a;
-  background: rgba(74, 74, 74, 0.1);
-  border-color: rgba(74, 74, 74, 0.25);
-}
-[data-theme="light"] .pill-kia {
-  color: #7a1515;
-  background: rgba(122, 21, 21, 0.1);
-  border-color: rgba(122, 21, 21, 0.3);
-}
-
-/* Gold accent text is too faint on parchment — darken for light mode */
-[data-theme="light"] .tab-btn.active { color: #7a5a10; border-bottom-color: #7a5a10; }
-[data-theme="light"] .text-gold-300 { color: #7a5a10; }
-
+/* ── scrollbars: thin and calm ──────────────────────────────────────────── */
 .scrollbar-hide::-webkit-scrollbar { display: none; }
 .scrollbar-hide { -ms-overflow-style: none; scrollbar-width: none; }
-
-::-webkit-scrollbar { width: 10px; height: 10px; }
-::-webkit-scrollbar-track { background: rgba(0, 0, 0, 0.2); }
+::-webkit-scrollbar { width: 9px; height: 9px; }
+::-webkit-scrollbar-track { background: transparent; }
 ::-webkit-scrollbar-thumb {
-  background: linear-gradient(180deg, rgba(201, 169, 97, 0.3), rgba(201, 169, 97, 0.15));
-  border-radius: 5px;
-  border: 2px solid rgba(0, 0, 0, 0.3);
-  background-clip: padding-box;
+  background: var(--line-strong); border-radius: 5px;
+  border: 2px solid transparent; background-clip: padding-box;
 }
-::-webkit-scrollbar-thumb:hover {
-  background: linear-gradient(180deg, rgba(201, 169, 97, 0.5), rgba(201, 169, 97, 0.25));
-  background-clip: padding-box;
-}
+::-webkit-scrollbar-thumb:hover { background: var(--gold); background-clip: padding-box; }

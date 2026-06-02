@@ -1,30 +1,30 @@
 import type { ComponentType, SVGProps } from 'react';
 
 interface Props {
+  /** optional leading icon — rendered small and inline, no gradient tile */
   Icon?: ComponentType<SVGProps<SVGSVGElement> & { size?: number }>;
   label: string;
   value: string | number;
+  /** accent for the category tick (defaults to gold) */
   color?: string;
+  /** render the value in tabular mono (for numbers/currency) */
+  mono?: boolean;
 }
 
-export function StatField({ Icon, label, value, color = '#8a7f70' }: Props) {
+/**
+ * StatField — the canonical read-mode label→value pair.
+ * Quiet eyebrow label over a Spectral value. No input chrome, no glow.
+ */
+export function StatField({ Icon, label, value, color, mono }: Props) {
   return (
-    <div className="flex gap-2.5 items-start">
-      {Icon && (
-        <div
-          className="w-7 h-7 rounded-lg flex items-center justify-center flex-shrink-0 mt-0.5"
-          style={{
-            background: `linear-gradient(180deg, ${color}25, ${color}10)`,
-            border: `1px solid ${color}30`,
-            color,
-          }}
-        >
-          <Icon size={14} />
-        </div>
-      )}
+    <div className="flex gap-2.5 items-start min-w-0">
+      {color && <span className="tick mt-0.5" style={{ ['--c' as string]: color, height: 26 }} />}
       <div className="min-w-0">
-        <div className="text-[10px] text-ink-300 uppercase tracking-wider font-semibold mb-0.5">{label}</div>
-        <div className="text-[13px] font-semibold text-ink-100 leading-tight">{value}</div>
+        <div className="eyebrow mb-1 flex items-center gap-1.5">
+          {Icon && <Icon size={11} />}
+          {label}
+        </div>
+        <div className={`text-[15px] text-ink-100 leading-tight ${mono ? 'num' : ''}`}>{value}</div>
       </div>
     </div>
   );
