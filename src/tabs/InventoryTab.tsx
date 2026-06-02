@@ -217,7 +217,7 @@ function InventoryView({
 }) {
   const [typeFilter, setTypeFilter] = useState<'All' | CatalogueType>('All');
   const [search, setSearch] = useState('');
-  const [showAll, setShowAll] = useState(true);
+  const [showAll, setShowAll] = useState(false);
   const [openItem, setOpenItem] = useState<CatalogueEntry | null>(null);
 
   const invMap = useMemo(() => Object.fromEntries(data.inventory.map(i => [i.item, i])), [data.inventory]);
@@ -226,7 +226,9 @@ function InventoryView({
     data.inventory.reduce((sum, i) => sum + (i.unit_value ?? 0) * i.current_qty, 0),
   [data.inventory]);
 
-  const items = showAll ? EMPIRE_CATALOGUE : EMPIRE_CATALOGUE.filter(i => i.track);
+  const items = showAll
+    ? EMPIRE_CATALOGUE
+    : EMPIRE_CATALOGUE.filter(i => { const s = invMap[i.item]; return !!(s && (s.current_qty > 0 || s.required_qty > 0)); });
 
   const typeCounts = useMemo(() => {
     const map = new Map<CatalogueType, { count: number; shortfalls: number }>();
