@@ -1168,7 +1168,7 @@ function SkillPicker({
                     }}
                   />
                 </div>
-                <div className="max-h-56 overflow-y-auto">
+                <div className="max-h-56 overflow-y-auto relative">
                   {filtered.length === 0 && (
                     <div className="px-3 py-3 text-xs text-ink-100/40 text-center">No skills match</div>
                   )}
@@ -1178,7 +1178,7 @@ function SkillPicker({
                     const catColors = SKILL_CATEGORY_COLORS[cat];
                     return (
                       <div key={cat}>
-                        <div className="px-3 py-1 text-[10px] uppercase tracking-widest font-semibold sticky top-0 bg-ink-800" style={{ color: catColors.text }}>
+                        <div className="px-3 py-1 text-[10px] uppercase tracking-widest font-semibold sticky top-0 z-10 bg-ink-800" style={{ color: catColors.text }}>
                           {cat}
                         </div>
                         {catSkills.map(s => {
