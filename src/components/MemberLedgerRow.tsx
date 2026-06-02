@@ -69,7 +69,9 @@ export function MemberLedgerRow({
         <span className="text-[12px] text-ink-100 truncate">{member.rank ?? '—'}</span>
         <span className="text-[12px] text-gold-300 truncate">{member.function ?? '—'}</span>
         <span className="text-[12px] font-mono text-gold-50/85">{income ?? '—'}</span>
-        <span className={`pill pill-${member.status.toLowerCase()}`}>{member.status}</span>
+        <div className="overflow-hidden">
+          <span className={`pill pill-${member.status.toLowerCase()}`}>{member.status}</span>
+        </div>
 
         {/* Actions — stop propagation so row click doesn't fire too */}
         <div className="flex justify-end gap-1.5" onClick={e => e.stopPropagation()}>
