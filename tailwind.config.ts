@@ -5,8 +5,11 @@ export default {
   theme: {
     extend: {
       fontFamily: {
-        display: ['Cinzel', 'serif'],
-        sans: ['Inter', 'system-ui', 'sans-serif']
+        display: ['Cormorant Garamond', 'Georgia', 'serif'],
+        serif: ['Spectral', 'Georgia', 'serif'],
+        sans: ['Spectral', 'Georgia', 'serif'],
+        ui: ['Figtree', 'system-ui', 'sans-serif'],
+        mono: ['IBM Plex Mono', 'ui-monospace', 'monospace']
       },
       colors: {
         ink: {
