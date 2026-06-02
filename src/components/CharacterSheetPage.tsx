@@ -10,6 +10,10 @@ import { EMPIRE_CATALOGUE } from '@/lib/catalogue';
 import { spellsForRealm } from '@/lib/spellsCatalogue';
 import type { SpellRealm } from '@/lib/spellsCatalogue';
 import { cx, formatIncome } from '@/lib/utils';
+import { Field } from '@/components/ui/Field';
+import { SectionHeader } from '@/components/ui/SectionHeader';
+import { DataRow } from '@/components/ui/DataRow';
+import { Pill } from '@/components/ui/Pill';
 
 interface Props {
   member: Member;
@@ -49,6 +53,12 @@ export function CharacterSheetPage({
   onDeleteCharInventory,
 }: Props) {
   const house = data.houses.find(h => h.id === member.house_id);
+  const skills = data.characterSkills.filter(s => s.member_id === member.id);
+  const totalXp = member.total_xp ?? 8;
+  const xpSpent = skills.reduce((sum, sk) => {
+    const cat = SKILLS_CATALOGUE.find(c => c.name === sk.skill_name);
+    return sum + (cat ? skillXpCost(cat, sk.rank) : sk.rank);
+  }, 0);
 
   return (
     <div className="animate-fade-in">
@@ -70,44 +80,71 @@ export function CharacterSheetPage({
       </div>
 
       {/* Masthead */}
-      <MastheadSection
+      <Masthead
         member={member}
         data={data}
         house={house}
         canEdit={canEdit}
         isAdmin={isAdmin}
+        wikiUrl={wikiUrl}
         onUpsertMember={onUpsertMember}
       />
+
+      {/* Notes lede — directly under masthead */}
+      {member.notes && (
+        <div className="mt-5 px-1">
+          <p className="text-base leading-relaxed text-ink-100/80 max-w-3xl">
+            <span
+              className="font-display float-left text-5xl leading-none font-bold mr-2"
+              style={{ color: 'var(--gold)' }}
+            >
+              {member.notes[0]}
+            </span>
+            {member.notes.slice(1)}
+          </p>
+          <div className="clear-both" />
+        </div>
+      )}
 
       {/* Vitals strip */}
       <VitalsStrip
         member={member}
-        skills={data.characterSkills.filter(s => s.member_id === member.id)}
+        xpSpent={xpSpent}
+        totalXp={totalXp}
         isOwn={isOwn}
         isAdmin={isAdmin}
         canEdit={canEdit}
         onUpsertMember={onUpsertMember}
       />
 
-      {/* Notes preamble */}
-      {member.notes && (
-        <div className="flex gap-4 items-start my-5">
-          <span className="eyebrow pt-1.5 whitespace-nowrap">On Record</span>
-          <p className="m-0 text-[17px] leading-[1.55] text-ink-300 max-w-3xl" style={{ textWrap: 'pretty' } as React.CSSProperties}>
-            <span className="font-display float-left text-[52px] leading-[0.74] font-bold text-gold-300 pr-2.5 pt-1">{member.notes.charAt(0)}</span>
-            {member.notes.slice(1)}
-          </p>
-        </div>
-      )}
-
       {/* Two-column layout */}
       <div className="mt-6 grid lg:grid-cols-[280px_1fr] gap-6">
-        {/* Left column */}
+        {/* Left column — sidebar */}
         <div className="space-y-4">
           <PersonalResourceCard
             member={member}
             canEdit={canEdit}
             onUpsertMember={onUpsertMember}
+          />
+          {(isOwn || isAdmin) && (
+            <PersonalFundsCard
+              member={member}
+              canEdit={canEdit}
+              onUpsertMember={onUpsertMember}
+            />
+          )}
+          <CharInventorySectionPage
+            memberId={member.id}
+            items={data.characterInventory.filter(ci => ci.member_id === member.id)}
+            canEdit={canEdit}
+            onUpsert={onUpsertCharInventory}
+            onDelete={onDeleteCharInventory}
+          />
+          <CraftingSectionPage
+            memberId={member.id}
+            queue={data.craftingQueue}
+            members={data.members}
+            events={data.events}
           />
         </div>
 
@@ -115,8 +152,8 @@ export function CharacterSheetPage({
         <div className="space-y-6">
           <SkillsSection
             memberId={member.id}
-            skills={data.characterSkills.filter(s => s.member_id === member.id)}
-            totalXp={member.total_xp ?? 8}
+            skills={skills}
+            totalXp={totalXp}
             canEdit={canEdit}
             onUpsert={onUpsertSkill}
             onDelete={onDeleteSkill}
@@ -141,62 +178,21 @@ export function CharacterSheetPage({
             onUpsert={onUpsertRitual}
             onDelete={onDeleteRitual}
           />
-          <CharInventorySectionPage
-            memberId={member.id}
-            items={data.characterInventory.filter(ci => ci.member_id === member.id)}
-            canEdit={canEdit}
-            onUpsert={onUpsertCharInventory}
-            onDelete={onDeleteCharInventory}
-          />
-          <CraftingSectionPage
-            memberId={member.id}
-            queue={data.craftingQueue}
-            members={data.members}
-            events={data.events}
-          />
         </div>
       </div>
     </div>
   );
 }
 
-// ── Sec header component ──────────────────────────────────────────────────────
+// ── Masthead ──────────────────────────────────────────────────────────────────
 
-function Sec({
-  title,
-  count,
-  action,
-  accent = 'var(--gold)',
-  children,
-}: {
-  title: string;
-  count?: string | number | null;
-  action?: React.ReactNode;
-  accent?: string;
-  children?: React.ReactNode;
-}) {
-  return (
-    <section style={{ marginBottom: 30 }}>
-      <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginBottom: 15 }}>
-        <span style={{ width: 3, height: 16, borderRadius: 2, background: accent, flex: '0 0 auto' }} />
-        <span className="font-display" style={{ fontSize: 19, fontWeight: 600, letterSpacing: '0.01em', color: 'rgb(var(--ink-100))' }}>{title}</span>
-        <span style={{ flex: 1, height: 1, background: 'var(--line)' }} />
-        {count != null && <span className="font-mono text-[11px]" style={{ color: 'rgb(var(--ink-300))' }}>{count}</span>}
-        {action && <span className="text-[11px] font-semibold font-ui" style={{ color: 'rgb(var(--ink-300))' }}>{action}</span>}
-      </div>
-      {children}
-    </section>
-  );
-}
-
-// ── Masthead Section ──────────────────────────────────────────────────────────
-
-function MastheadSection({
+function Masthead({
   member,
   data,
   house,
   canEdit,
   isAdmin,
+  wikiUrl,
   onUpsertMember,
 }: {
   member: Member;
@@ -204,6 +200,7 @@ function MastheadSection({
   house: typeof data.houses[number] | undefined;
   canEdit: boolean;
   isAdmin: boolean;
+  wikiUrl: string;
   onUpsertMember: (m: Partial<Member> & { name: string }) => Promise<void>;
 }) {
   const [editing, setEditing] = useState(false);
@@ -212,16 +209,8 @@ function MastheadSection({
   const [saveError, setSaveError] = useState<string | null>(null);
 
   const houseColor = house?.primary_color ?? 'var(--gold)';
-  const ro = !editing;
-
-  const coven = data.covens.find(c => c.id === member.coven);
-  const clawFn = data.functions.find(f => f.id === member.function);
-  const houseName = house?.name ?? '';
-
-  // 2-letter monogram from house name
-  const mono = houseName
-    ? houseName.split(/\s+/).filter(Boolean).slice(0, 2).map(w => w[0]).join('').toUpperCase()
-    : '??';
+  const covenName = data.covens.find(c => c.id === member.coven)?.name ?? null;
+  const clawName = data.functions.find(f => f.id === member.function)?.name ?? null;
 
   function startEdit() {
     setForm({ ...member });
@@ -253,231 +242,204 @@ function MastheadSection({
     setForm(f => ({ ...f, [key]: value }));
   }
 
-  const inputCls = (extra = '') =>
-    `input ${extra} ${ro ? 'opacity-70 cursor-default pointer-events-none select-text' : ''}`;
+  if (editing) {
+    return (
+      <div className="card overflow-hidden">
+        <div className="h-[2px] w-full" style={{ background: houseColor }} />
+        <div className="px-6 py-5">
+          <div className="flex items-center justify-between mb-4">
+            <div className="eyebrow">Edit Character</div>
+            <div className="flex gap-2">
+              <button onClick={cancelEdit} className="btn btn-ghost btn-sm">Cancel</button>
+              <button onClick={saveEdit} disabled={!form.name?.trim() || busy} className="btn btn-primary btn-sm">
+                <Icons.Save size={13} />
+                {busy ? 'Saving…' : 'Save'}
+              </button>
+            </div>
+          </div>
 
-  const statusPillCls = member.status === 'KIA' ? 'pill pill-kia' : member.status === 'inactive' ? 'pill pill-inactive' : 'pill pill-active';
+          <div className="grid grid-cols-2 gap-4">
+            <div>
+              <label className="eyebrow block mb-1">Character Name</label>
+              <input className="input font-display font-semibold" value={form.name ?? ''} onChange={e => set('name', e.target.value)} />
+            </div>
+            <div>
+              <label className="eyebrow block mb-1">Player Name</label>
+              <input className="input" value={form.player_name ?? ''} onChange={e => set('player_name', e.target.value || null)} />
+            </div>
+            <div>
+              <label className="eyebrow block mb-1">PID</label>
+              <input className="input num" value={form.pid ?? ''} onChange={e => set('pid', e.target.value || null)} />
+            </div>
+            <div>
+              <label className="eyebrow block mb-1">Rank</label>
+              <input className="input" value={form.rank ?? ''} onChange={e => set('rank', e.target.value || null)} />
+            </div>
+            <div>
+              <label className="eyebrow block mb-1">Claw</label>
+              <select className="input" value={form.function ?? ''} onChange={e => set('function', e.target.value || null)}>
+                <option value="">None</option>
+                {data.functions.map(f => <option key={f.id} value={f.id}>{f.name}</option>)}
+              </select>
+            </div>
+            <div>
+              <label className="eyebrow block mb-1">Military Role</label>
+              <input className="input" placeholder="Shield Wall, Battle Mage…" value={form.military_function ?? ''} onChange={e => set('military_function', e.target.value || null)} />
+            </div>
+            <div>
+              <label className="eyebrow block mb-1">HP</label>
+              <input type="number" min={0} className="input" value={form.hp ?? ''} onChange={e => set('hp', e.target.value !== '' ? Number(e.target.value) : null)} />
+            </div>
+            <div>
+              <label className="eyebrow block mb-1">MP</label>
+              <input type="number" min={0} className="input" value={form.mp ?? ''} onChange={e => set('mp', e.target.value !== '' ? Number(e.target.value) : null)} />
+            </div>
+            <div className="col-span-2">
+              <label className="eyebrow block mb-1">Income / Event</label>
+              <div className="grid grid-cols-3 gap-2">
+                <div>
+                  <label className="text-[10px] text-ink-100/40 block mb-0.5">Rings</label>
+                  <input type="number" min={0} className="input" placeholder="0" value={form.rings_per_event ?? ''} onChange={e => set('rings_per_event', e.target.value !== '' ? Number(e.target.value) : null)} />
+                </div>
+                <div>
+                  <label className="text-[10px] text-ink-100/40 block mb-0.5">Crowns</label>
+                  <input type="number" min={0} className="input" placeholder="0" value={form.crowns_per_event ?? ''} onChange={e => set('crowns_per_event', e.target.value !== '' ? Number(e.target.value) : null)} />
+                </div>
+                <div>
+                  <label className="text-[10px] text-ink-100/40 block mb-0.5">Thrones</label>
+                  <input type="number" min={0} className="input" placeholder="0" value={form.thrones_per_event ?? ''} onChange={e => set('thrones_per_event', e.target.value !== '' ? Number(e.target.value) : null)} />
+                </div>
+              </div>
+            </div>
+            <div>
+              <label className="eyebrow block mb-1">Coven</label>
+              <select className="input" value={form.coven ?? ''} onChange={e => set('coven', e.target.value || null)}>
+                <option value="">None</option>
+                {data.covens.map(c => <option key={c.id} value={c.id}>{c.name}</option>)}
+              </select>
+            </div>
+            {isAdmin && (
+              <>
+                <div>
+                  <label className="eyebrow block mb-1">House</label>
+                  <select className="input" value={form.house_id ?? ''} onChange={e => set('house_id', e.target.value || null)}>
+                    <option value="">Unassigned</option>
+                    {data.houses.map(h => <option key={h.id} value={h.id}>{h.name}</option>)}
+                  </select>
+                </div>
+                <div>
+                  <label className="eyebrow block mb-1">Status</label>
+                  <select className="input" value={form.status ?? 'active'} onChange={e => set('status', e.target.value as Member['status'])}>
+                    <option value="active">Active</option>
+                    <option value="inactive">Inactive</option>
+                    <option value="KIA">KIA</option>
+                  </select>
+                </div>
+              </>
+            )}
+            <div className="col-span-2">
+              <label className="eyebrow block mb-1">Notes</label>
+              <textarea className="input w-full" rows={3} value={form.notes ?? ''} onChange={e => set('notes', e.target.value || null)} />
+            </div>
+            <div className="flex items-center gap-4 col-span-2">
+              <label className="flex items-center gap-2 text-sm cursor-pointer">
+                <input type="checkbox" checked={!!form.is_noble} onChange={e => set('is_noble', e.target.checked)} className="w-4 h-4 accent-gold-300" />
+                Noble
+              </label>
+              <label className="flex items-center gap-2 text-sm cursor-pointer">
+                <input type="checkbox" checked={!!form.attending_event} onChange={e => set('attending_event', e.target.checked)} className="w-4 h-4 accent-gold-300" />
+                Attending next event
+              </label>
+            </div>
+          </div>
 
-  const resourceStr = member.resource
-    ? (member.territory ? `${member.resource} · ${member.territory}` : member.resource)
-    : '—';
+          {saveError && (
+            <div className="text-red-300 text-sm bg-red-500/10 border border-red-500/30 rounded-lg px-3 py-2 mt-4">
+              {saveError}
+            </div>
+          )}
+        </div>
+      </div>
+    );
+  }
+
+  // Read mode masthead
+  const eyebrowParts = [
+    member.rank,
+    house ? `of ${house.name}` : null,
+    member.pid ? `No. ${member.pid}` : null,
+  ].filter(Boolean).join(' · ');
 
   return (
-    <div style={{ border: '1px solid var(--line)', borderRadius: 12, position: 'relative', background: 'rgb(var(--ink-800))', overflow: 'hidden' }}>
-      {/* Top accent line */}
-      <div style={{ position: 'absolute', top: 0, left: 24, right: 24, height: 2, background: `linear-gradient(90deg, transparent, ${houseColor}, transparent)` }} />
+    <div
+      className="overflow-hidden rounded-xl border"
+      style={{ borderColor: 'var(--line)', background: 'rgb(var(--ink-800))' }}
+    >
+      {/* Thin house-color top accent line */}
+      <div className="h-[2px] w-full" style={{ background: houseColor }} />
 
-      <div style={{ padding: '26px 30px' }}>
-        {/* Edit controls */}
-        {canEdit && (
-          <div className="flex justify-end mb-3">
-            {editing ? (
-              <div className="flex gap-2">
-                <button onClick={cancelEdit} className="btn btn-ghost btn-sm">Cancel</button>
-                <button onClick={saveEdit} disabled={!form.name?.trim() || busy} className="btn btn-primary btn-sm">
-                  <Icons.Save size={13} />
-                  {busy ? 'Saving…' : 'Save'}
-                </button>
-              </div>
-            ) : (
-              <button onClick={startEdit} className="btn btn-ghost btn-sm">
-                <Icons.Edit size={13} />
-                Edit
-              </button>
-            )}
-          </div>
+      <div className="px-6 pt-5 pb-4">
+        {/* Eyebrow */}
+        {eyebrowParts && (
+          <div className="eyebrow mb-1">{eyebrowParts}</div>
         )}
 
-        <div style={{ display: 'flex', gap: 26, alignItems: 'flex-start' }}>
-          {/* Portrait + crest */}
-          <div style={{ display: 'flex', flexDirection: 'column', gap: 10, alignItems: 'center', flexShrink: 0 }}>
-            <div
-              style={{
-                width: 80, height: 100, borderRadius: 5,
-                background: 'var(--inset)',
-                backgroundImage: 'repeating-linear-gradient(45deg, rgba(203,171,104,0.12) 0 7px, transparent 7px 15px)',
-                border: '1px dashed var(--line-strong)',
-                display: 'flex', alignItems: 'center', justifyContent: 'center',
-                color: 'rgb(var(--ink-300))', fontSize: 9, letterSpacing: '0.14em', textTransform: 'uppercase',
-                fontFamily: 'IBM Plex Mono, monospace',
-              }}
-            >
-              Portrait
-            </div>
-            <div
-              style={{
-                width: 30, height: 30, borderRadius: 6, fontSize: 12,
-                display: 'grid', placeItems: 'center',
-                fontFamily: 'Cormorant Garamond, Georgia, serif', fontWeight: 600,
-                color: houseColor,
-                border: `1px solid color-mix(in oklab, ${houseColor} 55%, transparent)`,
-                background: `linear-gradient(160deg, color-mix(in oklab, ${houseColor} 22%, transparent), color-mix(in oklab, ${houseColor} 6%, transparent))`,
-              }}
-            >
-              {mono}
-            </div>
-          </div>
+        {/* Character name */}
+        <h1 className="font-display text-5xl font-bold leading-tight text-ink-100 mb-3">
+          {member.name}
+        </h1>
 
-          {/* Main info */}
-          <div style={{ flex: 1, minWidth: 0 }}>
-            {/* Eyebrow */}
-            <div className="eyebrow mb-2">
-              {member.rank && `${member.rank} of `}{houseName || 'Unassigned'}{member.pid && <> · No. <span className="font-mono" style={{ color: 'rgb(var(--ink-300))' }}>{member.pid}</span></>}
-            </div>
-
-            {/* Character name */}
-            {ro ? (
-              <h1 style={{ fontFamily: 'Cormorant Garamond, Georgia, serif', fontSize: 50, lineHeight: 0.92, fontWeight: 700, letterSpacing: '0.005em', color: 'rgb(var(--ink-100))', margin: '0 0 13px' }}>
-                {member.name}
-              </h1>
-            ) : (
-              <input
-                className="input font-display font-bold mb-3"
-                style={{ fontSize: 28 }}
-                readOnly={ro}
-                value={form.name ?? ''}
-                onChange={e => set('name', e.target.value)}
-              />
-            )}
-
-            {/* Status pills */}
-            {ro && (
-              <div className="flex gap-2 flex-wrap mb-4">
-                {member.is_noble && (
-                  <span className="pill pill-noble">
-                    <span className="w-1.5 h-1.5 rounded-full bg-current" />
-                    Noble
-                  </span>
-                )}
-                <span className={statusPillCls}>
-                  <span className="w-1.5 h-1.5 rounded-full bg-current" />
-                  {member.status ?? 'Active'}
-                </span>
-                {coven && (
-                  <span className="pill">✦ {coven.name}</span>
-                )}
-                {member.military_function && (
-                  <span className="pill">⚔ {member.military_function}</span>
-                )}
-              </div>
-            )}
-
-            {/* 4-col grid — Player / Claw / Coven / Resource */}
-            {ro ? (
-              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: '15px 22px' }}>
-                <FieldKV k="Player" v={member.player_name ?? '—'} />
-                <FieldKV k="Claw" v={clawFn?.name ?? '—'} />
-                <FieldKV k="Coven" v={coven?.name ?? '—'} />
-                <FieldKV k="Resource" v={resourceStr} />
-              </div>
-            ) : (
-              /* Edit form */
-              <div className="grid grid-cols-2 gap-4">
-                <div>
-                  <label className="eyebrow block mb-1">Player Name</label>
-                  <input className={inputCls()} readOnly={ro} value={form.player_name ?? ''} onChange={e => set('player_name', e.target.value || null)} />
-                </div>
-                <div>
-                  <label className="eyebrow block mb-1">PID</label>
-                  <input className={inputCls('font-mono')} readOnly={ro} value={form.pid ?? ''} onChange={e => set('pid', e.target.value || null)} />
-                </div>
-                <div>
-                  <label className="eyebrow block mb-1">Rank</label>
-                  <input className={inputCls()} readOnly={ro} value={form.rank ?? ''} onChange={e => set('rank', e.target.value || null)} />
-                </div>
-                <div>
-                  <label className="eyebrow block mb-1">Claw</label>
-                  <select className="input" value={form.function ?? ''} onChange={e => set('function', e.target.value || null)}>
-                    <option value="">None</option>
-                    {data.functions.map(f => <option key={f.id} value={f.id}>{f.name}</option>)}
-                  </select>
-                </div>
-                <div>
-                  <label className="eyebrow block mb-1">Military Role</label>
-                  <input className={inputCls()} readOnly={ro} placeholder="Shield Wall, Battle Mage…" value={form.military_function ?? ''} onChange={e => set('military_function', e.target.value || null)} />
-                </div>
-                <div>
-                  <label className="eyebrow block mb-1">HP</label>
-                  <input type="number" min={0} className={inputCls()} readOnly={ro} value={form.hp ?? ''} onChange={e => set('hp', e.target.value !== '' ? Number(e.target.value) : null)} />
-                </div>
-                <div>
-                  <label className="eyebrow block mb-1">MP</label>
-                  <input type="number" min={0} className={inputCls()} readOnly={ro} value={form.mp ?? ''} onChange={e => set('mp', e.target.value !== '' ? Number(e.target.value) : null)} />
-                </div>
-                <div>
-                  <label className="eyebrow block mb-1">Coven</label>
-                  <select className="input" value={form.coven ?? ''} onChange={e => set('coven', e.target.value || null)}>
-                    <option value="">None</option>
-                    {data.covens.map(c => <option key={c.id} value={c.id}>{c.name}</option>)}
-                  </select>
-                </div>
-                <div className="col-span-2">
-                  <label className="eyebrow block mb-1">Income / Event</label>
-                  <div className="grid grid-cols-3 gap-2">
-                    <div>
-                      <label className="text-[10px] text-ink-100/40 block mb-0.5">Rings</label>
-                      <input type="number" min={0} className="input" placeholder="0" value={form.rings_per_event ?? ''} onChange={e => set('rings_per_event', e.target.value !== '' ? Number(e.target.value) : null)} />
-                    </div>
-                    <div>
-                      <label className="text-[10px] text-ink-100/40 block mb-0.5">Crowns</label>
-                      <input type="number" min={0} className="input" placeholder="0" value={form.crowns_per_event ?? ''} onChange={e => set('crowns_per_event', e.target.value !== '' ? Number(e.target.value) : null)} />
-                    </div>
-                    <div>
-                      <label className="text-[10px] text-ink-100/40 block mb-0.5">Thrones</label>
-                      <input type="number" min={0} className="input" placeholder="0" value={form.thrones_per_event ?? ''} onChange={e => set('thrones_per_event', e.target.value !== '' ? Number(e.target.value) : null)} />
-                    </div>
-                  </div>
-                </div>
-                {isAdmin && (
-                  <>
-                    <div>
-                      <label className="eyebrow block mb-1">House</label>
-                      <select className="input" value={form.house_id ?? ''} onChange={e => set('house_id', e.target.value || null)}>
-                        <option value="">Unassigned</option>
-                        {data.houses.map(h => <option key={h.id} value={h.id}>{h.name}</option>)}
-                      </select>
-                    </div>
-                    <div>
-                      <label className="eyebrow block mb-1">Status</label>
-                      <select className="input" value={form.status ?? 'active'} onChange={e => set('status', e.target.value as Member['status'])}>
-                        <option value="active">Active</option>
-                        <option value="inactive">Inactive</option>
-                        <option value="KIA">KIA</option>
-                      </select>
-                    </div>
-                  </>
-                )}
-                <div className="flex items-center gap-4 col-span-2">
-                  <label className="flex items-center gap-2 text-sm cursor-pointer">
-                    <input type="checkbox" checked={!!form.is_noble} onChange={e => set('is_noble', e.target.checked)} className="w-4 h-4 accent-gold-300" />
-                    Noble
-                  </label>
-                  <label className="flex items-center gap-2 text-sm cursor-pointer">
-                    <input type="checkbox" checked={!!form.attending_event} onChange={e => set('attending_event', e.target.checked)} className="w-4 h-4 accent-gold-300" />
-                    Attending next event
-                  </label>
-                </div>
-              </div>
-            )}
-          </div>
+        {/* Pills row */}
+        <div className="flex flex-wrap gap-2 mb-5">
+          {member.is_noble && <Pill variant="noble">Noble</Pill>}
+          <Pill variant={member.status === 'active' ? 'active' : member.status === 'KIA' ? 'kia' : 'inactive'}>
+            {member.status ?? 'active'}
+          </Pill>
+          {covenName && (
+            <span className="pill" style={{ color: '#b56eb5', borderColor: 'rgba(181,110,181,0.4)' }}>
+              {covenName}
+            </span>
+          )}
+          {member.military_function && (
+            <span className="pill">{member.military_function}</span>
+          )}
+          {member.attending_event && (
+            <span className="pill" style={{ color: 'var(--ok)', borderColor: 'rgba(130,183,141,0.4)' }}>
+              Attending
+            </span>
+          )}
         </div>
 
-        {saveError && (
-          <div className="text-red-300 text-sm bg-red-500/10 border border-red-500/30 rounded-lg px-3 py-2 mt-4">
-            {saveError}
-          </div>
-        )}
+        {/* 4-up Field grid */}
+        <div
+          className="grid grid-cols-2 sm:grid-cols-4 gap-x-6 gap-y-4 pt-4 border-t"
+          style={{ borderColor: 'var(--line-soft)' }}
+        >
+          <Field label="Player" value={member.player_name ?? '—'} />
+          <Field label="Claw" value={clawName ?? '—'} />
+          <Field label="Coven" value={covenName ?? '—'} />
+          <Field label="Resource" value={member.resource ?? '—'} />
+        </div>
       </div>
-    </div>
-  );
-}
 
-// Small field key/value for read mode
-function FieldKV({ k, v }: { k: string; v: string }) {
-  return (
-    <div style={{ display: 'flex', flexDirection: 'column', gap: 3, minWidth: 0 }}>
-      <span className="eyebrow">{k}</span>
-      <span style={{ fontSize: 16, lineHeight: 1.2, color: 'rgb(var(--ink-100))', fontWeight: 500 }}>{v}</span>
+      {/* Action bar */}
+      {canEdit && (
+        <div className="px-6 pb-4 flex gap-2">
+          <button onClick={startEdit} className="btn btn-primary btn-sm">
+            <Icons.Edit size={13} />
+            Edit Record
+          </button>
+          <a
+            href={wikiUrl}
+            target="_blank"
+            rel="noopener noreferrer"
+            className="btn btn-ghost btn-sm"
+          >
+            <Icons.ExternalLink size={13} />
+            Empire Wiki
+          </a>
+        </div>
+      )}
     </div>
   );
 }
@@ -486,25 +448,33 @@ function FieldKV({ k, v }: { k: string; v: string }) {
 
 function VitalsStrip({
   member,
-  skills,
+  xpSpent,
+  totalXp,
   isOwn,
   isAdmin,
   canEdit,
   onUpsertMember,
 }: {
   member: Member;
-  skills: CharacterSkill[];
+  xpSpent: number;
+  totalXp: number;
   isOwn: boolean;
   isAdmin: boolean;
   canEdit: boolean;
   onUpsertMember: (m: Partial<Member> & { name: string }) => Promise<void>;
 }) {
   const [editingStats, setEditingStats] = useState(false);
-  const [statsForm, setStatsForm] = useState({ hp: member.hp ?? '', mp: member.mp ?? '', rings_per_event: member.rings_per_event ?? '', crowns_per_event: member.crowns_per_event ?? '', thrones_per_event: member.thrones_per_event ?? '' });
+  const [statsForm, setStatsForm] = useState({
+    hp: member.hp ?? '',
+    mp: member.mp ?? '',
+    rings_per_event: member.rings_per_event ?? '',
+    crowns_per_event: member.crowns_per_event ?? '',
+    thrones_per_event: member.thrones_per_event ?? '',
+  });
   const [statsBusy, setStatsBusy] = useState(false);
 
   const [editingXp, setEditingXp] = useState(false);
-  const [xpInput, setXpInput] = useState(String(member.total_xp ?? 8));
+  const [xpInput, setXpInput] = useState(String(totalXp));
   const [xpError, setXpError] = useState<string | null>(null);
 
   const [editingFunds, setEditingFunds] = useState(false);
@@ -515,19 +485,8 @@ function VitalsStrip({
   });
   const [fundsBusy, setFundsBusy] = useState(false);
 
-  const totalXp = member.total_xp ?? 8;
-  const xpSpent = skills.reduce((sum, sk) => {
-    const cat = SKILLS_CATALOGUE.find(c => c.name === sk.skill_name);
-    return sum + (cat ? skillXpCost(cat, sk.rank) : sk.rank);
-  }, 0);
-  const xpRemaining = totalXp - xpSpent;
   const xpPct = totalXp > 0 ? Math.min(100, (xpSpent / totalXp) * 100) : 0;
-
-  const { t: ft, c: fc, r: fr, total: fTotal } = rollup(
-    member.personal_rings ?? 0,
-    member.personal_crowns ?? 0,
-    member.personal_thrones ?? 0
-  );
+  const xpRemaining = totalXp - xpSpent;
 
   function rollup(rings: number, crowns: number, thrones: number) {
     const total = rings + crowns * 20 + thrones * 160;
@@ -535,6 +494,18 @@ function VitalsStrip({
     const c = Math.floor(rem1 / 20);   const r = rem1 % 20;
     return { t, c, r, total };
   }
+
+  const { t: ft, c: fc, r: fr, total: fTotal } = rollup(
+    member.personal_rings ?? 0,
+    member.personal_crowns ?? 0,
+    member.personal_thrones ?? 0
+  );
+
+  const fundsStr = fTotal === 0 ? '0r' : [
+    ft > 0 ? `${ft}t` : '',
+    fc > 0 ? `${fc}c` : '',
+    fr > 0 ? `${fr}r` : '',
+  ].filter(Boolean).join(' ');
 
   async function saveStats() {
     setStatsBusy(true);
@@ -572,15 +543,6 @@ function VitalsStrip({
       setEditingFunds(false);
     } finally { setFundsBusy(false); }
   }
-
-  const incomeStr = formatIncome(member.rings_per_event, member.crowns_per_event, member.thrones_per_event);
-  const fundsStr = fTotal === 0 ? '0r' : [
-    ft > 0 ? `${ft}t` : '',
-    fc > 0 ? `${fc}c` : '',
-    fr > 0 ? `${fr}r` : '',
-  ].filter(Boolean).join(' ');
-
-  const showFunds = isOwn || isAdmin;
 
   if (editingStats || editingXp || editingFunds) {
     return (
@@ -627,7 +589,7 @@ function VitalsStrip({
             <div className="flex items-center gap-2">
               <input autoFocus type="number" min={xpSpent} className="input text-sm w-24 py-1" value={xpInput} onChange={e => setXpInput(e.target.value)} onKeyDown={e => { if (e.key === 'Enter') saveXp(); if (e.key === 'Escape') { setEditingXp(false); setXpError(null); } }} />
               <button onClick={saveXp} className="btn btn-primary btn-sm text-xs">Save</button>
-              <button onClick={() => { setEditingXp(false); setXpError(null); }} className="btn btn-ghost btn-sm text-xs">✕</button>
+              <button onClick={() => { setEditingXp(false); setXpError(null); }} className="btn btn-ghost btn-sm text-xs">Cancel</button>
             </div>
             {xpError && <p className="text-red-400 text-[11px]">{xpError}</p>}
           </div>
@@ -654,71 +616,186 @@ function VitalsStrip({
   }
 
   return (
-    <div style={{ display: 'flex', alignItems: 'stretch', border: '1px solid var(--line)', borderRadius: 10, overflow: 'hidden', marginTop: 16, marginBottom: 8 }}>
-      {/* Hits */}
-      <VitalCell label="Hits" accent="var(--danger)" editButton={canEdit ? () => { setStatsForm({ hp: member.hp ?? '', mp: member.mp ?? '', rings_per_event: member.rings_per_event ?? '', crowns_per_event: member.crowns_per_event ?? '', thrones_per_event: member.thrones_per_event ?? '' }); setEditingStats(true); } : undefined} borderLeft={false}>
-        <span className="font-mono" style={{ fontSize: 23, color: 'var(--danger)', fontWeight: 500 }}>{member.hp ?? '—'}</span>
-      </VitalCell>
-
-      {/* Mana */}
-      <VitalCell label="Mana" accent="#6f97c4">
-        <span className="font-mono" style={{ fontSize: 23, color: '#6f97c4', fontWeight: 500 }}>{member.mp ?? '—'}</span>
-      </VitalCell>
-
-      {/* Income */}
-      <VitalCell label="Income / Event">
-        <span className="font-mono" style={{ fontSize: 23, color: 'rgb(var(--ink-100))', fontWeight: 500 }}>{incomeStr ?? '—'}</span>
-      </VitalCell>
-
-      {/* Personal Funds — private */}
-      {showFunds && (
-        <VitalCell label="Personal Funds · private" editButton={canEdit ? () => { setFundsForm({ personal_rings: member.personal_rings ?? 0, personal_crowns: member.personal_crowns ?? 0, personal_thrones: member.personal_thrones ?? 0 }); setEditingFunds(true); } : undefined}>
-          <span className="font-mono" style={{ fontSize: 23, color: 'var(--gold)', fontWeight: 500 }}>{fundsStr}</span>
-        </VitalCell>
-      )}
-
-      {/* XP */}
-      <div style={{ flex: 1.3, padding: '13px 18px', borderLeft: '1px solid var(--line)' }}>
-        <div className="eyebrow" style={{ marginBottom: 5, display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-          <span>Experience</span>
-          <div className="flex items-center gap-2">
-            <span style={{ color: xpRemaining < 0 ? 'var(--danger)' : 'var(--ok)', letterSpacing: 0, textTransform: 'none', fontFamily: 'Figtree, system-ui, sans-serif' }}>
-              {xpRemaining >= 0 ? `${xpRemaining} left` : `${Math.abs(xpRemaining)} over`}
-            </span>
+    <div
+      className="mt-4 rounded-xl border overflow-hidden"
+      style={{ borderColor: 'var(--line)', background: 'rgb(var(--ink-800))' }}
+    >
+      <div className="flex divide-x" style={{ '--tw-divide-opacity': 1 } as React.CSSProperties}>
+        {/* Hits */}
+        <div className="flex-1 px-4 py-3 min-w-0" style={{ borderRight: '1px solid var(--line)' }}>
+          <div className="eyebrow mb-0.5 flex items-center justify-between">
+            <span>Hits</span>
             {canEdit && (
-              <button onClick={() => { setXpInput(String(totalXp)); setEditingXp(true); }} className="text-[10px] text-ink-100/40 hover:text-gold-300 transition-colors">edit</button>
+              <button
+                onClick={() => { setStatsForm({ hp: member.hp ?? '', mp: member.mp ?? '', rings_per_event: member.rings_per_event ?? '', crowns_per_event: member.crowns_per_event ?? '', thrones_per_event: member.thrones_per_event ?? '' }); setEditingStats(true); }}
+                className="font-ui text-[9px] text-ink-100/40 hover:text-gold-300 transition-colors normal-case tracking-normal"
+              >edit</button>
             )}
           </div>
+          <div className="num text-xl font-bold" style={{ color: 'var(--danger)' }}>{member.hp ?? '—'}</div>
         </div>
-        <div className="font-mono" style={{ fontSize: 23, fontWeight: 500 }}>
-          {xpSpent}<span style={{ color: 'rgb(var(--ink-300))', fontSize: 15 }}> / {totalXp}</span>
+
+        {/* Mana */}
+        <div className="flex-1 px-4 py-3 min-w-0" style={{ borderRight: '1px solid var(--line)' }}>
+          <div className="eyebrow mb-0.5">Mana</div>
+          <div className="num text-xl font-bold text-blue-400">{member.mp ?? '—'}</div>
         </div>
-        <div style={{ height: 3, background: 'var(--inset)', borderRadius: 2, overflow: 'hidden', marginTop: 6 }}>
-          <div style={{ height: '100%', width: xpPct + '%', background: xpRemaining < 0 ? 'var(--danger)' : 'var(--gold)' }} />
+
+        {/* Income / Event */}
+        <div className="flex-1 px-4 py-3 min-w-0" style={{ borderRight: '1px solid var(--line)' }}>
+          <div className="eyebrow mb-0.5">Income / Event</div>
+          <div className="num text-sm font-bold text-ink-100">
+            {formatIncome(member.rings_per_event, member.crowns_per_event, member.thrones_per_event) ?? '—'}
+          </div>
+        </div>
+
+        {/* Personal Funds — private */}
+        {(isOwn || isAdmin) && (
+          <div className="flex-1 px-4 py-3 min-w-0" style={{ borderRight: '1px solid var(--line)' }}>
+            <div className="eyebrow mb-0.5 flex items-center justify-between gap-1">
+              <span>Personal Funds <span className="text-[8px] normal-case tracking-normal opacity-50">(private)</span></span>
+              {canEdit && (
+                <button
+                  onClick={() => { setFundsForm({ personal_rings: member.personal_rings ?? 0, personal_crowns: member.personal_crowns ?? 0, personal_thrones: member.personal_thrones ?? 0 }); setEditingFunds(true); }}
+                  className="font-ui text-[9px] text-ink-100/40 hover:text-gold-300 transition-colors normal-case tracking-normal"
+                >edit</button>
+              )}
+            </div>
+            <div className="num text-sm font-bold" style={{ color: 'var(--gold)' }}>{fundsStr}</div>
+          </div>
+        )}
+
+        {/* XP */}
+        <div className="flex-1 px-4 py-3 min-w-0" style={{ minWidth: 120 }}>
+          <div className="eyebrow mb-0.5 flex items-center justify-between gap-1">
+            <span>XP</span>
+            {canEdit && (
+              <button
+                onClick={() => { setXpInput(String(totalXp)); setEditingXp(true); }}
+                className="font-ui text-[9px] text-ink-100/40 hover:text-gold-300 transition-colors normal-case tracking-normal"
+              >edit</button>
+            )}
+          </div>
+          <div className="num text-sm font-bold">
+            <span style={{ color: 'var(--gold)' }}>{xpSpent}</span>
+            <span className="text-ink-100/40"> / {totalXp}</span>
+          </div>
+          <div
+            className="mt-1.5 h-[3px] rounded-full overflow-hidden"
+            style={{ background: 'rgba(203,171,104,0.15)' }}
+          >
+            <div
+              className="h-full rounded-full transition-all duration-500"
+              style={{ width: `${xpPct}%`, background: xpRemaining < 0 ? 'var(--danger)' : 'var(--gold)' }}
+            />
+          </div>
+          {xpError && <p className="text-red-400 text-[10px] mt-0.5">{xpError}</p>}
         </div>
       </div>
     </div>
   );
 }
 
-function VitalCell({
-  label, accent, children, borderLeft = true, editButton,
+// ── Personal Funds Card ───────────────────────────────────────────────────────
+
+function PersonalFundsCard({
+  member,
+  canEdit,
+  onUpsertMember,
 }: {
-  label: string;
-  accent?: string;
-  children: React.ReactNode;
-  borderLeft?: boolean;
-  editButton?: () => void;
+  member: Member;
+  canEdit: boolean;
+  onUpsertMember: (m: Partial<Member> & { name: string }) => Promise<void>;
 }) {
+  const [editing, setEditing] = useState(false);
+  const [form, setForm] = useState({
+    personal_rings: member.personal_rings ?? 0,
+    personal_crowns: member.personal_crowns ?? 0,
+    personal_thrones: member.personal_thrones ?? 0,
+  });
+  const [busy, setBusy] = useState(false);
+
+  const incomeRings = (member.rings_per_event ?? 0) + (member.crowns_per_event ?? 0) * 20 + (member.thrones_per_event ?? 0) * 160;
+
+  function rollup(rings: number, crowns: number, thrones: number) {
+    const total = rings + crowns * 20 + thrones * 160;
+    const t = Math.floor(total / 160); const rem1 = total % 160;
+    const c = Math.floor(rem1 / 20);   const r = rem1 % 20;
+    return { t, c, r, total };
+  }
+
+  const { t, c, r, total } = rollup(member.personal_rings ?? 0, member.personal_crowns ?? 0, member.personal_thrones ?? 0);
+
+  async function save() {
+    setBusy(true);
+    try {
+      await onUpsertMember({ ...member, name: member.name, ...form });
+      setEditing(false);
+    } finally { setBusy(false); }
+  }
+
+  async function collectIncome() {
+    if (!incomeRings || busy) return;
+    setBusy(true);
+    try {
+      const curTotal = (member.personal_rings ?? 0) + (member.personal_crowns ?? 0) * 20 + (member.personal_thrones ?? 0) * 160;
+      const newTotal = curTotal + incomeRings;
+      const nt = Math.floor(newTotal / 160); const rem = newTotal % 160;
+      const nc = Math.floor(rem / 20);       const nr = rem % 20;
+      await onUpsertMember({ ...member, name: member.name, personal_rings: nr, personal_crowns: nc, personal_thrones: nt });
+    } finally { setBusy(false); }
+  }
+
   return (
-    <div style={{ flex: 1, padding: '13px 18px', borderLeft: borderLeft ? '1px solid var(--line)' : 'none' }}>
-      <div className="eyebrow" style={{ marginBottom: 5, display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-        <span style={{ color: accent }}>{label}</span>
-        {editButton && (
-          <button onClick={editButton} className="text-[10px] text-ink-100/40 hover:text-gold-300 transition-colors">edit</button>
-        )}
-      </div>
-      {children}
+    <div className="card px-4 py-4">
+      <SectionHeader title="Personal Funds" />
+
+      {editing ? (
+        <div className="space-y-2">
+          <div className="grid grid-cols-3 gap-2">
+            {(['personal_thrones', 'personal_crowns', 'personal_rings'] as const).map(key => (
+              <div key={key}>
+                <label className="eyebrow block mb-1 capitalize">{key.replace('personal_', '')}</label>
+                <input type="number" min={0} className="input text-sm py-1" value={form[key]} onChange={e => setForm(f => ({ ...f, [key]: parseInt(e.target.value, 10) || 0 }))} />
+              </div>
+            ))}
+          </div>
+          <div className="flex gap-2 justify-end pt-1">
+            <button onClick={() => setEditing(false)} className="btn btn-ghost btn-sm text-xs">Cancel</button>
+            <button onClick={save} disabled={busy} className="btn btn-primary btn-sm text-xs">{busy ? 'Saving…' : 'Save'}</button>
+          </div>
+        </div>
+      ) : (
+        <div className="space-y-2">
+          <div className="flex items-end justify-between">
+            <span className="font-display text-2xl font-bold" style={{ color: 'var(--gold)' }}>
+              {t > 0 && <>{t}<span className="text-sm opacity-60 ml-0.5">t</span>{' '}</>}
+              {c > 0 && <>{c}<span className="text-sm opacity-60 ml-0.5">c</span>{' '}</>}
+              {r > 0 && <>{r}<span className="text-sm opacity-60 ml-0.5">r</span></>}
+              {total === 0 && <span className="text-ink-100/30">0r</span>}
+            </span>
+            <div className="flex items-center gap-2">
+              <span className="num text-xs text-ink-100/40">{total} rings</span>
+              {canEdit && (
+                <button onClick={() => { setForm({ personal_rings: member.personal_rings ?? 0, personal_crowns: member.personal_crowns ?? 0, personal_thrones: member.personal_thrones ?? 0 }); setEditing(true); }} className="font-ui text-[10px] text-ink-100/40 hover:text-gold-300 transition-colors">edit</button>
+              )}
+            </div>
+          </div>
+
+          {incomeRings > 0 && (
+            <div className="flex items-center justify-between pt-1 border-t" style={{ borderColor: 'var(--line-soft)' }}>
+              <span className="text-xs text-ink-100/50">
+                Income / event: <span className="opacity-80" style={{ color: 'var(--gold)' }}>{formatIncome(member.rings_per_event, member.crowns_per_event, member.thrones_per_event)}</span>
+              </span>
+              {canEdit && (
+                <button onClick={collectIncome} disabled={busy} className="btn btn-ghost btn-sm text-xs" style={{ color: 'var(--gold)' }}>
+                  + Collect
+                </button>
+              )}
+            </div>
+          )}
+        </div>
+      )}
     </div>
   );
 }
@@ -757,7 +834,7 @@ function PersonalResourceCard({
     if (!member.resource) return null;
     return (
       <div className="card px-4 py-4">
-        <div className="eyebrow mb-3">Personal Resource</div>
+        <SectionHeader title="Personal Resource" />
         <div className="flex items-center justify-between">
           <span className="text-sm font-medium text-ink-100">{member.resource}</span>
           {member.territory && <span className="text-xs text-ink-100/50">{member.territory}</span>}
@@ -768,7 +845,7 @@ function PersonalResourceCard({
 
   return (
     <div className="card px-4 py-4">
-      <div className="eyebrow mb-3">Personal Resource</div>
+      <SectionHeader title="Personal Resource" />
 
       <div className="mb-3">
         <label className="eyebrow block mb-1.5">Resource Type</label>
@@ -779,9 +856,10 @@ function PersonalResourceCard({
               className={cx(
                 'px-2.5 py-1 rounded-lg text-xs font-medium border transition-colors',
                 resType === rt
-                  ? 'bg-gold-500/20 border-gold-500/60 text-gold-300'
+                  ? 'border-opacity-60'
                   : 'bg-black/20 border-gold-500/15 text-ink-100/60 hover:border-gold-500/40 hover:text-ink-100'
               )}
+              style={resType === rt ? { background: 'rgba(203,171,104,0.18)', color: 'var(--gold)', borderColor: 'rgba(203,171,104,0.5)' } : undefined}
               onClick={async () => {
                 const newType = resType === rt ? null : rt;
                 const newSub = null;
@@ -856,7 +934,6 @@ function SkillsSection({
   onUpsert: (s: Omit<CharacterSkill, 'id'> & { id?: string }) => Promise<void>;
   onDelete: (id: string) => Promise<void>;
 }) {
-  const [activeCategory, setActiveCategory] = useState<CategoryFilter>('All');
   const [adding, setAdding] = useState(false);
   const [pending, setPending] = useState<PendingSkill[]>([]);
   const [busy, setBusy] = useState(false);
@@ -871,24 +948,15 @@ function SkillsSection({
   const pendingXp = pending.reduce((s, p) => s + p.xpCost, 0);
   const xpRemaining = totalXp - xpSpent - pendingXp;
 
-  const categoriesWithSkills = useMemo(() => {
-    const cats = new Set<SkillCategory>();
-    for (const s of skills) cats.add((s.category as SkillCategory) || 'Other');
-    return cats;
-  }, [skills]);
-
-  const visibleTabs: CategoryFilter[] = ['All', ...SKILL_CATEGORY_ORDER.filter(c => categoriesWithSkills.has(c) || adding)];
-  const filteredSkills = activeCategory === 'All' ? skills : skills.filter(s => s.category === activeCategory);
-
   const grouped = useMemo(() => {
     const map = new Map<string, CharacterSkill[]>();
-    for (const s of filteredSkills) {
+    for (const s of skills) {
       const cat = s.category || 'Other';
       if (!map.has(cat)) map.set(cat, []);
       map.get(cat)!.push(s);
     }
     return map;
-  }, [filteredSkills]);
+  }, [skills]);
 
   const orderedCategories = [
     ...SKILL_CATEGORY_ORDER.filter(c => grouped.has(c)),
@@ -920,138 +988,108 @@ function SkillsSection({
 
   return (
     <div className="card px-5 py-5">
-      <Sec
-        title="Skills"
-        count={`${xpSpent} / ${totalXp} xp`}
-        accent="var(--gold)"
+      <SectionHeader
+        title="Character Skills"
+        count={skills.length || undefined}
         action={canEdit && !adding ? (
-          <button onClick={() => setAdding(true)} className="btn btn-ghost btn-sm text-xs">
-            <Icons.Plus size={13} />
+          <button onClick={() => setAdding(true)} className="btn btn-ghost btn-sm text-xs flex items-center gap-1">
+            <Icons.Plus size={12} />
             Add Skills
           </button>
         ) : undefined}
-      >
-        {/* Category tabs */}
-        <div className="flex flex-wrap gap-1 mb-4">
-          {visibleTabs.map(cat => {
-            const colors = cat !== 'All' ? SKILL_CATEGORY_COLORS[cat as SkillCategory] : null;
-            const isActive = activeCategory === cat;
-            return (
-              <button
-                key={cat}
-                onClick={() => setActiveCategory(cat)}
-                className={cx(
-                  'px-3 py-1 rounded-lg text-xs font-medium border transition-colors',
-                  isActive && colors
-                    ? 'border-opacity-60'
-                    : 'bg-black/20 border-gold-500/15 text-ink-100/60 hover:text-ink-100 hover:border-gold-500/40'
-                )}
-                style={isActive && colors ? { background: colors.bg, color: colors.text, borderColor: colors.border } : undefined}
-              >
-                {cat}
-              </button>
-            );
-          })}
-        </div>
+      />
 
-        {/* Skills list — tick pattern */}
-        {orderedCategories.map(cat => {
-          const catSkills = grouped.get(cat)!;
-          const colors = SKILL_CATEGORY_COLORS[(cat as SkillCategory)] ?? SKILL_CATEGORY_COLORS.Other;
-          return (
-            <div key={cat} className="mb-4">
-              {/* Category eyebrow */}
-              <div className="flex items-center gap-2 mb-2">
-                <span className="swatch-dot" style={{ '--c': colors.text } as React.CSSProperties} />
-                <span className="eyebrow" style={{ color: colors.text, fontSize: '9.5px' }}>{cat}</span>
-              </div>
-              {catSkills.map(sk => {
-                const catalogueEntry = SKILLS_CATALOGUE.find(c => c.name === sk.skill_name);
-                const xpCostTotal = catalogueEntry ? skillXpCost(catalogueEntry, sk.rank) : sk.rank;
-                return (
-                  <div
-                    key={sk.id}
-                    style={{ display: 'grid', gridTemplateColumns: '3px 1fr auto', gap: 13, alignItems: 'baseline', padding: '9px 0', borderBottom: '1px solid var(--line-soft)' }}
-                    title={catalogueEntry?.description}
-                  >
-                    <span className="tick" style={{ '--c': colors.text } as React.CSSProperties} />
-                    <div>
-                      <div style={{ display: 'flex', alignItems: 'baseline', gap: 9 }}>
-                        <span className="font-display" style={{ fontSize: 19, fontWeight: 600, color: 'rgb(var(--ink-100))' }}>{sk.skill_name}</span>
-                        {sk.rank > 1 && (
-                          <span className="font-mono" style={{ fontSize: 12, fontWeight: 700, color: colors.text }}>rank {sk.rank}</span>
-                        )}
+      {/* Existing skills grouped by category */}
+      {orderedCategories.map(cat => {
+        const catSkills = grouped.get(cat)!;
+        const colors = SKILL_CATEGORY_COLORS[(cat as SkillCategory)] ?? SKILL_CATEGORY_COLORS.Other;
+        return (
+          <div key={cat} className="mb-4">
+            {/* Category eyebrow with swatch dot */}
+            <div className="flex items-center gap-2 mb-1">
+              <span className="swatch-dot" style={{ ['--c' as string]: colors.text }} />
+              <span className="eyebrow" style={{ color: colors.text }}>{cat}</span>
+            </div>
+            {catSkills.map(sk => {
+              const catalogueEntry = SKILLS_CATALOGUE.find(c => c.name === sk.skill_name);
+              const xpCostTotal = catalogueEntry ? skillXpCost(catalogueEntry, sk.rank) : sk.rank;
+              return (
+                <DataRow key={sk.id} accent={colors.text}>
+                  <div className="flex-1 min-w-0">
+                    <div className="flex items-baseline gap-2">
+                      <span className="font-display text-[17px] font-semibold text-ink-100">{sk.skill_name}</span>
+                      {sk.rank > 1 && (
+                        <span className="num text-xs font-bold" style={{ color: colors.text }}>rank {sk.rank}</span>
+                      )}
+                    </div>
+                    {catalogueEntry?.description && (
+                      <div className="text-[13px] leading-snug mt-0.5" style={{ color: 'rgb(var(--ink-300))' }}>
+                        {catalogueEntry.description}
                       </div>
-                      {catalogueEntry?.description && (
-                        <div style={{ fontSize: 13.5, lineHeight: 1.45, color: 'rgb(var(--ink-300))', marginTop: 2 }}>{catalogueEntry.description}</div>
-                      )}
-                    </div>
-                    <div className="flex items-center gap-2">
-                      <span className="font-mono" style={{ fontSize: 13, color: 'rgb(var(--ink-300))', whiteSpace: 'nowrap' }}>{xpCostTotal} xp</span>
-                      {canEdit && (
-                        <button onClick={() => onDelete(sk.id)} className="opacity-40 hover:opacity-100 transition-opacity" title="Remove skill">
-                          <Icons.X size={11} />
-                        </button>
-                      )}
-                    </div>
+                    )}
+                  </div>
+                  <span className="num text-[12px] flex-shrink-0" style={{ color: 'rgb(var(--ink-300))' }}>{xpCostTotal} xp</span>
+                  {canEdit && (
+                    <button onClick={() => onDelete(sk.id)} className="opacity-40 hover:opacity-100 transition-opacity flex-shrink-0" title="Remove skill">
+                      <Icons.X size={12} />
+                    </button>
+                  )}
+                </DataRow>
+              );
+            })}
+          </div>
+        );
+      })}
+
+      {skills.length === 0 && !adding && (
+        <p className="text-xs text-ink-100/40 text-center py-4">No skills recorded{canEdit ? ' · click Add Skills to begin' : ''}</p>
+      )}
+
+      {/* Add skills panel */}
+      {adding && (
+        <div className="mt-3 border-t pt-3 space-y-3" style={{ borderColor: 'var(--line-soft)' }}>
+          {pending.length > 0 && (
+            <div className="space-y-1">
+              <div className="eyebrow mb-1">Queued</div>
+              {pending.map((p, i) => {
+                const colors = SKILL_CATEGORY_COLORS[p.category];
+                return (
+                  <div key={i} className="flex items-center gap-2 px-2.5 py-1.5 rounded-lg text-xs" style={{ background: colors.bg, color: colors.text }}>
+                    <span className="flex-1">{p.skill_name}{p.rank > 1 ? ` ×${p.rank}` : ''}</span>
+                    <span className="opacity-60">{p.xpCost}xp</span>
+                    <button onClick={() => setPending(q => q.filter((_, j) => j !== i))} className="opacity-50 hover:opacity-100">
+                      <Icons.X size={11} />
+                    </button>
                   </div>
                 );
               })}
             </div>
-          );
-        })}
+          )}
 
-        {skills.length === 0 && !adding && (
-          <p className="text-xs text-ink-100/40 text-center py-4">No skills recorded{canEdit ? ' · click Add Skills to begin' : ''}</p>
-        )}
-
-        {/* Add skills panel */}
-        {adding && (
-          <div className="mt-3 border-t border-gold-500/10 pt-3 space-y-3">
-            {pending.length > 0 && (
-              <div className="space-y-1">
-                <div className="eyebrow mb-1">Queued</div>
-                {pending.map((p, i) => {
-                  const colors = SKILL_CATEGORY_COLORS[p.category];
-                  return (
-                    <div key={i} className="flex items-center gap-2 px-2.5 py-1.5 rounded-lg text-xs" style={{ background: colors.bg, color: colors.text }}>
-                      <span className="flex-1">{p.skill_name}{p.rank > 1 ? ` ×${p.rank}` : ''}</span>
-                      <span className="opacity-60">{p.xpCost}xp</span>
-                      <button onClick={() => setPending(q => q.filter((_, j) => j !== i))} className="opacity-50 hover:opacity-100">
-                        <Icons.X size={11} />
-                      </button>
-                    </div>
-                  );
-                })}
-              </div>
-            )}
-
-            <div className="text-[11px] flex items-center gap-2">
-              <span className={cx('font-semibold', xpRemaining < 0 ? 'text-red-400' : 'text-gold-300')}>
-                {xpRemaining}xp remaining
-              </span>
-              <span className="text-ink-100/30">({xpSpent + pendingXp} / {totalXp} used)</span>
-            </div>
-
-            <SkillPicker
-              activeCategory={activeCategory}
-              xpRemaining={xpRemaining}
-              onQueue={queueSkill}
-            />
-
-            <div className="flex items-center justify-between">
-              <button onClick={cancelAdding} className="btn btn-ghost btn-sm text-xs">Cancel</button>
-              <button
-                onClick={saveAll}
-                disabled={!pending.length || busy || xpRemaining < 0}
-                className="btn btn-primary btn-sm text-xs"
-              >
-                {busy ? 'Saving…' : pending.length > 1 ? `Save ${pending.length} Skills` : 'Save Skill'}
-              </button>
-            </div>
+          <div className="text-[11px] flex items-center gap-2">
+            <span className={cx('font-semibold', xpRemaining < 0 ? 'text-red-400' : '')} style={xpRemaining >= 0 ? { color: 'var(--gold)' } : undefined}>
+              {xpRemaining}xp remaining
+            </span>
+            <span className="text-ink-100/30">({xpSpent + pendingXp} / {totalXp} used)</span>
           </div>
-        )}
-      </Sec>
+
+          <SkillPicker
+            xpRemaining={xpRemaining}
+            onQueue={queueSkill}
+          />
+
+          <div className="flex items-center justify-between">
+            <button onClick={cancelAdding} className="btn btn-ghost btn-sm text-xs">Cancel</button>
+            <button
+              onClick={saveAll}
+              disabled={!pending.length || busy || xpRemaining < 0}
+              className="btn btn-primary btn-sm text-xs"
+            >
+              {busy ? 'Saving…' : pending.length > 1 ? `Save ${pending.length} Skills` : 'Save Skill'}
+            </button>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
@@ -1059,11 +1097,9 @@ function SkillsSection({
 // ── Skill Picker ─────────────────────────────────────────────────────────────
 
 function SkillPicker({
-  activeCategory,
   xpRemaining,
   onQueue,
 }: {
-  activeCategory: CategoryFilter;
   xpRemaining: number;
   onQueue: (skill: PendingSkill) => void;
 }) {
@@ -1072,11 +1108,10 @@ function SkillPicker({
   const [open, setOpen] = useState(false);
 
   const filtered = useMemo(() => {
-    const base = activeCategory === 'All' ? SKILLS_CATALOGUE : SKILLS_CATALOGUE.filter(s => s.category === activeCategory);
-    if (!query.trim()) return base;
+    if (!query.trim()) return SKILLS_CATALOGUE;
     const q = query.toLowerCase();
-    return base.filter(s => s.name.toLowerCase().includes(q));
-  }, [activeCategory, query]);
+    return SKILLS_CATALOGUE.filter(s => s.name.toLowerCase().includes(q));
+  }, [query]);
 
   const selectedEntry = SKILLS_CATALOGUE.find(s => s.name === draft.skill_name);
   const colors = selectedEntry ? SKILL_CATEGORY_COLORS[selectedEntry.category] : null;
@@ -1136,61 +1171,38 @@ function SkillPicker({
                   {filtered.length === 0 && (
                     <div className="px-3 py-3 text-xs text-ink-100/40 text-center">No skills match</div>
                   )}
-                  {activeCategory === 'All'
-                    ? SKILL_CATEGORY_ORDER.map(cat => {
-                        const catSkills = filtered.filter(s => s.category === cat);
-                        if (!catSkills.length) return null;
-                        const catColors = SKILL_CATEGORY_COLORS[cat];
-                        return (
-                          <div key={cat}>
-                            <div className="px-3 py-1 text-[10px] uppercase tracking-widest font-semibold sticky top-0 bg-ink-800" style={{ color: catColors.text }}>
-                              {cat}
-                            </div>
-                            {catSkills.map(s => {
-                              const cost = skillXpCost(s, 1);
-                              const affordable = xpRemaining >= cost;
-                              return (
-                                <button
-                                  key={s.name}
-                                  disabled={!affordable}
-                                  className={cx('w-full text-left px-3 py-2 text-sm flex items-center justify-between gap-2 transition-colors', affordable ? 'hover:bg-gold-500/10' : 'opacity-40 cursor-not-allowed')}
-                                  onClick={() => affordable && pick(s)}
-                                >
-                                  <span className="text-ink-100 flex items-center gap-1.5">
-                                    {s.name}
-                                    {s.isPrereq && <span className="text-[9px] text-amber-400/70">prereq</span>}
-                                  </span>
-                                  <span className="text-[10px] text-ink-100/40 flex-shrink-0">
-                                    {s.xpCost}xp{s.scaling === '*' ? '+' : s.scaling === '**' ? '×' : ''}
-                                  </span>
-                                </button>
-                              );
-                            })}
-                          </div>
-                        );
-                      })
-                    : filtered.map(s => {
-                        const cost = skillXpCost(s, 1);
-                        const affordable = xpRemaining >= cost;
-                        return (
-                          <button
-                            key={s.name}
-                            disabled={!affordable}
-                            className={cx('w-full text-left px-3 py-2 text-sm flex items-center justify-between gap-2 transition-colors', affordable ? 'hover:bg-gold-500/10' : 'opacity-40 cursor-not-allowed')}
-                            onClick={() => affordable && pick(s)}
-                          >
-                            <span className="text-ink-100 flex items-center gap-1.5">
-                              {s.name}
-                              {s.isPrereq && <span className="text-[9px] text-amber-400/70">prereq</span>}
-                              {s.requires?.length && <span className="text-[9px] text-ink-100/30">req: {s.requires.join(', ')}</span>}
-                            </span>
-                            <span className="text-[10px] text-ink-100/40 flex-shrink-0">
-                              {s.xpCost}xp{s.scaling === '*' ? '+' : s.scaling === '**' ? '×' : ''}
-                            </span>
-                          </button>
-                        );
-                      })
-                  }
+                  {SKILL_CATEGORY_ORDER.map(cat => {
+                    const catSkills = filtered.filter(s => s.category === cat);
+                    if (!catSkills.length) return null;
+                    const catColors = SKILL_CATEGORY_COLORS[cat];
+                    return (
+                      <div key={cat}>
+                        <div className="px-3 py-1 text-[10px] uppercase tracking-widest font-semibold sticky top-0 bg-ink-800" style={{ color: catColors.text }}>
+                          {cat}
+                        </div>
+                        {catSkills.map(s => {
+                          const cost = skillXpCost(s, 1);
+                          const affordable = xpRemaining >= cost;
+                          return (
+                            <button
+                              key={s.name}
+                              disabled={!affordable}
+                              className={cx('w-full text-left px-3 py-2 text-sm flex items-center justify-between gap-2 transition-colors', affordable ? 'hover:bg-gold-500/10' : 'opacity-40 cursor-not-allowed')}
+                              onClick={() => affordable && pick(s)}
+                            >
+                              <span className="text-ink-100 flex items-center gap-1.5">
+                                {s.name}
+                                {s.isPrereq && <span className="text-[9px] text-amber-400/70">prereq</span>}
+                              </span>
+                              <span className="text-[10px] text-ink-100/40 flex-shrink-0">
+                                {s.xpCost}xp{s.scaling === '*' ? '+' : s.scaling === '**' ? '×' : ''}
+                              </span>
+                            </button>
+                          );
+                        })}
+                      </div>
+                    );
+                  })}
                 </div>
               </div>
             )}
@@ -1215,7 +1227,7 @@ function SkillPicker({
               <p className="text-ink-100/60 leading-snug">{selectedEntry.description}</p>
             )}
             <div className="flex items-center gap-2">
-              <span className={cx('font-semibold', canAfford ? 'text-gold-300' : 'text-red-400')}>
+              <span className={cx('font-semibold', canAfford ? '' : 'text-red-400')} style={canAfford ? { color: 'var(--gold)' } : undefined}>
                 {thisCost}xp {canAfford ? '' : '— not enough XP'}
               </span>
               {selectedEntry.scaling === '*' && <span className="text-ink-100/40">+1xp/rank</span>}
@@ -1328,113 +1340,113 @@ function SpellsSection({
 
   return (
     <div className="card px-5 py-5">
-      <Sec
+      <SectionHeader
         title="Spells"
-        count={`${spells.length} known`}
-        accent="#6f97c4"
+        count={spells.length || undefined}
+        accent="#b56eb5"
         action={canEdit ? (
-          <button onClick={openAdding} className="btn btn-ghost btn-sm text-xs">
-            <Icons.Plus size={13} />
+          <button onClick={openAdding} className="btn btn-ghost btn-sm text-xs flex items-center gap-1">
+            <Icons.Plus size={12} />
             Add Spell
           </button>
         ) : undefined}
-      >
-        {spells.length === 0 && !adding && (
-          <p className="text-xs text-ink-100/40 text-center py-4">No spells recorded{canEdit ? ' · click Add Spell to begin' : ''}</p>
-        )}
+      />
 
-        {/* 2-col grid for spell display */}
-        {SPELL_SCHOOLS.filter(s => bySchool.has(s)).map(s => {
-          const schoolSpells = bySchool.get(s)!;
-          const sc = SCHOOL_COLORS[s];
-          return (
-            <div key={s} className="mb-4">
-              <div className="flex items-center gap-2 mb-2">
-                <span className="swatch-dot" style={{ '--c': sc.text } as React.CSSProperties} />
-                <span className="eyebrow" style={{ color: sc.text, fontSize: '9.5px' }}>{s}</span>
-              </div>
-              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '2px 28px' }}>
-                {schoolSpells.map(sp => (
-                  <div
-                    key={sp.id}
-                    style={{ display: 'grid', gridTemplateColumns: '3px 1fr', gap: 12, padding: '9px 0', borderBottom: '1px solid var(--line-soft)' }}
-                  >
-                    <span className="tick" style={{ '--c': sc.text } as React.CSSProperties} />
-                    <div>
-                      <div style={{ display: 'flex', alignItems: 'baseline', gap: 8 }}>
-                        <span className="font-display" style={{ fontSize: 18, fontWeight: 600, color: 'rgb(var(--ink-100))' }}>{sp.spell_name}</span>
-                        <span className="font-mono" style={{ fontSize: 12, color: 'rgb(var(--ink-300))' }}>{sp.magnitude}m</span>
-                        {canEdit && (
-                          <button onClick={() => onDelete(sp.id)} className="opacity-40 hover:opacity-100 transition-opacity ml-auto">
-                            <Icons.X size={11} />
-                          </button>
-                        )}
-                      </div>
-                      {sp.notes && <div style={{ fontSize: 13, color: 'rgb(var(--ink-300))', marginTop: 1 }}>{sp.notes}</div>}
-                    </div>
-                  </div>
-                ))}
-              </div>
-            </div>
-          );
-        })}
+      {spells.length === 0 && !adding && (
+        <p className="text-xs text-ink-100/40 text-center py-4">No spells recorded{canEdit ? ' · click Add Spell to begin' : ''}</p>
+      )}
 
-        {adding && (
-          <div className="mt-2 border-t border-gold-500/10 pt-3 space-y-2 bg-ink-800/30 rounded-lg p-3 border border-gold-500/10">
+      {SPELL_SCHOOLS.filter(s => bySchool.has(s)).map(s => {
+        const schoolSpells = bySchool.get(s)!;
+        const sc = SCHOOL_COLORS[s];
+        return (
+          <div key={s} className="mb-4">
             <div className="flex items-center gap-2 mb-1">
-              {SPELL_SCHOOLS.map(s => {
-                const sc = SCHOOL_COLORS[s];
-                const active = school === s;
-                return (
-                  <button
-                    key={s}
-                    disabled={!!covenRealm && s !== covenRealm}
-                    onClick={() => changeSchool(s)}
-                    className="px-2.5 py-1 rounded-lg text-xs font-medium border transition-colors disabled:opacity-25 disabled:cursor-not-allowed"
-                    style={active ? { background: sc.bg, color: sc.text, borderColor: sc.border } : { background: 'transparent', color: '#ffffff50', borderColor: '#ffffff15' }}
-                  >
-                    {s}
-                  </button>
-                );
-              })}
+              <span className="swatch-dot" style={{ ['--c' as string]: sc.text }} />
+              <span className="eyebrow" style={{ color: sc.text }}>{s}</span>
             </div>
+            {schoolSpells.map(sp => {
+              const catalogueEntry = spellsForRealm(s as SpellRealm).find(e => e.name === sp.spell_name);
+              return (
+                <DataRow key={sp.id} accent={sc.text}>
+                  <div className="flex-1 min-w-0">
+                    <div className="flex items-baseline gap-2">
+                      <span className="font-display text-[17px] font-semibold text-ink-100">{sp.spell_name}</span>
+                      <span className="num text-xs" style={{ color: 'rgb(var(--ink-300))' }}>{sp.magnitude}m</span>
+                    </div>
+                    {(catalogueEntry?.effect || sp.notes) && (
+                      <div className="text-[13px] leading-snug mt-0.5" style={{ color: 'rgb(var(--ink-300))' }}>
+                        {catalogueEntry?.effect ?? sp.notes}
+                      </div>
+                    )}
+                  </div>
+                  {canEdit && (
+                    <button onClick={() => onDelete(sp.id)} className="shrink-0 opacity-40 hover:opacity-100 transition-opacity">
+                      <Icons.X size={12} />
+                    </button>
+                  )}
+                </DataRow>
+              );
+            })}
+          </div>
+        );
+      })}
 
+      {adding && (
+        <div className="mt-2 pt-3 border-t space-y-2 bg-ink-800/30 rounded-lg p-3 border" style={{ borderColor: 'var(--line-soft)' }}>
+          <div className="flex items-center gap-2 mb-1">
+            {SPELL_SCHOOLS.map(s => {
+              const sc = SCHOOL_COLORS[s];
+              const active = school === s;
+              return (
+                <button
+                  key={s}
+                  disabled={!!covenRealm && s !== covenRealm}
+                  onClick={() => changeSchool(s)}
+                  className="px-2.5 py-1 rounded-lg text-xs font-medium border transition-colors disabled:opacity-25 disabled:cursor-not-allowed"
+                  style={active ? { background: sc.bg, color: sc.text, borderColor: sc.border } : { background: 'transparent', color: '#ffffff50', borderColor: '#ffffff15' }}
+                >
+                  {s}
+                </button>
+              );
+            })}
+          </div>
+
+          <div>
+            <label className="eyebrow block mb-1">Spell</label>
+            <select className="input text-sm" value={spellName} onChange={e => pickSpell(e.target.value)}>
+              <option value="">— choose spell —</option>
+              {availableSpells.map(sp => (
+                <option key={sp.name} value={sp.name}>{sp.name} ({sp.manaCost}m) {sp.type === 'Offensive' ? '⚔' : ''}</option>
+              ))}
+            </select>
+          </div>
+
+          {spellName && (
+            <div className="text-xs text-ink-100/50 px-1">
+              {availableSpells.find(s => s.name === spellName)?.effect}
+            </div>
+          )}
+
+          <div className="flex items-end gap-2">
+            <div className="flex-1">
+              <label className="eyebrow block mb-1">Notes</label>
+              <input className="input text-sm" placeholder="Optional" value={notes} onChange={e => setNotes(e.target.value)} />
+            </div>
             <div>
-              <label className="eyebrow block mb-1">Spell</label>
-              <select className="input text-sm" value={spellName} onChange={e => pickSpell(e.target.value)}>
-                <option value="">— choose spell —</option>
-                {availableSpells.map(sp => (
-                  <option key={sp.name} value={sp.name}>{sp.name} ({sp.manaCost}m) {sp.type === 'Offensive' ? '⚔' : ''}</option>
-                ))}
-              </select>
-            </div>
-
-            {spellName && (
-              <div className="text-xs text-ink-100/50 px-1">
-                {availableSpells.find(s => s.name === spellName)?.effect}
-              </div>
-            )}
-
-            <div className="flex items-end gap-2">
-              <div className="flex-1">
-                <label className="eyebrow block mb-1">Notes</label>
-                <input className="input text-sm" placeholder="Optional" value={notes} onChange={e => setNotes(e.target.value)} />
-              </div>
-              <div>
-                <label className="eyebrow block mb-1">Mag</label>
-                <input type="number" min={1} className="input text-sm w-16" value={magnitude} onChange={e => setMagnitude(Math.max(1, parseInt(e.target.value, 10) || 1))} />
-              </div>
-            </div>
-
-            <div className="flex gap-2 justify-end">
-              <button onClick={() => setAdding(false)} className="btn btn-ghost btn-sm text-xs">Cancel</button>
-              <button onClick={addSpell} disabled={!spellName || busy} className="btn btn-primary btn-sm text-xs">
-                {busy ? 'Saving…' : 'Add Spell'}
-              </button>
+              <label className="eyebrow block mb-1">Mag</label>
+              <input type="number" min={1} className="input text-sm w-16" value={magnitude} onChange={e => setMagnitude(Math.max(1, parseInt(e.target.value, 10) || 1))} />
             </div>
           </div>
-        )}
-      </Sec>
+
+          <div className="flex gap-2 justify-end">
+            <button onClick={() => setAdding(false)} className="btn btn-ghost btn-sm text-xs">Cancel</button>
+            <button onClick={addSpell} disabled={!spellName || busy} className="btn btn-primary btn-sm text-xs">
+              {busy ? 'Saving…' : 'Add Spell'}
+            </button>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
@@ -1502,104 +1514,114 @@ function RitualsSection({
     }
   }
 
+  const byRealm = useMemo(() => {
+    const map = new Map<string, CharacterRitual[]>();
+    for (const r of rituals) {
+      if (!map.has(r.realm)) map.set(r.realm, []);
+      map.get(r.realm)!.push(r);
+    }
+    return map;
+  }, [rituals]);
+
   return (
     <div className="card px-5 py-5">
-      <Sec
+      <SectionHeader
         title="Mastered Rituals"
-        count={`${rituals.length} mastered`}
+        count={rituals.length || undefined}
         accent="#8a73bf"
         action={canEdit ? (
-          <button onClick={openAdding} className="btn btn-ghost btn-sm text-xs">
-            <Icons.Plus size={13} />
+          <button onClick={openAdding} className="btn btn-ghost btn-sm text-xs flex items-center gap-1">
+            <Icons.Plus size={12} />
             Add Ritual
           </button>
         ) : undefined}
-      >
-        {rituals.length === 0 && !adding && (
-          <p className="text-xs text-ink-100/40 text-center py-4">No rituals mastered{canEdit ? ' · click Add Ritual to begin' : ''}</p>
-        )}
+      />
 
-        {rituals.length > 0 && (
-          <div>
-            {rituals.map(rt => {
-              const colors = REALM_COLORS[(rt.realm as RitualRealm)] ?? REALM_COLORS.Spring;
+      {rituals.length === 0 && !adding && (
+        <p className="text-xs text-ink-100/40 text-center py-4">No rituals mastered{canEdit ? ' · click Add Ritual to begin' : ''}</p>
+      )}
+
+      {RITUAL_REALM_ORDER.filter(r => byRealm.has(r)).map(realmKey => {
+        const realmRituals = byRealm.get(realmKey)!;
+        const colors = REALM_COLORS[realmKey as RitualRealm] ?? REALM_COLORS.Spring;
+        return (
+          <div key={realmKey} className="mb-4">
+            <div className="flex items-center gap-2 mb-1">
+              <span className="swatch-dot" style={{ ['--c' as string]: colors.text }} />
+              <span className="eyebrow" style={{ color: colors.text }}>{realmKey}</span>
+            </div>
+            {realmRituals.map(rt => {
               const catalogueEntry = RITUALS_CATALOGUE.find(r => r.name === rt.ritual_name);
               return (
-                <div
-                  key={rt.id}
-                  style={{ display: 'grid', gridTemplateColumns: '3px 1fr', gap: 13, padding: '11px 0', borderBottom: '1px solid var(--line-soft)' }}
-                >
-                  <span className="tick" style={{ '--c': colors.text } as React.CSSProperties} />
-                  <div>
-                    <div style={{ display: 'flex', alignItems: 'baseline', gap: 10 }}>
-                      <span className="font-display" style={{ fontSize: 19, fontWeight: 600, color: 'rgb(var(--ink-100))' }}>{rt.ritual_name}</span>
-                      <span className="eyebrow" style={{ color: colors.text, fontSize: '9.5px' }}>{rt.realm}</span>
-                      {canEdit && (
-                        <button onClick={() => onDelete(rt.id)} className="opacity-40 hover:opacity-100 transition-opacity ml-auto">
-                          <Icons.X size={14} />
-                        </button>
-                      )}
-                    </div>
-                    {catalogueEntry?.effect && (
-                      <div style={{ fontSize: 13.5, lineHeight: 1.45, color: 'rgb(var(--ink-300))', marginTop: 2 }}>{catalogueEntry.effect}</div>
+                <DataRow key={rt.id} accent={colors.text}>
+                  <div className="flex-1 min-w-0">
+                    <span className="font-display text-[17px] font-semibold text-ink-100">{rt.ritual_name}</span>
+                    {(catalogueEntry?.effect || rt.notes) && (
+                      <div className="text-[13px] leading-snug mt-0.5" style={{ color: 'rgb(var(--ink-300))' }}>
+                        {catalogueEntry?.effect ?? rt.notes}
+                      </div>
                     )}
-                    {rt.notes && <div className="text-xs text-ink-100/50 mt-0.5">{rt.notes}</div>}
                   </div>
-                </div>
+                  {canEdit && (
+                    <button onClick={() => onDelete(rt.id)} className="shrink-0 opacity-40 hover:opacity-100 transition-opacity">
+                      <Icons.X size={13} />
+                    </button>
+                  )}
+                </DataRow>
               );
             })}
           </div>
-        )}
+        );
+      })}
 
-        {adding && (
-          <div className="mt-3 pt-3 border-t border-gold-500/10 space-y-2">
-            <div className="flex gap-2">
-              <div className="flex-1">
-                <label className="eyebrow block mb-1">Realm</label>
-                <select
-                  className="input text-sm"
-                  value={realm}
-                  onChange={e => changeRealm(e.target.value as RitualRealm)}
-                  disabled={!!covenRealm}
-                >
-                  {RITUAL_REALM_ORDER.map(r => <option key={r} value={r}>{r}</option>)}
-                </select>
-              </div>
-              <div className="flex-[2]">
-                <label className="eyebrow block mb-1">Ritual</label>
-                <select
-                  autoFocus
-                  className="input text-sm"
-                  value={ritualName}
-                  onChange={e => setRitualName(e.target.value)}
-                >
-                  <option value="">— choose ritual —</option>
-                  {availableRituals.map(r => (
-                    <option key={r.name} value={r.name}>{r.name}</option>
-                  ))}
-                </select>
-              </div>
+      {adding && (
+        <div className="mt-3 pt-3 border-t space-y-2" style={{ borderColor: 'var(--line-soft)' }}>
+          <div className="flex gap-2">
+            <div className="flex-1">
+              <label className="eyebrow block mb-1">Realm</label>
+              <select
+                className="input text-sm"
+                value={realm}
+                onChange={e => changeRealm(e.target.value as RitualRealm)}
+                disabled={!!covenRealm}
+              >
+                {RITUAL_REALM_ORDER.map(r => <option key={r} value={r}>{r}</option>)}
+              </select>
             </div>
-            {ritualName && (
-              <p className="text-xs text-ink-100/50 px-0.5">
-                {availableRituals.find(r => r.name === ritualName)?.effect}
-              </p>
-            )}
-            <input
-              className="input text-sm w-full"
-              placeholder="Notes (optional)"
-              value={notes}
-              onChange={e => setNotes(e.target.value)}
-            />
-            <div className="flex justify-end gap-2">
-              <button onClick={() => setAdding(false)} className="btn btn-ghost btn-sm text-xs">Cancel</button>
-              <button onClick={addRitual} disabled={!ritualName || busy} className="btn btn-primary btn-sm text-xs">
-                {busy ? 'Adding…' : 'Add Ritual'}
-              </button>
+            <div className="flex-[2]">
+              <label className="eyebrow block mb-1">Ritual</label>
+              <select
+                autoFocus
+                className="input text-sm"
+                value={ritualName}
+                onChange={e => setRitualName(e.target.value)}
+              >
+                <option value="">— choose ritual —</option>
+                {availableRituals.map(r => (
+                  <option key={r.name} value={r.name}>{r.name}</option>
+                ))}
+              </select>
             </div>
           </div>
-        )}
-      </Sec>
+          {ritualName && (
+            <p className="text-xs text-ink-100/50 px-0.5">
+              {availableRituals.find(r => r.name === ritualName)?.effect}
+            </p>
+          )}
+          <input
+            className="input text-sm w-full"
+            placeholder="Notes (optional)"
+            value={notes}
+            onChange={e => setNotes(e.target.value)}
+          />
+          <div className="flex justify-end gap-2">
+            <button onClick={() => setAdding(false)} className="btn btn-ghost btn-sm text-xs">Cancel</button>
+            <button onClick={addRitual} disabled={!ritualName || busy} className="btn btn-primary btn-sm text-xs">
+              {busy ? 'Adding…' : 'Add Ritual'}
+            </button>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
@@ -1644,114 +1666,111 @@ function CharInventorySectionPage({
 
   return (
     <div className="card px-5 py-5">
-      <Sec
-        title="Inventory"
-        count={items.length}
-        accent="#5f90bd"
+      <SectionHeader
+        title="Character Inventory"
+        count={items.length || undefined}
         action={canEdit ? (
-          <button onClick={() => setAdding(a => !a)} className="btn btn-ghost btn-sm text-xs">
-            <Icons.Plus size={13} />
+          <button onClick={() => setAdding(a => !a)} className="btn btn-ghost btn-sm text-xs flex items-center gap-1">
+            <Icons.Plus size={12} />
             Add Item
           </button>
         ) : undefined}
-      >
-        {items.length > 0 && (
-          <div className="space-y-1 mb-3">
-            {items.map(ci => (
-              <div key={ci.id} className="rd-row" style={{ justifyContent: 'space-between' }}>
-                <div>
-                  <div className="font-display" style={{ fontSize: 17, color: 'rgb(var(--ink-100))' }}>{ci.item}</div>
-                  <div className="eyebrow" style={{ fontSize: 9, marginTop: 1 }}>{ci.category}</div>
-                  {ci.notes && <span className="text-xs text-ink-100/40 italic">{ci.notes}</span>}
-                </div>
-                <div className="flex items-center gap-3">
-                  <span className="font-mono" style={{ fontSize: 14, fontWeight: 600, color: 'var(--gold)' }}>×{ci.qty}</span>
-                  <label className="flex items-center gap-1.5 text-xs text-ink-100/60 cursor-pointer flex-shrink-0 select-none" title="Include in lance inventory roll-up">
-                    <input
-                      type="checkbox"
-                      checked={ci.include_in_lance}
-                      onChange={e => onUpsert({ ...ci, include_in_lance: e.target.checked })}
-                      className="w-3.5 h-3.5 accent-gold-300"
-                    />
-                    Lance
-                  </label>
-                  {canEdit && (
-                    <button onClick={() => onDelete(ci.id)} className="btn btn-ghost btn-sm text-red-400/60 hover:text-red-400 flex-shrink-0 px-1.5">
-                      <Icons.Trash size={13} />
-                    </button>
-                  )}
-                </div>
-              </div>
-            ))}
-          </div>
-        )}
+      />
 
-        {adding && (
-          <div className="bg-ink-800/30 rounded-lg p-3 space-y-2 mb-2 border border-gold-500/10">
-            <div className="grid grid-cols-[1fr_5rem] gap-2">
-              <div>
-                <label className="eyebrow block mb-1">Item</label>
-                <select
-                  autoFocus
-                  className="input text-sm"
-                  value={newItem.item}
-                  onChange={e => {
-                    const name = e.target.value;
-                    const entry = EMPIRE_CATALOGUE.find(c => c.item === name);
-                    setNewItem(n => ({ ...n, item: name, category: entry?.type ?? n.category }));
-                  }}
-                >
-                  <option value="">— choose item —</option>
-                  {Array.from(new Set(EMPIRE_CATALOGUE.map(c => c.type))).map(type => (
-                    <optgroup key={type} label={type}>
-                      {EMPIRE_CATALOGUE.filter(c => c.type === type).map(c => (
-                        <option key={c.item} value={c.item}>{c.item}{c.unit ? ` (${c.unit})` : ''}</option>
-                      ))}
-                    </optgroup>
-                  ))}
-                </select>
+      {items.length > 0 && (
+        <div className="mb-3">
+          {items.map(ci => (
+            <DataRow key={ci.id}>
+              <div className="flex-1 min-w-0">
+                <span className="text-sm text-ink-100">{ci.item}</span>
+                {ci.category && <span className="text-xs text-ink-100/50 ml-2">[{ci.category}]</span>}
+                {ci.notes && <span className="text-xs text-ink-100/40 ml-2 italic">{ci.notes}</span>}
               </div>
-              <div>
-                <label className="eyebrow block mb-1">Qty</label>
-                <input
-                  type="number"
-                  className="input text-sm"
-                  min={1}
-                  value={newItem.qty}
-                  onChange={e => setNewItem(n => ({ ...n, qty: parseInt(e.target.value, 10) || 1 }))}
-                />
-              </div>
-            </div>
-            <input
-              className="input text-sm w-full"
-              placeholder="Notes (optional)"
-              value={newItem.notes}
-              onChange={e => setNewItem(n => ({ ...n, notes: e.target.value }))}
-            />
-            <div className="flex items-center justify-between">
-              <label className="flex items-center gap-2 text-xs text-ink-100/60 cursor-pointer select-none">
+              <span className="num text-sm flex-shrink-0" style={{ color: 'var(--gold)' }}>×{ci.qty}</span>
+              <label className="flex items-center gap-1.5 text-xs text-ink-100/60 cursor-pointer flex-shrink-0 select-none" title="Include in lance inventory roll-up">
                 <input
                   type="checkbox"
-                  checked={newItem.include_in_lance}
-                  onChange={e => setNewItem(n => ({ ...n, include_in_lance: e.target.checked }))}
-                  className="w-4 h-4 accent-gold-300"
+                  checked={ci.include_in_lance}
+                  onChange={e => onUpsert({ ...ci, include_in_lance: e.target.checked })}
+                  className="w-3.5 h-3.5 accent-gold-300"
                 />
-                Include in lance inventory
+                Lance
               </label>
-              <div className="flex gap-2">
-                <button onClick={() => setAdding(false)} className="btn btn-ghost btn-sm text-xs">Cancel</button>
-                <button onClick={addItem} disabled={!newItem.item.trim() || busy} className="btn btn-primary btn-sm text-xs">
-                  {busy ? 'Adding…' : 'Add'}
+              {canEdit && (
+                <button onClick={() => onDelete(ci.id)} className="btn btn-ghost btn-sm text-red-400/60 hover:text-red-400 flex-shrink-0 px-1.5">
+                  <Icons.Trash size={13} />
                 </button>
-              </div>
+              )}
+            </DataRow>
+          ))}
+        </div>
+      )}
+
+      {adding && (
+        <div className="bg-ink-800/30 rounded-lg p-3 space-y-2 mb-2 border" style={{ borderColor: 'var(--line-soft)' }}>
+          <div className="grid grid-cols-[1fr_5rem] gap-2">
+            <div>
+              <label className="eyebrow block mb-1">Item</label>
+              <select
+                autoFocus
+                className="input text-sm"
+                value={newItem.item}
+                onChange={e => {
+                  const name = e.target.value;
+                  const entry = EMPIRE_CATALOGUE.find(c => c.item === name);
+                  setNewItem(n => ({ ...n, item: name, category: entry?.type ?? n.category }));
+                }}
+              >
+                <option value="">— choose item —</option>
+                {Array.from(new Set(EMPIRE_CATALOGUE.map(c => c.type))).map(type => (
+                  <optgroup key={type} label={type}>
+                    {EMPIRE_CATALOGUE.filter(c => c.type === type).map(c => (
+                      <option key={c.item} value={c.item}>{c.item}{c.unit ? ` (${c.unit})` : ''}</option>
+                    ))}
+                  </optgroup>
+                ))}
+              </select>
+            </div>
+            <div>
+              <label className="eyebrow block mb-1">Qty</label>
+              <input
+                type="number"
+                className="input text-sm"
+                min={1}
+                value={newItem.qty}
+                onChange={e => setNewItem(n => ({ ...n, qty: parseInt(e.target.value, 10) || 1 }))}
+              />
             </div>
           </div>
-        )}
+          <input
+            className="input text-sm w-full"
+            placeholder="Notes (optional)"
+            value={newItem.notes}
+            onChange={e => setNewItem(n => ({ ...n, notes: e.target.value }))}
+          />
+          <div className="flex items-center justify-between">
+            <label className="flex items-center gap-2 text-xs text-ink-100/60 cursor-pointer select-none">
+              <input
+                type="checkbox"
+                checked={newItem.include_in_lance}
+                onChange={e => setNewItem(n => ({ ...n, include_in_lance: e.target.checked }))}
+                className="w-4 h-4 accent-gold-300"
+              />
+              Include in lance inventory
+            </label>
+            <div className="flex gap-2">
+              <button onClick={() => setAdding(false)} className="btn btn-ghost btn-sm text-xs">Cancel</button>
+              <button onClick={addItem} disabled={!newItem.item.trim() || busy} className="btn btn-primary btn-sm text-xs">
+                {busy ? 'Adding…' : 'Add'}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
 
-        {items.length === 0 && !adding && (
-          <p className="text-xs text-ink-100/40 text-center py-4">No items{canEdit ? ' · click Add Item to begin' : ''}</p>
-        )}
-      </Sec>
+      {items.length === 0 && !adding && (
+        <p className="text-xs text-ink-100/40 text-center py-4">No items{canEdit ? ' · click Add Item to begin' : ''}</p>
+      )}
     </div>
   );
 }
@@ -1783,32 +1802,29 @@ function CraftingSectionPage({
 
   return (
     <div className="card px-5 py-5">
-      <Sec title="Crafting Queue" count={crafting.length} accent="#6f97c4">
-        <div className="space-y-1.5">
-          {crafting.map(item => {
-            const recipient = members.find(m => m.id === item.recipient_id);
-            const statusColor = CRAFTING_STATUS_COLORS[item.status];
-            return (
-              <div key={item.id} className="rd-row" style={{ justifyContent: 'space-between' }}>
-                <div>
-                  <div className="font-display" style={{ fontSize: 17, fontWeight: 600, color: 'rgb(var(--ink-100))' }}>{item.item_name}</div>
-                  <div style={{ fontSize: 12.5, color: 'rgb(var(--ink-300))', marginTop: 2 }}>
-                    <span className="capitalize">{item.tier}</span>
-                    {recipient && <span className="ml-2">→ {recipient.name}</span>}
-                    {item.target_event && <span className="ml-2">by {eventMap[item.target_event] ?? item.target_event}</span>}
-                  </div>
-                </div>
-                <span
-                  className="text-[10px] px-2 py-0.5 rounded-full border flex-shrink-0"
-                  style={{ color: statusColor, borderColor: `${statusColor}50`, background: `${statusColor}18` }}
-                >
-                  {item.status.replace('-', ' ')}
-                </span>
+      <SectionHeader title="Currently Crafting" count={crafting.length} />
+      {crafting.map(item => {
+        const recipient = members.find(m => m.id === item.recipient_id);
+        const statusColor = CRAFTING_STATUS_COLORS[item.status];
+        return (
+          <DataRow key={item.id}>
+            <div className="flex-1 min-w-0">
+              <span className="font-display text-[17px] font-semibold text-ink-100">{item.item_name}</span>
+              <div className="text-[13px] mt-0.5" style={{ color: 'rgb(var(--ink-300))' }}>
+                <span className="capitalize">{item.tier}</span>
+                {recipient && <span className="ml-2">→ {recipient.name}</span>}
+                {item.target_event && <span className="ml-2">by {eventMap[item.target_event] ?? item.target_event}</span>}
               </div>
-            );
-          })}
-        </div>
-      </Sec>
+            </div>
+            <span
+              className="num text-[10px] px-2 py-0.5 rounded-full border flex-shrink-0"
+              style={{ color: statusColor, borderColor: `${statusColor}50`, background: `${statusColor}18` }}
+            >
+              {item.status.replace('-', ' ')}
+            </span>
+          </DataRow>
+        );
+      })}
     </div>
   );
 }
