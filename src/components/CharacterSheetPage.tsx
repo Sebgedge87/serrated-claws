@@ -158,7 +158,7 @@ export function CharacterSheetPage({
             onUpsert={onUpsertSkill}
             onDelete={onDeleteSkill}
           />
-          {(member.mp != null || data.characterSpells.some(s => s.member_id === member.id) || canEdit) && (
+          {(skills.some(s => s.skill_name === 'Magician') || data.characterSpells.some(s => s.member_id === member.id)) && (
             <SpellsSection
               memberId={member.id}
               member={member}
@@ -169,15 +169,17 @@ export function CharacterSheetPage({
               onDelete={onDeleteSpell}
             />
           )}
-          <RitualsSection
-            memberId={member.id}
-            member={member}
-            data={data}
-            rituals={data.characterRituals.filter(r => r.member_id === member.id)}
-            canEdit={canEdit}
-            onUpsert={onUpsertRitual}
-            onDelete={onDeleteRitual}
-          />
+          {(skills.some(s => ['Spring Lore','Summer Lore','Autumn Lore','Winter Lore','Day Lore','Night Lore'].includes(s.skill_name)) || data.characterRituals.some(r => r.member_id === member.id)) && (
+            <RitualsSection
+              memberId={member.id}
+              member={member}
+              data={data}
+              rituals={data.characterRituals.filter(r => r.member_id === member.id)}
+              canEdit={canEdit}
+              onUpsert={onUpsertRitual}
+              onDelete={onDeleteRitual}
+            />
+          )}
         </div>
       </div>
     </div>
