@@ -170,7 +170,7 @@ export function OverviewTab({ data, filteredMembers, isAdmin, onNavigate }: Prop
       {/* Resource Holdings */}
       {resourceList.length > 0 && (
         <>
-          <SectionHeader title="Resource Holdings" count={`${resourceList.length} types`} />
+          <SectionHeader title="Resource Holdings"  />
           <div
             className="mb-10"
             style={{
@@ -210,7 +210,7 @@ export function OverviewTab({ data, filteredMembers, isAdmin, onNavigate }: Prop
       )}
 
       {/* The Houses */}
-      <SectionHeader title="The Houses" count={data.houses.length} />
+      <SectionHeader title="The Houses"  />
       <div className="grid grid-cols-[repeat(auto-fit,minmax(260px,1fr))] gap-4">
         {data.houses.map((house, idx) => {
           const c = house.primary_color ?? HOUSE_COLORS[idx % HOUSE_COLORS.length];
