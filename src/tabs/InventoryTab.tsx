@@ -238,9 +238,10 @@ function InventoryView({
     data.inventory.reduce((sum, i) => sum + (i.unit_value ?? 0) * i.current_qty, 0),
   [data.inventory]);
 
+  const NON_CURRENCY = EMPIRE_CATALOGUE.filter(i => i.type !== 'Currency');
   const items = showAll
-    ? EMPIRE_CATALOGUE
-    : EMPIRE_CATALOGUE.filter(i => { const s = invMap[i.item]; return !!(s && (s.current_qty > 0 || s.required_qty > 0)); });
+    ? NON_CURRENCY
+    : NON_CURRENCY.filter(i => { const s = invMap[i.item]; return !!(s && (s.current_qty > 0 || s.required_qty > 0)); });
 
   const filtered = items.filter(i => {
     if (search) {
