@@ -1,5 +1,5 @@
 import { useMemo, useState } from 'react';
-import type { CharInventoryItem, CharacterRitual, CharacterSkill, CharacterSpell, CraftingQueueItem, LanceData, Member } from '@/lib/types';
+import type { CharInventoryItem, CharacterRitual, CharacterSkill, CharacterSpell, CraftingQueueItem, LanceData, LanceMembership, Member } from '@/lib/types';
 import { RITUALS_CATALOGUE, REALM_COLORS, RITUAL_REALM_ORDER, type RitualRealm } from '@/lib/ritualsCatalogue';
 import { Icons } from '@/components/Icons';
 import { SKILLS_CATALOGUE, SKILL_CATEGORY_COLORS, SKILL_CATEGORY_ORDER, skillXpCost } from '@/lib/skillsCatalogue';
@@ -11,6 +11,7 @@ import { spellsForRealm } from '@/lib/spellsCatalogue';
 import type { SpellRealm } from '@/lib/spellsCatalogue';
 import { cx, formatIncome } from '@/lib/utils';
 import { Field } from '@/components/ui/Field';
+import { CustomSelect } from '@/components/ui/CustomSelect';
 import { SectionHeader } from '@/components/ui/SectionHeader';
 import { DataRow } from '@/components/ui/DataRow';
 import { Pill } from '@/components/ui/Pill';
@@ -23,6 +24,7 @@ interface Props {
   canEdit: boolean;
   isOwn: boolean;
   wikiUrl: string;
+  memberships?: LanceMembership[];
   onBack: () => void;
   onUpsertMember: (m: Partial<Member> & { name: string }) => Promise<void>;
   onUpsertSkill: (s: Omit<CharacterSkill, 'id'> & { id?: string }) => Promise<void>;
@@ -42,6 +44,7 @@ export function CharacterSheetPage({
   canEdit,
   isOwn,
   wikiUrl,
+  memberships,
   onBack,
   onUpsertMember,
   onUpsertSkill,
@@ -88,6 +91,7 @@ export function CharacterSheetPage({
         canEdit={canEdit}
         isAdmin={isAdmin}
         wikiUrl={wikiUrl}
+        memberships={memberships}
         onUpsertMember={onUpsertMember}
       />
 
@@ -196,6 +200,7 @@ function Masthead({
   canEdit,
   isAdmin,
   wikiUrl,
+  memberships,
   onUpsertMember,
 }: {
   member: Member;
@@ -204,6 +209,7 @@ function Masthead({
   canEdit: boolean;
   isAdmin: boolean;
   wikiUrl: string;
+  memberships?: LanceMembership[];
   onUpsertMember: (m: Partial<Member> & { name: string }) => Promise<void>;
 }) {
   const [editing, setEditing] = useState(false);
@@ -268,7 +274,12 @@ function Masthead({
             </div>
             <div>
               <label className="eyebrow block mb-1">Player Name</label>
-              <input className="input" value={form.player_name ?? ''} onChange={e => set('player_name', e.target.value || null)} />
+              <CustomSelect
+                value={form.player_name ?? ''}
+                onChange={v => set('player_name', v || null)}
+                options={memberships?.map(m => ({ value: m.profile?.display_name ?? m.profile?.email ?? m.profile_id, label: m.profile?.display_name ?? m.profile?.email ?? '(unknown)' })) ?? []}
+                placeholder="— None —"
+              />
             </div>
             <div>
               <label className="eyebrow block mb-1">PID</label>
@@ -280,10 +291,12 @@ function Masthead({
             </div>
             <div>
               <label className="eyebrow block mb-1">Claw</label>
-              <select className="input" value={form.function ?? ''} onChange={e => set('function', e.target.value || null)}>
-                <option value="">None</option>
-                {data.functions.map(f => <option key={f.id} value={f.id}>{f.name}</option>)}
-              </select>
+              <CustomSelect
+                value={form.function ?? ''}
+                onChange={v => set('function', v || null)}
+                options={data.functions.map(f => ({ value: f.id, label: f.name }))}
+                placeholder="None"
+              />
             </div>
             <div>
               <label className="eyebrow block mb-1">Military Role</label>
@@ -316,27 +329,32 @@ function Masthead({
             </div>
             <div>
               <label className="eyebrow block mb-1">Coven</label>
-              <select className="input" value={form.coven ?? ''} onChange={e => set('coven', e.target.value || null)}>
-                <option value="">None</option>
-                {data.covens.map(c => <option key={c.id} value={c.id}>{c.name}</option>)}
-              </select>
+              <CustomSelect
+                value={form.coven ?? ''}
+                onChange={v => set('coven', v || null)}
+                options={data.covens.map(c => ({ value: c.id, label: c.name }))}
+                placeholder="None"
+              />
             </div>
             {isAdmin && (
               <>
                 <div>
                   <label className="eyebrow block mb-1">House</label>
-                  <select className="input" value={form.house_id ?? ''} onChange={e => set('house_id', e.target.value || null)}>
-                    <option value="">Unassigned</option>
-                    {data.houses.map(h => <option key={h.id} value={h.id}>{h.name}</option>)}
-                  </select>
+                  <CustomSelect
+                    value={form.house_id ?? ''}
+                    onChange={v => set('house_id', v || null)}
+                    options={data.houses.map(h => ({ value: h.id, label: h.name }))}
+                    placeholder="Unassigned"
+                  />
                 </div>
                 <div>
                   <label className="eyebrow block mb-1">Status</label>
-                  <select className="input" value={form.status ?? 'active'} onChange={e => set('status', e.target.value as Member['status'])}>
-                    <option value="active">Active</option>
-                    <option value="inactive">Inactive</option>
-                    <option value="KIA">KIA</option>
-                  </select>
+                  <CustomSelect
+                    value={form.status ?? 'active'}
+                    onChange={v => set('status', v as Member['status'])}
+                    options={[{ value: 'active', label: 'Active' }, { value: 'inactive', label: 'Inactive' }, { value: 'KIA', label: 'KIA' }]}
+                    placeholder=""
+                  />
                 </div>
               </>
             )}
@@ -884,18 +902,16 @@ function PersonalResourceCard({
       {resType && subOptions.length > 0 && (
         <div className="mb-3">
           <label className="eyebrow block mb-1.5">Subtype</label>
-          <select
-            className="input text-sm"
+          <CustomSelect
             value={resSub ?? ''}
-            onChange={async e => {
-              const val = e.target.value || null;
+            onChange={async v => {
+              const val = v || null;
               setResSub(val);
               await saveResource(resType, val);
             }}
-          >
-            <option value="">— choose subtype —</option>
-            {subOptions.map(s => <option key={s} value={s}>{s}</option>)}
-          </select>
+            options={subOptions.map(s => ({ value: s, label: s }))}
+            placeholder="— choose subtype —"
+          />
         </div>
       )}
 
@@ -905,14 +921,12 @@ function PersonalResourceCard({
             Territory
             {resType === 'Fleet' && <span className="ml-1.5 text-ink-100/30">(coastal only)</span>}
           </label>
-          <select
-            className="input text-sm"
+          <CustomSelect
             value={territory ?? ''}
-            onChange={async e => await saveTerritory(e.target.value || null)}
-          >
-            <option value="">— choose territory —</option>
-            {validTerritories.map(t => <option key={t} value={t}>{t}</option>)}
-          </select>
+            onChange={async v => await saveTerritory(v || null)}
+            options={validTerritories.map(t => ({ value: t, label: t }))}
+            placeholder="— choose territory —"
+          />
         </div>
       )}
     </div>
@@ -1502,12 +1516,12 @@ function SpellsSection({
 
           <div>
             <label className="eyebrow block mb-1">Spell</label>
-            <select className="input text-sm" value={spellName} onChange={e => pickSpell(e.target.value)}>
-              <option value="">— choose spell —</option>
-              {availableSpells.map(sp => (
-                <option key={sp.name} value={sp.name}>{sp.name} ({sp.manaCost}m) {sp.type === 'Offensive' ? '⚔' : ''}</option>
-              ))}
-            </select>
+            <CustomSelect
+              value={spellName}
+              onChange={pickSpell}
+              options={availableSpells.map(sp => ({ value: sp.name, label: `${sp.name} (${sp.manaCost}m)${sp.type === 'Offensive' ? ' ⚔' : ''}` }))}
+              placeholder="— choose spell —"
+            />
           </div>
 
           {spellName && (
@@ -1667,28 +1681,22 @@ function RitualsSection({
           <div className="flex gap-2">
             <div className="flex-1">
               <label className="eyebrow block mb-1">Realm</label>
-              <select
-                className="input text-sm"
+              <CustomSelect
                 value={realm}
-                onChange={e => changeRealm(e.target.value as RitualRealm)}
+                onChange={v => changeRealm(v as RitualRealm)}
+                options={RITUAL_REALM_ORDER.map(r => ({ value: r, label: r }))}
+                placeholder=""
                 disabled={!!covenRealm}
-              >
-                {RITUAL_REALM_ORDER.map(r => <option key={r} value={r}>{r}</option>)}
-              </select>
+              />
             </div>
             <div className="flex-[2]">
               <label className="eyebrow block mb-1">Ritual</label>
-              <select
-                autoFocus
-                className="input text-sm"
+              <CustomSelect
                 value={ritualName}
-                onChange={e => setRitualName(e.target.value)}
-              >
-                <option value="">— choose ritual —</option>
-                {availableRituals.map(r => (
-                  <option key={r.name} value={r.name}>{r.name}</option>
-                ))}
-              </select>
+                onChange={setRitualName}
+                options={availableRituals.map(r => ({ value: r.name, label: r.name }))}
+                placeholder="— choose ritual —"
+              />
             </div>
           </div>
           {ritualName && (

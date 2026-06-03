@@ -331,6 +331,7 @@ export function Layout() {
             onDeleteRitual={lance.deleteCharacterRitual}
             onUpsertCharInventory={lance.upsertCharInventory}
             onDeleteCharInventory={lance.deleteCharInventory}
+            memberships={lance.memberships}
           />
           );
         })()}

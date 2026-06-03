@@ -1,10 +1,12 @@
 import { useState, useRef, useEffect } from 'react';
+import { createPortal } from 'react-dom';
 import type { CharInventoryItem, CharacterRitual, CharacterSkill, LanceData, LanceEvent, LanceMembership, LanceSettings, Member, UserRole } from '@/lib/types';
 import { useConfirm } from '@/components/ConfirmDialog';
 import { Icons } from '@/components/Icons';
 import { MemberCard } from '@/components/MemberCard';
 import { initials } from '@/lib/utils';
 import { exportRosterPdf, exportResourcesPdf } from '@/lib/parchmentPdf';
+import { CustomSelect } from '@/components/ui/CustomSelect';
 
 interface Props {
   data: LanceData;
@@ -480,16 +482,13 @@ function RolesSection({ memberships, data, currentUserId, currentRole, inviteCod
                     </div>
                   </td>
                   <td className="px-4 py-3">
-                    <select
+                    <CustomSelect
                       value={m.role}
                       disabled={busy === m.id || (isSelf && adminCount <= 1) || (!isSuperAdmin && m.role === 'super_admin')}
-                      onChange={e => setRole(m.id, e.target.value as UserRole)}
-                      className="px-2.5 py-1.5 bg-black/40 border border-gold-500/15 rounded text-sm cursor-pointer disabled:opacity-50"
-                      style={{ color: ROLE_COLORS[m.role] }}
-                      title={!isSuperAdmin && m.role === 'super_admin' ? "Only super admins can change this role" : isSelf && adminCount <= 1 ? "Can't demote the only admin" : undefined}
-                    >
-                      {availableRoles.map(r => <option key={r} value={r} style={{ color: ROLE_COLORS[r] }}>{r.replace('_', ' ')}</option>)}
-                    </select>
+                      onChange={v => setRole(m.id, v as UserRole)}
+                      options={availableRoles.map(r => ({ value: r, label: r.replace('_', ' '), color: ROLE_COLORS[r as UserRole] }))}
+                      placeholder=""
+                    />
                     {busy === m.id && <span className="ml-2 text-xs text-ink-100/50">Saving…</span>}
                   </td>
                   <td className="px-4 py-3">
@@ -672,52 +671,80 @@ function MemberPicker({ value, disabled, onChange, options }: {
   options: Member[];
 }) {
   const [open, setOpen] = useState(false);
-  const ref = useRef<HTMLDivElement>(null);
+  const [rect, setRect] = useState<DOMRect | null>(null);
+  const btnRef = useRef<HTMLButtonElement>(null);
   const selected = options.find(m => m.id === value);
   const label = selected ? `${selected.name}${selected.player_name ? ` (${selected.player_name})` : ''}` : '— Unlinked —';
 
+  function toggle() {
+    if (open) { setOpen(false); return; }
+    setRect(btnRef.current?.getBoundingClientRect() ?? null);
+    setOpen(true);
+  }
+
   useEffect(() => {
     if (!open) return;
-    const handler = (e: MouseEvent) => { if (!ref.current?.contains(e.target as Node)) setOpen(false); };
-    document.addEventListener('mousedown', handler);
-    return () => document.removeEventListener('mousedown', handler);
+    const close = (e: MouseEvent) => {
+      if (btnRef.current?.contains(e.target as Node)) return;
+      setOpen(false);
+    };
+    document.addEventListener('mousedown', close);
+    return () => document.removeEventListener('mousedown', close);
   }, [open]);
 
-  return (
-    <div ref={ref} className="relative max-w-[220px]" style={{ opacity: disabled ? 0.5 : 1, pointerEvents: disabled ? 'none' : 'auto' }}>
+  const dropdown = open && rect ? createPortal(
+    <div
+      style={{
+        position: 'fixed',
+        top: rect.bottom + 4,
+        left: rect.left,
+        width: Math.max(rect.width, 224),
+        zIndex: 9999,
+        background: 'rgb(20,18,14)',
+        border: '1px solid var(--line-strong)',
+        borderRadius: '6px',
+        boxShadow: '0 8px 24px rgba(0,0,0,0.8)',
+        overflow: 'hidden',
+        maxHeight: 280,
+        overflowY: 'auto',
+      }}
+    >
       <button
         type="button"
-        onClick={() => setOpen(o => !o)}
+        className="w-full text-left px-3 py-2 text-sm transition-colors hover:bg-white/5"
+        style={{ color: 'rgb(var(--ink-300))' }}
+        onMouseDown={e => e.preventDefault()}
+        onClick={() => { onChange(''); setOpen(false); }}
+      >— Unlinked —</button>
+      {options.map(m => (
+        <button
+          key={m.id}
+          type="button"
+          className="w-full text-left px-3 py-2 text-sm transition-colors hover:bg-white/5"
+          style={{ color: m.id === value ? 'var(--gold)' : 'rgb(var(--ink-100))', background: m.id === value ? 'rgba(203,171,104,0.1)' : undefined }}
+          onMouseDown={e => e.preventDefault()}
+          onClick={() => { onChange(m.id); setOpen(false); }}
+        >
+          {m.name}{m.player_name ? <span style={{ color: 'rgb(var(--ink-300))' }}> ({m.player_name})</span> : null}
+        </button>
+      ))}
+    </div>,
+    document.body
+  ) : null;
+
+  return (
+    <div className="max-w-[220px]" style={{ opacity: disabled ? 0.5 : 1, pointerEvents: disabled ? 'none' : 'auto' }}>
+      <button
+        ref={btnRef}
+        type="button"
+        onClick={toggle}
         className="w-full flex items-center justify-between gap-2 px-2.5 py-1.5 rounded text-sm text-left"
         style={{ background: 'rgba(0,0,0,0.4)', border: '1px solid rgba(203,171,104,0.15)', color: value ? 'rgb(var(--ink-100))' : 'rgb(var(--ink-300))' }}
       >
         <span className="truncate">{label}</span>
         <Icons.ChevronDown size={12} style={{ flexShrink: 0, color: 'rgb(var(--ink-300))' }} />
       </button>
-      {open && (
-        <div
-          className="absolute left-0 top-full mt-1 z-50 w-56 rounded overflow-hidden"
-          style={{ background: 'rgb(20,18,14)', border: '1px solid var(--line-strong)', boxShadow: '0 8px 24px rgba(0,0,0,0.7)' }}
-        >
-          <button
-            type="button"
-            className="w-full text-left px-3 py-2 text-sm transition-colors hover:bg-white/5"
-            style={{ color: 'rgb(var(--ink-300))' }}
-            onClick={() => { onChange(''); setOpen(false); }}
-          >— Unlinked —</button>
-          {options.map(m => (
-            <button
-              key={m.id}
-              type="button"
-              className="w-full text-left px-3 py-2 text-sm transition-colors hover:bg-white/5"
-              style={{ color: m.id === value ? 'var(--gold)' : 'rgb(var(--ink-100))', background: m.id === value ? 'rgba(203,171,104,0.1)' : undefined }}
-              onClick={() => { onChange(m.id); setOpen(false); }}
-            >
-              {m.name}{m.player_name ? <span style={{ color: 'rgb(var(--ink-300))' }}> ({m.player_name})</span> : null}
-            </button>
-          ))}
-        </div>
-      )}
+      {dropdown}
     </div>
   );
 }

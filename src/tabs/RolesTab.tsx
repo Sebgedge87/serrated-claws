@@ -2,6 +2,7 @@ import { useState } from 'react';
 import type { LanceData, Profile, UserRole } from '@/lib/types';
 import { Icons } from '@/components/Icons';
 import { initials } from '@/lib/utils';
+import { CustomSelect } from '@/components/ui/CustomSelect';
 
 interface Props {
   profiles: Profile[];
@@ -94,32 +95,24 @@ export function RolesTab({ profiles, data, currentUserId, onUpdateProfile }: Pro
                     </div>
                   </td>
                   <td className="px-4 py-3">
-                    <select
+                    <CustomSelect
                       value={p.role}
                       disabled={isChangingRole || (isSelf && adminCount <= 1)}
-                      onChange={e => setRole(p.id, e.target.value as UserRole)}
-                      className="px-2.5 py-1.5 bg-black/40 border border-gold-500/15 rounded text-sm cursor-pointer disabled:opacity-50"
-                      style={{ color: ROLE_COLORS[p.role] }}
-                      title={isSelf && adminCount <= 1 ? "Can't demote the only admin" : undefined}
-                    >
-                      {ROLES.map(r => (
-                        <option key={r} value={r} style={{ color: ROLE_COLORS[r] }}>{r}</option>
-                      ))}
-                    </select>
+                      onChange={v => setRole(p.id, v as UserRole)}
+                      options={ROLES.map(r => ({ value: r, label: r, color: ROLE_COLORS[r] }))}
+                      placeholder=""
+                    />
                     {isChangingRole && <span className="ml-2 text-xs text-ink-100/50">Saving…</span>}
                   </td>
                   <td className="px-4 py-3">
-                    <select
+                    <CustomSelect
                       value={p.member_id ?? ''}
                       disabled={isChangingMember}
-                      onChange={e => setMember(p.id, e.target.value || null)}
-                      className="px-2.5 py-1.5 bg-black/40 border border-gold-500/15 rounded text-sm cursor-pointer disabled:opacity-50 max-w-[220px]"
-                    >
-                      <option value="">— Unlinked —</option>
-                      {data.members.map(m => (
-                        <option key={m.id} value={m.id}>{m.name}{m.player_name ? ` (${m.player_name})` : ''}</option>
-                      ))}
-                    </select>
+                      onChange={v => setMember(p.id, v || null)}
+                      options={data.members.map(m => ({ value: m.id, label: `${m.name}${m.player_name ? ` (${m.player_name})` : ''}` }))}
+                      placeholder="— Unlinked —"
+                      className="max-w-[220px]"
+                    />
                     {isChangingMember && <span className="ml-2 text-xs text-ink-100/50">Saving…</span>}
                     {linkedMember && (
                       <div className="text-xs text-ink-100/50 mt-0.5">

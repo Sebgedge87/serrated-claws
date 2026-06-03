@@ -9,6 +9,7 @@ import { exportRitualsPdf } from '@/lib/parchmentPdf';
 import { initials } from '@/lib/utils';
 import { SectionHeader } from '@/components/ui/SectionHeader';
 import { DataRow } from '@/components/ui/DataRow';
+import { CustomSelect } from '@/components/ui/CustomSelect';
 
 interface Props {
   data: LanceData;
@@ -423,10 +424,12 @@ function CovenModal({ members, initial, onClose, onSave }: { members: LanceData[
         {isNew && !form.domain && <p className="text-[11px] mt-1 text-ink-100/40">Select a domain to continue</p>}
       </Field>
       <Field label="Leader" optional>
-        <select className="input" value={form.leader ?? ''} onChange={e => setForm({ ...form, leader: e.target.value || null })}>
-          <option value="">— None —</option>
-          {activeMembers.map(m => <option key={m.id} value={m.id}>{m.name}</option>)}
-        </select>
+        <CustomSelect
+          value={form.leader ?? ''}
+          onChange={v => setForm({ ...form, leader: v || null })}
+          options={activeMembers.map(m => ({ value: m.id, label: m.name }))}
+          placeholder="— None —"
+        />
       </Field>
       <Field label="Description" optional><textarea rows={3} className="input resize-y" value={form.description ?? ''} onChange={e => setForm({ ...form, description: e.target.value || null })} /></Field>
     </Modal>
