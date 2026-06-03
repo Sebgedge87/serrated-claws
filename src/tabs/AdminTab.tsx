@@ -673,6 +673,7 @@ function MemberPicker({ value, disabled, onChange, options }: {
   const [open, setOpen] = useState(false);
   const [rect, setRect] = useState<DOMRect | null>(null);
   const btnRef = useRef<HTMLButtonElement>(null);
+  const dropRef = useRef<HTMLDivElement | null>(null);
   const selected = options.find(m => m.id === value);
   const label = selected ? `${selected.name}${selected.player_name ? ` (${selected.player_name})` : ''}` : '— Unlinked —';
 
@@ -686,6 +687,7 @@ function MemberPicker({ value, disabled, onChange, options }: {
     if (!open) return;
     const close = (e: MouseEvent) => {
       if (btnRef.current?.contains(e.target as Node)) return;
+      if (dropRef.current?.contains(e.target as Node)) return;
       setOpen(false);
     };
     document.addEventListener('mousedown', close);
@@ -694,6 +696,7 @@ function MemberPicker({ value, disabled, onChange, options }: {
 
   const dropdown = open && rect ? createPortal(
     <div
+      ref={dropRef}
       style={{
         position: 'fixed',
         top: rect.bottom + 4,
@@ -713,7 +716,6 @@ function MemberPicker({ value, disabled, onChange, options }: {
         type="button"
         className="w-full text-left px-3 py-2 text-sm transition-colors hover:bg-white/5"
         style={{ color: 'rgb(var(--ink-300))' }}
-        onMouseDown={e => e.preventDefault()}
         onClick={() => { onChange(''); setOpen(false); }}
       >— Unlinked —</button>
       {options.map(m => (
@@ -722,7 +724,6 @@ function MemberPicker({ value, disabled, onChange, options }: {
           type="button"
           className="w-full text-left px-3 py-2 text-sm transition-colors hover:bg-white/5"
           style={{ color: m.id === value ? 'var(--gold)' : 'rgb(var(--ink-100))', background: m.id === value ? 'rgba(203,171,104,0.1)' : undefined }}
-          onMouseDown={e => e.preventDefault()}
           onClick={() => { onChange(m.id); setOpen(false); }}
         >
           {m.name}{m.player_name ? <span style={{ color: 'rgb(var(--ink-300))' }}> ({m.player_name})</span> : null}

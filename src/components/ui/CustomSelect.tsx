@@ -22,6 +22,7 @@ export function CustomSelect({ value, onChange, options, placeholder = '— None
   const [open, setOpen] = useState(false);
   const [rect, setRect] = useState<DOMRect | null>(null);
   const btnRef = useRef<HTMLButtonElement>(null);
+  const dropRef = useRef<HTMLDivElement | null>(null);
   const selected = options.find(o => o.value === value);
 
   function toggle() {
@@ -32,13 +33,17 @@ export function CustomSelect({ value, onChange, options, placeholder = '— None
 
   useEffect(() => {
     if (!open) return;
-    const close = (e: MouseEvent) => { if (!btnRef.current?.contains(e.target as Node)) setOpen(false); };
+    const close = (e: MouseEvent) => {
+      if (btnRef.current?.contains(e.target as Node)) return;
+      if (dropRef.current?.contains(e.target as Node)) return;
+      setOpen(false);
+    };
     document.addEventListener('mousedown', close);
     return () => document.removeEventListener('mousedown', close);
   }, [open]);
 
   const dropdown = open && rect ? createPortal(
-    <div style={{
+    <div ref={dropRef} style={{
       position: 'fixed',
       top: rect.bottom + 4,
       left: rect.left,
@@ -55,7 +60,6 @@ export function CustomSelect({ value, onChange, options, placeholder = '— None
       {placeholder && (
         <button type="button" className="w-full text-left px-3 py-2 text-sm transition-colors hover:bg-white/5"
           style={{ color: 'rgb(var(--ink-300))' }}
-          onMouseDown={e => e.preventDefault()}
           onClick={() => { onChange(''); setOpen(false); }}>
           {placeholder}
         </button>
@@ -64,7 +68,6 @@ export function CustomSelect({ value, onChange, options, placeholder = '— None
         <button key={o.value} type="button"
           className="w-full text-left px-3 py-2 text-sm transition-colors hover:bg-white/5"
           style={{ color: o.value === value ? 'var(--gold)' : (o.color ?? 'rgb(var(--ink-100))'), background: o.value === value ? 'rgba(203,171,104,0.1)' : undefined }}
-          onMouseDown={e => e.preventDefault()}
           onClick={() => { onChange(o.value); setOpen(false); }}>
           {o.label}
           {o.sublabel && <span style={{ color: 'rgb(var(--ink-300))', marginLeft: 6, fontSize: '11px' }}>{o.sublabel}</span>}
