@@ -68,13 +68,13 @@ export function Layout() {
       color: h.primary_color,
       monogram: monogramOf(h.name),
     })),
-    { id: 'unassigned', label: 'Unassigned', Icon: Icons.Question },
     { id: 'covens', label: 'Covens', Icon: Icons.Sparkles },
     { id: 'functions', label: 'Functions', Icon: Icons.Swords },
-    { id: 'businesses', label: 'Businesses', Icon: Icons.Briefcase, separator: true },
-    { id: 'inventory', label: 'Inventory', Icon: Icons.Package },
-    ...(canAccessBards ? [{ id: 'bards', label: 'Bards', Icon: Icons.Feather, separator: true } as TabDef] : []),
-    ...(isAdmin ? [{ id: 'admin', label: 'Admin', Icon: Icons.Shield }] : [])
+    { id: 'businesses', label: 'Businesses', Icon: Icons.Briefcase },
+    { id: 'inventory', label: 'Inventory', Icon: Icons.Package, separator: true },
+    ...(canAccessBards ? [{ id: 'bards', label: 'Bards', Icon: Icons.Feather } as TabDef] : []),
+    ...(isAdmin ? [{ id: 'unassigned', label: 'Unassigned', Icon: Icons.Question } as TabDef] : []),
+    ...(isAdmin ? [{ id: 'admin', label: 'Admin', Icon: Icons.Shield } as TabDef] : [])
   ];
 
   function exportCsv() {
