@@ -162,73 +162,84 @@ function CovenDetail({
   const manaNeeded = Math.max(0, totalRequired - manaHave);
   const surplus = manaHave - totalRequired;
   const covenHue = coven.domain ? (REALM_HUE[coven.domain as RitualRealm] ?? A) : A;
+  const leaderName = coven.leader ? data.members.find(m => m.id === coven.leader)?.name : null;
 
   return (
     <div className="animate-fade-in">
-      <div className="flex items-center justify-between mb-6">
-        <button onClick={onBack} className="btn btn-ghost btn-sm">← Back to Covens</button>
-        {canManage && (
-          <div className="flex gap-2">
-            <button onClick={() => setEditingCoven(true)} className="btn btn-secondary btn-sm"><Icons.Edit size={13} /> Edit</button>
-            {isAdmin && <button onClick={onDelete} className="btn btn-danger btn-sm"><Icons.Trash size={13} /> Delete</button>}
-          </div>
-        )}
-      </div>
+      {/* Top rule + masthead */}
+      <div style={{ height: '2px', background: `linear-gradient(90deg, ${covenHue}, transparent)` }} />
+      <div className="hairline-fade" />
 
-      <div className="flex items-center gap-4 mb-6">
-        {(() => {
-          const dc = coven.domain ? REALM_COLORS[coven.domain as RitualRealm] : null;
-          const c = dc?.text ?? A;
-          return (
-            <>
-              <div className="w-14 h-14 rounded-xl grid place-items-center" style={{ background: `${c}20`, border: `1px solid ${c}40`, color: c }}>
-                <Icons.Sparkles size={26} />
-              </div>
-              <div>
-                <h2 className="font-display font-bold text-3xl text-ink-100 m-0">{coven.name}</h2>
-                {coven.domain && <span className="text-xs font-semibold uppercase tracking-widest" style={{ color: c }}>{coven.domain}</span>}
-                {coven.leader && <p className="text-sm m-0 mt-0.5" style={{ color: A }}>Led by {data.members.find(m => m.id === coven.leader)?.name ?? '—'}</p>}
-              </div>
-            </>
-          );
-        })()}
+      <div className="flex items-center gap-3.5 mb-2 mt-3">
+        <div
+          className="w-12 h-12 rounded-xl grid place-items-center font-display font-bold text-lg select-none flex-shrink-0"
+          style={{ background: `${covenHue}18`, border: `1px solid ${covenHue}55`, color: covenHue }}
+        >
+          ✦
+        </div>
+        <div className="flex-1 min-w-0">
+          <h2 className="font-display text-4xl font-bold text-ink-100 m-0 leading-tight">{coven.name}</h2>
+          <p className="text-sm text-ink-100/60 m-0 tracking-wide">
+            {members.length} member{members.length !== 1 ? 's' : ''}
+            {coven.domain && <span style={{ color: covenHue }}> · {coven.domain}</span>}
+            {leaderName && <span className="italic"> · led by {leaderName}</span>}
+          </p>
+        </div>
+        <div className="flex items-center gap-2 flex-shrink-0">
+          <button onClick={onBack} className="text-xs text-ink-100/50 hover:text-ink-100/80 border border-ink-100/20 rounded px-2 py-1 transition-colors">
+            ← Covens
+          </button>
+          {canManage && (
+            <button onClick={() => setEditingCoven(true)} className="text-xs text-ink-100/50 hover:text-ink-100/80 border border-ink-100/20 rounded px-2 py-1 transition-colors">
+              Edit
+            </button>
+          )}
+          {isAdmin && canManage && (
+            <button onClick={onDelete} className="text-xs text-red-400/60 hover:text-red-400 border border-red-400/20 rounded px-2 py-1 transition-colors">
+              Delete
+            </button>
+          )}
+        </div>
       </div>
 
       {coven.description && (
-        <div className="card p-5 mb-6">
-          <p className="text-ink-100/70 leading-relaxed m-0">{coven.description}</p>
-        </div>
+        <p className="text-sm text-ink-100/70 mt-3 mb-6 max-w-2xl italic">{coven.description}</p>
       )}
 
-      {/* Mana Dashboard */}
-      <div className="card p-5 mb-6">
-        <div className="flex items-center gap-2 mb-4">
-          <Icons.Zap size={15} style={{ color: A }} />
-          <h3 className="text-xs uppercase tracking-widest font-bold m-0" style={{ color: A }}>Mana</h3>
-        </div>
-        <div className="grid grid-cols-4 gap-3 mb-4">
-          <ManaStatBox label="Required" value={totalRequired} color="#e8a870" />
-          <ManaStatBox label="Have" value={manaHave} color={A} />
-          <ManaStatBox label="Needed" value={manaNeeded} color={manaNeeded > 0 ? '#e87070' : '#6ad47e'} />
-          <ManaStatBox label="Surplus" value={surplus} color={surplus >= 0 ? '#6ad47e' : '#e87070'} />
-        </div>
-        {totalRequired > 0 && (
-          <div className="h-2 bg-black/30 rounded-full overflow-hidden">
-            <div
-              className="h-full rounded-full transition-all duration-500"
-              style={{
-                width: `${Math.min(100, (manaHave / totalRequired) * 100)}%`,
-                background: manaHave >= totalRequired
-                  ? 'linear-gradient(90deg, #6ad47e, #4ab85e)'
-                  : `linear-gradient(90deg, ${A}, ${A}80)`
-              }}
-            />
+      {/* Mana strip — flat bordered row like Overview stat strip */}
+      <div
+        className="mb-8"
+        style={{
+          border: '1px solid var(--line)',
+          borderRadius: '8px',
+          display: 'flex',
+          overflow: 'hidden',
+          background: 'rgb(var(--ink-800))',
+        }}
+      >
+        {[
+          { label: 'Required', value: totalRequired, color: 'rgb(var(--ink-300))' },
+          { label: 'Have',     value: manaHave,      color: covenHue },
+          { label: 'Needed',   value: manaNeeded,    color: manaNeeded > 0 ? 'var(--danger)' : 'var(--ok)' },
+          { label: 'Surplus',  value: surplus,       color: surplus >= 0 ? 'var(--ok)' : 'var(--danger)' },
+        ].map((s, i) => (
+          <div
+            key={s.label}
+            style={{
+              flex: 1,
+              padding: '18px 16px',
+              borderLeft: i > 0 ? '1px solid var(--line)' : 'none',
+              textAlign: 'center',
+            }}
+          >
+            <div className="num" style={{ fontSize: '28px', color: s.color, lineHeight: 1, marginBottom: '5px' }}>{s.value}</div>
+            <div className="eyebrow" style={{ fontSize: '10px', letterSpacing: '0.1em', textTransform: 'uppercase' }}>{s.label}</div>
           </div>
-        )}
+        ))}
       </div>
 
       {/* Rituals */}
-      <div className="mb-6">
+      <div className="mb-8">
         <SectionHeader
           title="Rituals Mastered"
           count={rituals.length}
@@ -278,33 +289,61 @@ function CovenDetail({
         )}
       </div>
 
-      {/* Members */}
-      <div>
-        <div className="flex items-center gap-2.5 mb-4">
-          <Icons.Users size={15} style={{ color: A }} />
-          <h3 className="text-xs uppercase tracking-widest font-bold m-0" style={{ color: A }}>Members · {members.length}</h3>
-          <div className="flex-1 h-px" style={{ background: `linear-gradient(90deg, ${A}40, transparent)` }} />
-        </div>
-
-        <div className="grid grid-cols-[repeat(auto-fill,minmax(260px,1fr))] gap-3">
-          {members.map(m => {
-            const house = data.houses.find(h => h.id === m.house_id);
-            return (
-              <div key={m.id} className="card card-lift p-4 flex items-center gap-3">
-                <div className="w-10 h-10 rounded-full grid place-items-center font-display font-bold text-sm flex-shrink-0"
-                     style={{ background: `${A}20`, border: `1px solid ${A}40`, color: A }}>
-                  {initials(m.name)}
-                </div>
-                <div className="min-w-0">
-                  <div className="font-semibold text-ink-100 truncate">{m.name}</div>
-                  <div className="text-xs text-ink-100/50">{house?.name ?? 'Unassigned'}{m.rank ? ` · ${m.rank}` : ''}</div>
-                  {m.mp != null && <div className="text-xs" style={{ color: A }}>{m.mp} MP</div>}
-                </div>
+      {/* Members — ledger rows */}
+      <SectionHeader title="Members" count={members.length} accent={covenHue} />
+      <div
+        style={{
+          border: '1px solid var(--line)',
+          borderRadius: '8px',
+          overflow: 'hidden',
+          background: 'rgb(var(--ink-800))',
+        }}
+      >
+        {members.map((m, i) => {
+          const house = data.houses.find(h => h.id === m.house_id);
+          return (
+            <div
+              key={m.id}
+              style={{
+                display: 'flex',
+                alignItems: 'center',
+                gap: '12px',
+                padding: '12px 16px',
+                borderTop: i > 0 ? '1px solid var(--line)' : 'none',
+              }}
+            >
+              <div
+                style={{
+                  width: '32px',
+                  height: '32px',
+                  borderRadius: '6px',
+                  background: `${covenHue}18`,
+                  border: `1px solid ${covenHue}44`,
+                  color: covenHue,
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  fontFamily: "'Cormorant Garamond', serif",
+                  fontSize: '13px',
+                  fontWeight: 600,
+                  flexShrink: 0,
+                }}
+              >
+                {initials(m.name)}
               </div>
-            );
-          })}
-          {members.length === 0 && <p className="text-ink-100/40 text-sm py-8 col-span-full">No members assigned to this coven yet.</p>}
-        </div>
+              <div className="flex-1 min-w-0">
+                <div style={{ fontSize: '14px', fontWeight: 600, color: 'rgb(var(--ink-100))', lineHeight: 1.3 }}>{m.name}</div>
+                <div style={{ fontSize: '11px', color: 'rgb(var(--ink-300))' }}>{house?.name ?? 'Unassigned'}{m.rank ? ` · ${m.rank}` : ''}</div>
+              </div>
+              {m.mp != null && (
+                <div className="num" style={{ fontSize: '16px', color: covenHue, flexShrink: 0 }}>{m.mp} <span style={{ fontSize: '10px', color: 'rgb(var(--ink-300))' }}>MP</span></div>
+              )}
+            </div>
+          );
+        })}
+        {members.length === 0 && (
+          <p className="text-ink-100/40 text-sm py-10 text-center">No members assigned to this coven yet.</p>
+        )}
       </div>
 
       {addingRitual && (
@@ -331,54 +370,6 @@ function CovenDetail({
           onClose={() => setEditingCoven(false)}
           onSave={async f => { await onUpsert({ ...f, id: coven.id, name: f.name! }); setEditingCoven(false); }}
         />
-      )}
-    </div>
-  );
-}
-
-function ManaStatBox({
-  label, value, color, editable, editing, inputValue, onStartEdit, onInput, onSave, onCancel
-}: {
-  label: string;
-  value: number;
-  color: string;
-  editable?: boolean;
-  editing?: boolean;
-  inputValue?: string;
-  onStartEdit?: () => void;
-  onInput?: (v: string) => void;
-  onSave?: () => void;
-  onCancel?: () => void;
-}) {
-  return (
-    <div className="rounded-xl p-3 text-center" style={{ background: `${color}12`, border: `1px solid ${color}30` }}>
-      <div className="text-[10px] uppercase tracking-widest font-semibold mb-1" style={{ color: `${color}99` }}>{label}</div>
-      {editing ? (
-        <div className="flex flex-col items-center gap-1">
-          <input
-            autoFocus
-            type="number"
-            min={0}
-            className="input text-sm py-0.5 text-center w-16"
-            value={inputValue}
-            onChange={e => onInput?.(e.target.value)}
-            onKeyDown={e => { if (e.key === 'Enter') onSave?.(); if (e.key === 'Escape') onCancel?.(); }}
-          />
-          <div className="flex gap-1">
-            <button onClick={onSave} className="text-[10px] px-1.5 py-0.5 rounded" style={{ background: `${color}30`, color }}>✓</button>
-            <button onClick={onCancel} className="text-[10px] px-1.5 py-0.5 rounded text-ink-100/40 hover:text-ink-100">✕</button>
-          </div>
-        </div>
-      ) : (
-        <div
-          className="text-2xl font-display font-bold cursor-default"
-          style={{ color }}
-          onClick={editable ? onStartEdit : undefined}
-          title={editable ? 'Click to edit' : undefined}
-        >
-          {value}
-          {editable && <span className="text-[10px] ml-1 opacity-40">✎</span>}
-        </div>
       )}
     </div>
   );

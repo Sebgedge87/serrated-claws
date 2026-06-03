@@ -1,7 +1,8 @@
 import { useState } from 'react';
-import type { LanceData, LanceEvent, LanceMembership, LanceSettings, UserRole } from '@/lib/types';
+import type { CharInventoryItem, CharacterRitual, CharacterSkill, LanceData, LanceEvent, LanceMembership, LanceSettings, Member, UserRole } from '@/lib/types';
 import { useConfirm } from '@/components/ConfirmDialog';
 import { Icons } from '@/components/Icons';
+import { MemberCard } from '@/components/MemberCard';
 import { initials } from '@/lib/utils';
 import { exportRosterPdf, exportResourcesPdf } from '@/lib/parchmentPdf';
 
@@ -19,12 +20,20 @@ interface Props {
   onDeleteEvent: (id: string) => Promise<void>;
   onClearAttending: () => Promise<void>;
   onRegenerateInviteCode: () => Promise<string>;
+  onDeleteMember?: (id: string) => Promise<void>;
+  onViewMember?: (m: Member) => void;
+  onUpsertCharInventory?: (item: Omit<CharInventoryItem, 'id'> & { id?: string }) => Promise<void>;
+  onDeleteCharInventory?: (id: string) => Promise<void>;
+  onUpsertSkill?: (skill: Omit<CharacterSkill, 'id'> & { id?: string }) => Promise<void>;
+  onDeleteSkill?: (id: string) => Promise<void>;
+  onUpsertRitual?: (ritual: Omit<CharacterRitual, 'id'> & { id?: string }) => Promise<void>;
+  onDeleteRitual?: (id: string) => Promise<void>;
 }
 
 const A = '#d4b46d';
 const ROLE_COLORS: Record<UserRole, string> = { super_admin: '#f0a040', admin: '#d4b46d', member: '#7eb0d4', viewer: '#9ca3af' };
 
-export function AdminTab({ data, memberships, settings, currentUserId, inviteCode, onUpdateProfile, onUpsertSettings, onResetInventoryQty, onClearInventoryLog, onUpsertEvent, onDeleteEvent, onClearAttending, onRegenerateInviteCode }: Props) {
+export function AdminTab({ data, memberships, settings, currentUserId, inviteCode, onUpdateProfile, onUpsertSettings, onResetInventoryQty, onClearInventoryLog, onUpsertEvent, onDeleteEvent, onClearAttending, onRegenerateInviteCode, onDeleteMember, onViewMember }: Props) {
   const currentRole = memberships.find(m => m.profile_id === currentUserId)?.role ?? 'admin';
   const isSuperAdmin = currentRole === 'super_admin';
 
@@ -44,12 +53,30 @@ export function AdminTab({ data, memberships, settings, currentUserId, inviteCod
       </div>
 
       <StatsSection data={data} memberships={memberships} isSuperAdmin={isSuperAdmin} />
+      <UnassignedSection data={data} isAdmin onDelete={onDeleteMember} onViewMember={onViewMember} />
       <EventsSection events={data.events} data={data} onUpsert={onUpsertEvent} onDelete={onDeleteEvent} onClearAttending={onClearAttending} />
       <SettingsSection settings={settings} onSave={onUpsertSettings} />
       <RolesSection memberships={memberships} data={data} currentUserId={currentUserId} currentRole={currentRole} inviteCode={inviteCode} onUpdateProfile={onUpdateProfile} onRegenerateInviteCode={onRegenerateInviteCode} />
       {isSuperAdmin && <ExportSection data={data} memberships={memberships} />}
       {isSuperAdmin && <DangerZone onResetInventoryQty={onResetInventoryQty} onClearInventoryLog={onClearInventoryLog} logCount={data.inventoryLog.length} />}
     </div>
+  );
+}
+
+// ── Unassigned Members ────────────────────────────────────────────────────────
+
+function UnassignedSection({ data, isAdmin, onDelete, onViewMember }: { data: LanceData; isAdmin: boolean; onDelete?: (id: string) => Promise<void>; onViewMember?: (m: Member) => void }) {
+  const unassigned = data.members.filter(m => !m.house_id);
+  if (unassigned.length === 0) return null;
+  return (
+    <section>
+      <SectionHeading icon={<Icons.Question size={16} />} title={`Unassigned Members · ${unassigned.length}`} color="#9ca3af" />
+      <div className="grid sm:grid-cols-2 gap-3.5">
+        {unassigned.map(m => (
+          <MemberCard key={m.id} member={m} isAdmin={isAdmin} onDelete={onDelete} onViewSheet={onViewMember} />
+        ))}
+      </div>
+    </section>
   );
 }
 
