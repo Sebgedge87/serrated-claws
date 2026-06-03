@@ -300,7 +300,6 @@ export function Layout() {
             className="pointer-events-none absolute inset-y-0 right-0 w-12"
             style={{ background: 'linear-gradient(to right, transparent, var(--color-ink-950, #0a0a0f))' }}
           />
-          </div>
         </div>
       </nav>
 
