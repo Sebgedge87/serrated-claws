@@ -817,6 +817,7 @@ function PersonalResourceCard({
   const [resType, setResType] = useState<ResourceType | null>(parsed.type);
   const [resSub, setResSub] = useState<string | null>(parsed.sub);
   const [territory, setTerritory] = useState<string | null>(member.territory);
+  const [editing, setEditing] = useState(false);
 
   const subOptions = resourceSubOptions(resType);
   const validTerritories = territoriesForResource(resType);
@@ -832,22 +833,23 @@ function PersonalResourceCard({
     await onUpsertMember({ ...member, territory: val, name: member.name });
   }
 
-  if (!canEdit) {
-    if (!member.resource) return null;
+  if (!canEdit || !editing) {
+    if (!canEdit && !member.resource) return null;
     return (
       <div className="card px-4 py-4">
-        <SectionHeader title="Personal Resource" />
-        <div className="flex items-center justify-between">
-          <span className="text-sm font-medium text-ink-100">{member.resource}</span>
-          {member.territory && <span className="text-xs text-ink-100/50">{member.territory}</span>}
-        </div>
+        <SectionHeader
+          title="Personal Resource"
+          action={canEdit ? <span onClick={() => setEditing(true)}>Edit</span> : undefined}
+        />
+        <Field label="Resource" value={resType ?? '—'} />
+        {(territory || resType) && <Field label="Territory" value={territory ?? '—'} />}
       </div>
     );
   }
 
   return (
     <div className="card px-4 py-4">
-      <SectionHeader title="Personal Resource" />
+      <SectionHeader title="Personal Resource" action={<span onClick={() => setEditing(false)}>Done</span>} />
 
       <div className="mb-3">
         <label className="eyebrow block mb-1.5">Resource Type</label>
