@@ -111,6 +111,52 @@ export function BankTab({ data, isAdmin, onUpsertInventory }: Props) {
         </div>
       </div>
 
+      {/* Businesses */}
+      {data.businesses.length > 0 && (
+        <div className="mb-10">
+          <div className="eyebrow mb-3" style={{ fontSize: '10px', letterSpacing: '0.12em', textTransform: 'uppercase' }}>
+            Lance Businesses
+          </div>
+          <div
+            style={{
+              border: '1px solid var(--line)',
+              borderRadius: '8px',
+              overflow: 'hidden',
+              background: 'rgb(var(--ink-800))',
+            }}
+          >
+            {data.businesses.map((b, i) => {
+              const owners = b.owners
+                .map(id => data.members.find(m => m.id === id)?.name)
+                .filter(Boolean) as string[];
+              return (
+                <div
+                  key={b.id}
+                  style={{
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: '12px',
+                    padding: '12px 16px',
+                    borderTop: i > 0 ? '1px solid var(--line)' : 'none',
+                  }}
+                >
+                  <div style={{ flex: 1, minWidth: 0 }}>
+                    <div style={{ fontSize: '14px', fontWeight: 600, color: 'rgb(var(--ink-100))' }}>{b.name}</div>
+                    {b.type && <div style={{ fontSize: '11px', color: 'var(--gold)', textTransform: 'uppercase', letterSpacing: '0.08em' }}>{b.type}</div>}
+                    {b.notes && <div style={{ fontSize: '12px', color: 'rgb(var(--ink-300))', marginTop: '2px', fontStyle: 'italic' }}>{b.notes}</div>}
+                  </div>
+                  {owners.length > 0 && (
+                    <div style={{ fontSize: '12px', color: 'rgb(var(--ink-300))', textAlign: 'right', flexShrink: 0 }}>
+                      {owners.join(', ')}
+                    </div>
+                  )}
+                </div>
+              );
+            })}
+          </div>
+        </div>
+      )}
+
       {/* Per-member income breakdown */}
       {incomeMembers.length > 0 && (
         <div className="mb-10">

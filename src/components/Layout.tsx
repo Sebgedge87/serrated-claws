@@ -27,7 +27,7 @@ import type { Member } from '@/lib/types';
 
 const WIKI_URL = 'https://www.profounddecisions.co.uk/empire-wiki/Skills';
 
-type TabId = 'overview' | 'roster' | 'covens' | 'functions' | 'businesses' | 'inventory' | 'bank' | 'admin' | 'bards' | string;
+type TabId = 'overview' | 'roster' | 'covens' | 'functions' | 'businesses' | 'inventory' | 'treasury' | 'admin' | 'bards' | string;
 
 export function Layout() {
   const { user, profile, signOut } = useAuth();
@@ -74,7 +74,7 @@ export function Layout() {
     { id: 'functions', label: 'Functions', Icon: Icons.Swords },
     { id: 'businesses', label: 'Businesses', Icon: Icons.Briefcase },
     { id: 'inventory', label: 'Inventory', Icon: Icons.Package, separator: true },
-    { id: 'bank', label: 'Bank', Icon: Icons.Coins, separator: true },
+    { id: 'treasury', label: 'Treasury', Icon: Icons.Coins, separator: true },
     ...(canAccessBards ? [{ id: 'bards', label: 'Bards', Icon: Icons.Feather } as TabDef] : []),
     ...(isAdmin ? [{ id: 'admin', label: 'Admin', Icon: Icons.Shield } as TabDef] : [])
   ];
@@ -380,7 +380,7 @@ export function Layout() {
                 onDeleteQueue={lance.deleteCraftingQueueItem}
               />
             )}
-            {activeTab === 'bank' && (
+            {activeTab === 'treasury' && (
               <BankTab
                 data={lance.data}
                 isAdmin={isAdmin}

@@ -113,7 +113,7 @@ export function OverviewTab({ data, filteredMembers, isAdmin, onNavigate }: Prop
       {/* Treasury & Income — two flat panels */}
       <div className="grid grid-cols-[repeat(auto-fit,minmax(300px,1fr))] gap-4 mb-10">
         {/* Treasury */}
-        <div className="card p-6 cursor-pointer hover:bg-white/[0.02] transition-colors" onClick={() => onNavigate?.('bank')}>
+        <div className="card p-6 cursor-pointer hover:bg-white/[0.02] transition-colors" onClick={() => onNavigate?.('treasury')}>
           <div className="eyebrow mb-4" style={{ fontSize: '10px', letterSpacing: '0.12em', textTransform: 'uppercase' }}>Treasury</div>
           <div className="grid grid-cols-3 gap-3 mb-4">
             {[
@@ -136,7 +136,7 @@ export function OverviewTab({ data, filteredMembers, isAdmin, onNavigate }: Prop
         </div>
 
         {/* Tithe */}
-        <div className="card p-6 cursor-pointer hover:bg-white/[0.02] transition-colors" onClick={() => onNavigate?.('bank')}>
+        <div className="card p-6 cursor-pointer hover:bg-white/[0.02] transition-colors" onClick={() => onNavigate?.('treasury')}>
           <div className="eyebrow mb-4" style={{ fontSize: '10px', letterSpacing: '0.12em', textTransform: 'uppercase' }}>Lance Tithe Per Event</div>
           <div className="num" style={{ fontSize: '38px', color: 'var(--ok)', lineHeight: 1, marginBottom: '6px' }}>
             {tithingRings.toLocaleString()}
