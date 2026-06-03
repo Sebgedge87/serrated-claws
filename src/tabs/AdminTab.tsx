@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useRef, useEffect } from 'react';
 import type { CharInventoryItem, CharacterRitual, CharacterSkill, LanceData, LanceEvent, LanceMembership, LanceSettings, Member, UserRole } from '@/lib/types';
 import { useConfirm } from '@/components/ConfirmDialog';
 import { Icons } from '@/components/Icons';
@@ -493,17 +493,12 @@ function RolesSection({ memberships, data, currentUserId, currentRole, inviteCod
                     {busy === m.id && <span className="ml-2 text-xs text-ink-100/50">Saving…</span>}
                   </td>
                   <td className="px-4 py-3">
-                    <select
+                    <MemberPicker
                       value={m.member_id ?? ''}
                       disabled={busy === m.id + '-m'}
-                      onChange={e => setMember(m.id, e.target.value || null)}
-                      className="px-2.5 py-1.5 bg-black/40 border border-gold-500/15 rounded text-sm cursor-pointer disabled:opacity-50 max-w-[220px]"
-                    >
-                      <option value="">— Unlinked —</option>
-                      {data.members
-                        .filter(dm => !claimedMemberIds.has(dm.id) || dm.id === m.member_id)
-                        .map(dm => <option key={dm.id} value={dm.id}>{dm.name}{dm.player_name ? ` (${dm.player_name})` : ''}</option>)}
-                    </select>
+                      onChange={v => setMember(m.id, v || null)}
+                      options={data.members.filter(dm => !claimedMemberIds.has(dm.id) || dm.id === m.member_id)}
+                    />
                     {linked && (
                       <div className="text-xs text-ink-100/50 mt-0.5">
                         {data.houses.find(h => h.id === linked.house_id)?.name ?? 'Unassigned'}
@@ -667,5 +662,62 @@ function RolePill({ role }: { role: UserRole }) {
   return (
     <span className="inline-block px-2.5 py-0.5 rounded-full text-xs font-semibold capitalize"
           style={{ background: `${c}20`, border: `1px solid ${c}40`, color: c }}>{role.replace('_', ' ')}</span>
+  );
+}
+
+function MemberPicker({ value, disabled, onChange, options }: {
+  value: string;
+  disabled: boolean;
+  onChange: (v: string) => void;
+  options: Member[];
+}) {
+  const [open, setOpen] = useState(false);
+  const ref = useRef<HTMLDivElement>(null);
+  const selected = options.find(m => m.id === value);
+  const label = selected ? `${selected.name}${selected.player_name ? ` (${selected.player_name})` : ''}` : '— Unlinked —';
+
+  useEffect(() => {
+    if (!open) return;
+    const handler = (e: MouseEvent) => { if (!ref.current?.contains(e.target as Node)) setOpen(false); };
+    document.addEventListener('mousedown', handler);
+    return () => document.removeEventListener('mousedown', handler);
+  }, [open]);
+
+  return (
+    <div ref={ref} className="relative max-w-[220px]" style={{ opacity: disabled ? 0.5 : 1, pointerEvents: disabled ? 'none' : 'auto' }}>
+      <button
+        type="button"
+        onClick={() => setOpen(o => !o)}
+        className="w-full flex items-center justify-between gap-2 px-2.5 py-1.5 rounded text-sm text-left"
+        style={{ background: 'rgba(0,0,0,0.4)', border: '1px solid rgba(203,171,104,0.15)', color: value ? 'rgb(var(--ink-100))' : 'rgb(var(--ink-300))' }}
+      >
+        <span className="truncate">{label}</span>
+        <Icons.ChevronDown size={12} style={{ flexShrink: 0, color: 'rgb(var(--ink-300))' }} />
+      </button>
+      {open && (
+        <div
+          className="absolute left-0 top-full mt-1 z-50 w-56 rounded overflow-hidden"
+          style={{ background: 'rgb(20,18,14)', border: '1px solid var(--line-strong)', boxShadow: '0 8px 24px rgba(0,0,0,0.7)' }}
+        >
+          <button
+            type="button"
+            className="w-full text-left px-3 py-2 text-sm transition-colors hover:bg-white/5"
+            style={{ color: 'rgb(var(--ink-300))' }}
+            onClick={() => { onChange(''); setOpen(false); }}
+          >— Unlinked —</button>
+          {options.map(m => (
+            <button
+              key={m.id}
+              type="button"
+              className="w-full text-left px-3 py-2 text-sm transition-colors hover:bg-white/5"
+              style={{ color: m.id === value ? 'var(--gold)' : 'rgb(var(--ink-100))', background: m.id === value ? 'rgba(203,171,104,0.1)' : undefined }}
+              onClick={() => { onChange(m.id); setOpen(false); }}
+            >
+              {m.name}{m.player_name ? <span style={{ color: 'rgb(var(--ink-300))' }}> ({m.player_name})</span> : null}
+            </button>
+          ))}
+        </div>
+      )}
+    </div>
   );
 }
