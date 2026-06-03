@@ -70,14 +70,9 @@ export function CovensTab({ data, isAdmin, canManageCoven, onUpsert, onDelete, o
   return (
     <div className="animate-fade-in">
       <div className="flex items-center justify-between mb-6 flex-wrap gap-3">
-        <div className="flex items-center gap-3.5">
-          <div className="w-12 h-12 rounded-xl grid place-items-center" style={{ background: `${A}20`, border: `1px solid ${A}40`, color: A }}>
-            <Icons.Sparkles size={24} />
-          </div>
-          <div>
-            <h2 className="text-3xl font-display font-bold m-0 bg-gradient-to-b from-gold-50 to-gold-500 text-transparent bg-clip-text">Covens</h2>
-            <p className="text-sm text-ink-100/60 m-0">{data.covens.length} circles · {data.members.filter(m => m.coven).length} members</p>
-          </div>
+        <div>
+          <h2 className="text-3xl font-display font-bold m-0 bg-gradient-to-b from-gold-50 to-gold-500 text-transparent bg-clip-text">Covens</h2>
+          <p className="text-sm text-ink-100/60 m-0">{data.covens.length} circles · {data.members.filter(m => m.coven).length} members</p>
         </div>
         {isAdmin && (
           <button onClick={() => setEditing({ name: '' })} className="btn btn-secondary">
@@ -86,29 +81,30 @@ export function CovensTab({ data, isAdmin, canManageCoven, onUpsert, onDelete, o
         )}
       </div>
 
-      <div className="grid grid-cols-[repeat(auto-fill,minmax(280px,1fr))] gap-4">
+      <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
         {data.covens.map(c => {
           const members = data.members.filter(m => m.coven === c.id);
-          const rituals = data.covenRituals.filter(r => r.coven_id === c.id);
-          const totalMagnitude = rituals.reduce((s, r) => s + r.magnitude, 0);
-          const dc = c.domain ? REALM_COLORS[c.domain as RitualRealm] : null;
+          const hue = c.domain ? (REALM_HUE[c.domain as RitualRealm] ?? A) : A;
           return (
-            <button key={c.id} onClick={() => setSelected(c.id)} className="card card-lift p-5 text-left w-full">
-              <div className="flex items-center gap-3 mb-3">
-                <div className="w-10 h-10 rounded-xl grid place-items-center flex-shrink-0" style={{ background: dc ? `${dc.text}20` : `${A}20`, border: `1px solid ${dc ? dc.text : A}40`, color: dc?.text ?? A }}>
-                  <Icons.Sparkles size={18} />
+            <button
+              key={c.id}
+              onClick={() => setSelected(c.id)}
+              className="card text-left w-full overflow-hidden"
+              style={{ borderTop: `2px solid ${hue}` }}
+            >
+              <div className="p-4 flex items-center justify-between gap-3">
+                <div className="flex items-center gap-3 min-w-0">
+                  <span className="font-display text-xl flex-shrink-0" style={{ color: hue }}>✦</span>
+                  <div className="min-w-0">
+                    <h3 className="font-display font-semibold text-[20px] text-ink-100 leading-tight m-0 truncate">{c.name}</h3>
+                    {c.domain && (
+                      <span className="text-[10px] font-semibold uppercase tracking-widest" style={{ color: hue }}>
+                        {c.domain}
+                      </span>
+                    )}
+                  </div>
                 </div>
-                <div>
-                  <h3 className="font-display font-bold text-lg text-ink-100 leading-tight m-0">{c.name}</h3>
-                  {c.domain && <span className="text-[11px] font-semibold uppercase tracking-wider" style={{ color: dc?.text ?? A }}>{c.domain}</span>}
-                </div>
-              </div>
-              {c.leader && <p className="text-xs mb-2 m-0" style={{ color: A }}>Led by {data.members.find(m => m.id === c.leader)?.name ?? '—'}</p>}
-              {c.description && <p className="text-sm text-ink-100/60 mb-3 m-0" style={{ WebkitLineClamp: 2, display: '-webkit-box', WebkitBoxOrient: 'vertical', overflow: 'hidden' }}>{c.description}</p>}
-              <div className="flex items-center justify-between pt-2 border-t border-gold-500/10">
-                <span className="text-xs text-ink-100/50">{members.length} member{members.length !== 1 ? 's' : ''}</span>
-                {rituals.length > 0 && <span className="text-xs" style={{ color: dc?.text ?? A }}>{rituals.length} ritual{rituals.length !== 1 ? 's' : ''} · {totalMagnitude} mag</span>}
-                <span className="text-xs" style={{ color: dc?.text ?? A }}>View →</span>
+                <span className="text-xs text-ink-300 flex-shrink-0 num">{members.length}</span>
               </div>
             </button>
           );
@@ -165,6 +161,7 @@ function CovenDetail({
   const manaHave = members.reduce((sum, m) => sum + (m.mp ?? 0), 0);
   const manaNeeded = Math.max(0, totalRequired - manaHave);
   const surplus = manaHave - totalRequired;
+  const covenHue = coven.domain ? (REALM_HUE[coven.domain as RitualRealm] ?? A) : A;
 
   return (
     <div className="animate-fade-in">
@@ -232,59 +229,53 @@ function CovenDetail({
 
       {/* Rituals */}
       <div className="mb-6">
-        <div className="flex items-center gap-2.5 mb-4">
-          <Icons.Sparkles size={15} style={{ color: A }} />
-          <h3 className="text-xs uppercase tracking-widest font-bold m-0" style={{ color: A }}>Rituals · {rituals.length}</h3>
-          <div className="flex-1 h-px" style={{ background: `linear-gradient(90deg, ${A}40, transparent)` }} />
-          {rituals.length > 0 && (
-            <button onClick={() => exportRitualsPdf(coven.name, coven.domain, rituals, manaHave)} className="btn btn-ghost btn-sm text-xs" style={{ color: A }}>
-              <Icons.Download size={12} /> Export PDF
-            </button>
-          )}
-          {canManage && (
-            <button onClick={() => setAddingRitual(true)} className="btn btn-ghost btn-sm text-xs" style={{ color: A }}>
-              <Icons.Plus size={12} /> Add Ritual
-            </button>
+        <SectionHeader
+          title="Rituals Mastered"
+          count={rituals.length}
+          accent={covenHue}
+          action={canManage ? (
+            <span onClick={() => setAddingRitual(true)}>+ Add ritual</span>
+          ) : undefined}
+        />
+
+        <div>
+          {rituals.map(r => {
+            const ritualHue = r.realm ? (REALM_HUE[r.realm as RitualRealm] ?? covenHue) : covenHue;
+            return (
+              <DataRow key={r.id} accent={ritualHue}>
+                <div className="flex-1 min-w-0">
+                  <span className="font-semibold text-ink-100 text-sm">{r.ritual_name}</span>
+                  {r.realm && <span className="ml-2 text-[10px] uppercase tracking-wider font-semibold" style={{ color: ritualHue }}>{r.realm}</span>}
+                  {r.notes && <span className="ml-2 text-xs text-ink-300 italic">{r.notes}</span>}
+                </div>
+                <span className="text-xs text-ink-300 num flex-shrink-0">mag {r.magnitude}</span>
+                <div className="flex gap-1 flex-shrink-0">
+                  {canManage && (
+                    <button onClick={() => setEditingRitual(r)} className="btn btn-ghost btn-sm">
+                      <Icons.Edit size={13} />
+                    </button>
+                  )}
+                  {canManage && (
+                    <button onClick={async () => { if (await confirm({ title: `Remove ${r.ritual_name}?`, danger: true, confirmLabel: 'Remove' })) onDeleteRitual(r.id); }} className="btn btn-ghost btn-sm text-red-400/60 hover:text-red-400">
+                      <Icons.Trash size={13} />
+                    </button>
+                  )}
+                </div>
+              </DataRow>
+            );
+          })}
+          {rituals.length === 0 && (
+            <p className="text-ink-100/40 text-sm py-6 text-center">No rituals added yet.{canManage ? ' Click "+ Add ritual" to start.' : ''}</p>
           )}
         </div>
 
-        <div className="space-y-2">
-          {rituals.map(r => (
-            <div key={r.id} className="card px-4 py-3 flex items-center justify-between gap-3">
-              <div className="flex items-center gap-3 min-w-0 flex-1">
-                <div className="w-8 h-8 rounded-lg grid place-items-center flex-shrink-0 text-sm font-mono font-bold"
-                     style={{ background: `${A}20`, color: A }}>
-                  {r.magnitude}
-                </div>
-                <div className="min-w-0 flex-1">
-                  <div className="font-semibold text-ink-100 text-sm">{r.ritual_name}</div>
-                  <div className="text-xs text-ink-100/50">
-                    {r.realm && <span className="mr-2">{r.realm}</span>}
-                    {r.notes && <span className="italic">{r.notes}</span>}
-                  </div>
-                  {r.wording && (
-                    <div className="text-xs text-ink-100/40 mt-1 italic truncate">"{r.wording}"</div>
-                  )}
-                </div>
-              </div>
-              <div className="flex gap-1 flex-shrink-0">
-                {canManage && (
-                  <button onClick={() => setEditingRitual(r)} className="btn btn-ghost btn-sm">
-                    <Icons.Edit size={13} />
-                  </button>
-                )}
-                {canManage && (
-                  <button onClick={async () => { if (await confirm({ title: `Remove ${r.ritual_name}?`, danger: true, confirmLabel: 'Remove' })) onDeleteRitual(r.id); }} className="btn btn-ghost btn-sm text-red-400/60 hover:text-red-400">
-                    <Icons.Trash size={13} />
-                  </button>
-                )}
-              </div>
-            </div>
-          ))}
-          {rituals.length === 0 && (
-            <p className="text-ink-100/40 text-sm py-6 text-center">No rituals added yet.{canManage ? ' Click "Add Ritual" to start.' : ''}</p>
-          )}
-        </div>
+        {rituals.length > 0 && (
+          <div className="mt-2 flex justify-end">
+            <button onClick={() => exportRitualsPdf(coven.name, coven.domain, rituals, manaHave)} className="btn btn-ghost btn-sm text-xs" style={{ color: covenHue }}>
+              <Icons.Download size={12} /> Export PDF
+            </button>
+          </div>
+        )}
       </div>
 
       {/* Members */}
