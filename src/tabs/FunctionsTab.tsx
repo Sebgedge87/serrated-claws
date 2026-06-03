@@ -4,6 +4,8 @@ import { Icons } from '@/components/Icons';
 import { Modal, Field } from '@/components/Modal';
 import { useConfirm } from '@/components/ConfirmDialog';
 import { initials } from '@/lib/utils';
+import { SectionHeader } from '@/components/ui/SectionHeader';
+import { DataRow } from '@/components/ui/DataRow';
 
 interface Props {
   data: LanceData;
@@ -148,14 +150,9 @@ export function FunctionsTab({ data, isAdmin, canManageFunction, onUpsert, onDel
   return (
     <div className="animate-fade-in">
       <div className="flex items-center justify-between mb-6 flex-wrap gap-3">
-        <div className="flex items-center gap-3.5">
-          <div className="w-12 h-12 rounded-xl grid place-items-center" style={{ background: `${A}20`, border: `1px solid ${A}40`, color: A }}>
-            <Icons.Swords size={24} />
-          </div>
-          <div>
-            <h2 className="text-3xl font-display font-bold m-0 bg-gradient-to-b from-gold-50 to-gold-500 text-transparent bg-clip-text">Functions</h2>
-            <p className="text-sm text-ink-100/60 m-0">{data.functions.length} roles across the lance</p>
-          </div>
+        <div>
+          <h2 className="text-3xl font-display font-bold m-0 bg-gradient-to-b from-gold-50 to-gold-500 text-transparent bg-clip-text">Functions</h2>
+          <p className="text-sm text-ink-100/60 m-0">{data.functions.length} roles across the lance</p>
         </div>
         {isAdmin && (
           <button onClick={() => setCreating(true)} className="btn btn-secondary">
@@ -164,28 +161,32 @@ export function FunctionsTab({ data, isAdmin, canManageFunction, onUpsert, onDel
         )}
       </div>
 
-      <div className="grid grid-cols-[repeat(auto-fill,minmax(280px,1fr))] gap-4">
+      <SectionHeader title="Roles" count={data.functions.length} />
+
+      <div>
+        {/* Header row */}
+        <div className="flex items-center gap-3 py-1.5 mb-1 text-[11px] uppercase tracking-widest text-ink-300 font-semibold border-b border-[color:var(--line)]">
+          <span className="w-[3px] flex-shrink-0" />
+          <span className="flex-1 min-w-0">Function</span>
+          <span className="w-36 hidden sm:block">Leader</span>
+          <span className="w-16 text-right hidden sm:block">Members</span>
+          <span className="flex-1 hidden md:block">Description</span>
+        </div>
+
         {data.functions.map(f => {
           const members = data.members.filter(m => m.function === f.id);
+          const leader = f.leader ? data.members.find(m => m.id === f.leader) : null;
           return (
-            <button key={f.id} onClick={() => goTo(f.id)} className="card card-lift p-5 text-left w-full">
-              <div className="flex items-center gap-3 mb-3">
-                <div className="w-10 h-10 rounded-xl grid place-items-center flex-shrink-0" style={{ background: `${A}20`, border: `1px solid ${A}40`, color: A }}>
-                  <Icons.Swords size={18} />
-                </div>
-                <h3 className="font-display font-bold text-lg text-ink-100 leading-tight m-0">{f.name}</h3>
-              </div>
-              {f.leader && <p className="text-xs mb-2 m-0" style={{ color: A }}>Led by {data.members.find(m => m.id === f.leader)?.name ?? '—'}</p>}
-              {f.description && <p className="text-sm text-ink-100/60 mb-3 m-0" style={{ WebkitLineClamp: 2, display: '-webkit-box', WebkitBoxOrient: 'vertical', overflow: 'hidden' }}>{f.description}</p>}
-              <div className="flex items-center justify-between pt-2 border-t border-gold-500/10">
-                <span className="text-xs text-ink-100/50">{members.length} member{members.length !== 1 ? 's' : ''}</span>
-                <span className="text-xs" style={{ color: A }}>View →</span>
-              </div>
-            </button>
+            <DataRow key={f.id} accent="var(--gold)" onClick={() => goTo(f.id)}>
+              <span className="flex-1 min-w-0 font-display text-[17px] font-semibold text-ink-100 truncate">{f.name}</span>
+              <span className="w-36 text-xs text-ink-300 hidden sm:block truncate">{leader?.name ?? '—'}</span>
+              <span className="w-16 text-right num text-xs text-ink-300 hidden sm:block">{members.length}</span>
+              <span className="flex-1 text-xs text-ink-300 hidden md:block truncate">{f.description ?? '—'}</span>
+            </DataRow>
           );
         })}
         {data.functions.length === 0 && (
-          <p className="text-ink-100/40 text-sm py-16 text-center col-span-full">No functions yet.{isAdmin ? ' Click "New Function" to add one.' : ''}</p>
+          <p className="text-ink-100/40 text-sm py-10 text-center">No functions yet.{isAdmin ? ' Click "New Function" to add one.' : ''}</p>
         )}
       </div>
 

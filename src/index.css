@@ -152,6 +152,7 @@
     transition: border-color 0.15s;
   }
   .input:focus { border-color: var(--gold); }
+  select.input { color-scheme: dark; }
 
   /* ── pills: hairline + dot, no glow ───────────────────────────────── */
   .pill {
