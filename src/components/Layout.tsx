@@ -253,6 +253,7 @@ export function Layout() {
       {/* Tabs */}
       <nav className="bg-ink-950/50 backdrop-blur border-b border-gold-500/15">
         <div className="page-wrap !px-2 sm:!px-4">
+          <div className="relative">
           <div className="flex overflow-x-auto scrollbar-hide" role="tablist">
             {tabs.flatMap(t => {
               const isActive = activeTab === t.id;
@@ -294,6 +295,12 @@ export function Layout() {
                 btn,
               ];
             })}
+          </div>
+          {/* Right-edge fade to signal scrollable content */}
+          <div
+            className="pointer-events-none absolute inset-y-0 right-0 w-12"
+            style={{ background: 'linear-gradient(to right, transparent, var(--color-ink-950, #0a0a0f))' }}
+          />
           </div>
         </div>
       </nav>

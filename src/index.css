@@ -153,6 +153,7 @@
   }
   .input:focus { border-color: var(--gold); }
   select.input { color-scheme: dark; }
+  select { color-scheme: dark; }
 
   /* ── pills: hairline + dot, no glow ───────────────────────────────── */
   .pill {

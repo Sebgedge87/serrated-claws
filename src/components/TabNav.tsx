@@ -9,6 +9,8 @@ export type TabId =
   | 'functions'
   | 'businesses'
   | 'inventory'
+  | 'bards'
+  | 'admin'
   | `house:${string}`;
 
 interface Props {
