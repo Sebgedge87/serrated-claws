@@ -345,10 +345,7 @@ export function Layout() {
                 onUpsert={lance.upsertMember}
                 onUnassign={lance.unassignMember}
                 onDelete={lance.deleteMember}
-                onDeleteHouse={async () => {
-                  await lance.deleteHouse(activeHouse.id);
-                  setActiveTab('overview');
-                }}
+                onDeleteHouse={async () => { await lance.deleteHouse(activeHouse.id); setActiveTab('overview'); }}
                 onUpsertCharInventory={lance.upsertCharInventory}
                 onDeleteCharInventory={lance.deleteCharInventory}
                 onUpsertSkill={lance.upsertCharacterSkill}
