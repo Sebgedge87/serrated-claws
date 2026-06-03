@@ -1,5 +1,5 @@
 import { useMemo, useState } from 'react';
-import type { CharInventoryItem, CharacterRitual, CharacterSkill, CharacterSpell, CraftingQueueItem, LanceData, Member } from '@/lib/types';
+import type { CharInventoryItem, CharacterRitual, CharacterSkill, CharacterSpell, CraftingQueueItem, LanceData, LanceMembership, Member } from '@/lib/types';
 import { RITUALS_CATALOGUE, REALM_COLORS, RITUAL_REALM_ORDER, type RitualRealm } from '@/lib/ritualsCatalogue';
 import { Icons } from '@/components/Icons';
 import { SKILLS_CATALOGUE, SKILL_CATEGORY_COLORS, SKILL_CATEGORY_ORDER, skillXpCost } from '@/lib/skillsCatalogue';
@@ -11,6 +11,7 @@ import { spellsForRealm } from '@/lib/spellsCatalogue';
 import type { SpellRealm } from '@/lib/spellsCatalogue';
 import { cx, formatIncome } from '@/lib/utils';
 import { Field } from '@/components/ui/Field';
+import { CustomSelect } from '@/components/ui/CustomSelect';
 import { SectionHeader } from '@/components/ui/SectionHeader';
 import { DataRow } from '@/components/ui/DataRow';
 import { Pill } from '@/components/ui/Pill';
@@ -23,6 +24,7 @@ interface Props {
   canEdit: boolean;
   isOwn: boolean;
   wikiUrl: string;
+  memberships?: LanceMembership[];
   onBack: () => void;
   onUpsertMember: (m: Partial<Member> & { name: string }) => Promise<void>;
   onUpsertSkill: (s: Omit<CharacterSkill, 'id'> & { id?: string }) => Promise<void>;
@@ -42,6 +44,7 @@ export function CharacterSheetPage({
   canEdit,
   isOwn,
   wikiUrl,
+  memberships,
   onBack,
   onUpsertMember,
   onUpsertSkill,
@@ -88,6 +91,7 @@ export function CharacterSheetPage({
         canEdit={canEdit}
         isAdmin={isAdmin}
         wikiUrl={wikiUrl}
+        memberships={memberships}
         onUpsertMember={onUpsertMember}
       />
 

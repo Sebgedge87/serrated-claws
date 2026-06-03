@@ -6,6 +6,7 @@ import { RITUALS_CATALOGUE, REALM_COLORS, RITUAL_REALM_ORDER } from '@/lib/ritua
 import type { RitualRealm } from '@/lib/ritualsCatalogue';
 import { Icons } from '@/components/Icons';
 import { Modal, Field } from '@/components/Modal';
+import { CustomSelect } from '@/components/ui/CustomSelect';
 
 interface Props {
   data: LanceData;
@@ -88,19 +89,23 @@ export function AddPersonModal({ data, initial, onClose, onSave, onUpsertCharInv
           <input className="input font-mono" value={form.pid ?? ''} onChange={e => set('pid', e.target.value || null)} />
         </Field>
         <Field label="House">
-          <select className="input" value={form.house_id ?? ''} onChange={e => set('house_id', e.target.value || null)}>
-            <option value="">Unassigned</option>
-            {data.houses.map(h => <option key={h.id} value={h.id}>{h.name}</option>)}
-          </select>
+          <CustomSelect
+            value={form.house_id ?? ''}
+            onChange={v => set('house_id', v || null)}
+            options={data.houses.map(h => ({ value: h.id, label: h.name }))}
+            placeholder="Unassigned"
+          />
         </Field>
         <Field label="Rank">
           <input className="input" value={form.rank ?? ''} onChange={e => set('rank', e.target.value || null)} />
         </Field>
         <Field label="Claw">
-          <select className="input" value={form.function ?? ''} onChange={e => set('function', e.target.value || null)}>
-            <option value="">None</option>
-            {data.functions.map(f => <option key={f.id} value={f.id}>{f.name}</option>)}
-          </select>
+          <CustomSelect
+            value={form.function ?? ''}
+            onChange={v => set('function', v || null)}
+            options={data.functions.map(f => ({ value: f.id, label: f.name }))}
+            placeholder="None"
+          />
         </Field>
         <Field label="Military Role">
           <input className="input" placeholder="Shield Wall, Battle Mage…" value={form.military_function ?? ''} onChange={e => set('military_function', e.target.value || null)} />
@@ -140,17 +145,24 @@ export function AddPersonModal({ data, initial, onClose, onSave, onUpsertCharInv
           <input className="input" placeholder="Any tithe notes…" value={form.tithe_notes ?? ''} onChange={e => set('tithe_notes', e.target.value || null)} />
         </Field>
         <Field label="Coven">
-          <select className="input" value={form.coven ?? ''} onChange={e => set('coven', e.target.value || null)}>
-            <option value="">None</option>
-            {data.covens.map(c => <option key={c.id} value={c.id}>{c.name}</option>)}
-          </select>
+          <CustomSelect
+            value={form.coven ?? ''}
+            onChange={v => set('coven', v || null)}
+            options={data.covens.map(c => ({ value: c.id, label: c.name }))}
+            placeholder="None"
+          />
         </Field>
         <Field label="Status">
-          <select className="input" value={form.status ?? 'active'} onChange={e => set('status', e.target.value as Member['status'])}>
-            <option value="active">Active</option>
-            <option value="inactive">Inactive</option>
-            <option value="KIA">KIA</option>
-          </select>
+          <CustomSelect
+            value={form.status ?? 'active'}
+            onChange={v => set('status', (v || 'active') as Member['status'])}
+            options={[
+              { value: 'active', label: 'Active' },
+              { value: 'inactive', label: 'Inactive' },
+              { value: 'KIA', label: 'KIA' },
+            ]}
+            placeholder=""
+          />
         </Field>
         <Field label="Noble">
           <label className="flex items-center gap-2.5 mt-2.5 cursor-pointer">
