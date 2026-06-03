@@ -3,7 +3,7 @@ import type { CharInventoryItem, CharacterRitual, CharacterSkill, House, LanceDa
 import { Icons } from '@/components/Icons';
 import { MemberCard } from '@/components/MemberCard';
 import { AddPersonModal } from '@/components/modals/AddPersonModal';
-import { SectionHeader } from './OverviewTab';
+import { SectionHeader } from '@/components/ui/SectionHeader';
 
 interface Props {
   house: House;

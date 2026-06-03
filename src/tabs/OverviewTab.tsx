@@ -1,5 +1,4 @@
 import type { Member, LanceData } from '@/lib/types';
-import { Icons } from '@/components/Icons';
 import { memberIncomeRings, monogramOf } from '@/lib/utils';
 import { SectionHeader } from '@/components/ui/SectionHeader';
 
@@ -93,7 +92,7 @@ export function OverviewTab({ data, filteredMembers, isAdmin, onNavigate }: Prop
           { label: 'Coven Members',  value: coven,               tab: 'covens' as string | null },
           { label: 'Active',         value: active.length,       tab: null as string | null },
           { label: 'Businesses',     value: data.businesses.length, tab: 'businesses' as string | null },
-        ].map((s, i, arr) => (
+        ].map((s, i) => (
           <div
             key={s.label}
             onClick={() => s.tab && onNavigate?.(s.tab)}
