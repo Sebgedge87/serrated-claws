@@ -228,7 +228,6 @@ function InventoryView({
   onSetInventoryPrice: (item: string, unit_value: number) => Promise<void>;
   onLogInventory: (item: string, amount: number, direction: 'In' | 'Out' | 'Adjustment', notes?: string) => Promise<void>;
 }) {
-  const [typeFilter, setTypeFilter] = useState<'All' | CatalogueType>('All');
   const [search, setSearch] = useState('');
   const [showAll, setShowAll] = useState(false);
   const [openItem, setOpenItem] = useState<CatalogueEntry | null>(null);
@@ -243,23 +242,7 @@ function InventoryView({
     ? EMPIRE_CATALOGUE
     : EMPIRE_CATALOGUE.filter(i => { const s = invMap[i.item]; return !!(s && (s.current_qty > 0 || s.required_qty > 0)); });
 
-  const typeCounts = useMemo(() => {
-    const map = new Map<CatalogueType, { count: number; shortfalls: number }>();
-    for (const item of items) {
-      const stock = invMap[item.item];
-      const short = stock && stock.required_qty > 0 && stock.current_qty < stock.required_qty;
-      const cur = map.get(item.type) ?? { count: 0, shortfalls: 0 };
-      map.set(item.type, { count: cur.count + 1, shortfalls: cur.shortfalls + (short ? 1 : 0) });
-    }
-    return map;
-  }, [items, invMap]);
-
-  const allShortfalls = useMemo(() =>
-    items.filter(i => { const s = invMap[i.item]; return !!(s && s.required_qty > 0 && s.current_qty < s.required_qty); }).length,
-  [items, invMap]);
-
   const filtered = items.filter(i => {
-    if (typeFilter !== 'All' && i.type !== typeFilter) return false;
     if (search) {
       const q = search.toLowerCase();
       if (!i.item.toLowerCase().includes(q) && !(i.subType?.toLowerCase().includes(q))) return false;
@@ -267,36 +250,18 @@ function InventoryView({
     return true;
   });
 
+  // Group filtered items by type (preserve INVENTORY_TYPES order)
+  const grouped = useMemo(() => {
+    const map = new Map<CatalogueType, CatalogueEntry[]>();
+    for (const t of INVENTORY_TYPES) map.set(t, []);
+    for (const item of filtered) {
+      map.get(item.type)?.push(item);
+    }
+    return map;
+  }, [filtered]);
+
   return (
     <div>
-      {/* Type sub-tabs with count badges and shortfall pips */}
-      <div className="flex gap-1 mb-5 overflow-x-auto scrollbar-hide pb-1 flex-wrap">
-        <TypeTabBtn
-          label="All"
-          count={items.length}
-          shortfalls={allShortfalls}
-          active={typeFilter === 'All'}
-          color="#d4b46d"
-          Icon={Icons.Package}
-          onClick={() => setTypeFilter('All')}
-        />
-        {INVENTORY_TYPES.filter(t => typeCounts.has(t)).map(t => {
-          const { count, shortfalls } = typeCounts.get(t)!;
-          return (
-            <TypeTabBtn
-              key={t}
-              label={t}
-              count={count}
-              shortfalls={shortfalls}
-              active={typeFilter === t}
-              color={TYPE_COLORS[t]}
-              Icon={TYPE_ICONS[t]}
-              onClick={() => setTypeFilter(t)}
-            />
-          );
-        })}
-      </div>
-
       {/* Search + show all */}
       <div className="flex gap-3 mb-5 flex-wrap items-center">
         <div className="relative flex-1 min-w-[240px]">
@@ -309,118 +274,142 @@ function InventoryView({
         </label>
       </div>
 
-      {/* Stock value summary */}
+      {/* Total Stock Value — flat panel */}
       {totalStockValue > 0 && (
-        <div className="mb-5 card p-4 flex items-center gap-4" style={{ borderLeft: '3px solid #d4b46d' }}>
-          <Icons.Coins size={18} className="text-gold-300 flex-shrink-0" />
-          <div>
-            <div className="text-[10px] uppercase tracking-widest font-bold text-gold-300/70 mb-0.5">Total Stock Value</div>
-            <div className="font-bold text-gold-300 text-lg">{fmtRings(totalStockValue)}</div>
+        <div className="mb-6 card p-4">
+          <div className="text-[10px] uppercase tracking-widest font-semibold text-ink-300 mb-1">Total Stock Value</div>
+          <div className="flex items-baseline gap-3">
+            <span className="num text-2xl" style={{ color: 'var(--gold)' }}>{fmtRings(totalStockValue)}</span>
+            <span className="num text-xs text-ink-300">{totalStockValue.toLocaleString()} rings</span>
           </div>
-          <div className="text-xs text-ink-100/40 ml-auto">{totalStockValue.toLocaleString()} rings</div>
         </div>
       )}
 
-      {/* Unified single table */}
+      {/* Ledger grouped by type */}
       {filtered.length === 0 ? (
         <p className="text-center py-16 text-ink-100/50">No items match your filters</p>
       ) : (
-        <div className="card overflow-hidden">
-          <table className="w-full">
-            <thead className="bg-gold-500/10">
-              <tr>
-                {typeFilter === 'All' && <Th>Type</Th>}
-                <Th>Item</Th>
-                <Th center>Have</Th>
-                <Th center>Need</Th>
-                <Th center>Status</Th>
-                {isAdmin && <Th center>Adjust</Th>}
-                <Th center>Detail</Th>
-              </tr>
-            </thead>
-            <tbody>
-              {filtered.map((item, idx) => {
-                const stock = invMap[item.item] ?? { item: item.item, current_qty: 0, required_qty: 0, unit_value: 0 };
-                const status = stock.required_qty === 0 ? null : stock.current_qty >= stock.required_qty ? 'OK' : `−${stock.required_qty - stock.current_qty}`;
-                const c = TYPE_COLORS[item.type];
-                const TypeIcon = TYPE_ICONS[item.type];
-                return (
-                  <tr key={item.item} className={idx > 0 ? 'border-t border-gold-500/10' : ''}>
-                    {typeFilter === 'All' && (
-                      <td className="px-3 py-2.5 align-middle">
-                        <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded text-[10px] font-bold border whitespace-nowrap"
-                          style={{ background: `${c}20`, color: c, borderColor: `${c}40` }}>
-                          <TypeIcon size={10} />
-                          {item.type}
-                        </span>
-                      </td>
-                    )}
-                    <td className="px-3 py-2.5 text-sm font-semibold align-top">
-                      {item.item}
-                      {item.subType && <div className="text-[10px] text-ink-100/40 font-normal">{item.subType}</div>}
-                    </td>
-                    <td className="px-3 py-2.5 text-center">
-                      {isAdmin ? (
-                        <input
-                          type="number"
-                          defaultValue={stock.current_qty}
-                          onBlur={e => {
-                            const v = parseInt(e.target.value, 10) || 0;
-                            if (v !== stock.current_qty) onSetInventory(item.item, v, stock.required_qty);
-                          }}
-                          className="w-14 px-1.5 py-1 bg-black/40 border border-gold-500/15 rounded text-sm font-bold text-center"
-                        />
-                      ) : (
-                        <span className="font-bold">{stock.current_qty}</span>
-                      )}
-                    </td>
-                    <td className="px-3 py-2.5 text-center">
-                      {isAdmin ? (
-                        <input
-                          type="number"
-                          defaultValue={stock.required_qty}
-                          onBlur={e => {
-                            const v = parseInt(e.target.value, 10) || 0;
-                            if (v !== stock.required_qty) onSetInventory(item.item, stock.current_qty, v);
-                          }}
-                          className="w-14 px-1.5 py-1 bg-black/40 border border-gold-500/15 rounded text-sm text-ink-100/70 text-center"
-                        />
-                      ) : (
-                        <span className="text-ink-100/70">{stock.required_qty}</span>
-                      )}
-                    </td>
-                    <td className="px-3 py-2.5 text-center">
-                      {status && (
-                        <span className={status === 'OK' ? 'pill pill-active' : 'pill pill-kia'}>
-                          {status === 'OK' ? '✓' : status}
-                        </span>
-                      )}
-                    </td>
-                    {isAdmin && (
-                      <td className="px-3 py-2.5 text-center">
-                        <div className="inline-flex gap-1">
-                          <button onClick={() => onLogInventory(item.item, 1, 'In')} className="px-2 py-1 bg-sage-500/15 text-sage-500 border border-sage-500/30 rounded font-bold text-sm">+</button>
-                          <button onClick={() => onLogInventory(item.item, 1, 'Out')} disabled={stock.current_qty <= 0} className="px-2 py-1 bg-red-500/15 text-red-300 border border-red-500/30 rounded font-bold text-sm disabled:opacity-30">−</button>
-                        </div>
-                      </td>
-                    )}
-                    <td className="px-3 py-2.5 text-center">
-                      <button onClick={() => setOpenItem(item)} className="btn btn-ghost btn-sm" title="View details">
-                        <Icons.BookOpen size={13} />
-                      </button>
-                    </td>
-                  </tr>
-                );
-              })}
-            </tbody>
-          </table>
+        <div className="space-y-8">
+          {INVENTORY_TYPES.map(type => {
+            const group = grouped.get(type) ?? [];
+            if (group.length === 0) return null;
+            const hue = TYPE_HUE[type];
+            return (
+              <div key={type}>
+                <SectionHeader
+                  title={type}
+                  count={group.length}
+                  accent={hue}
+                />
+                <div className="card overflow-hidden">
+                  <table className="w-full">
+                    <thead>
+                      <tr className="border-b border-[color:var(--line)]">
+                        <Th>Item</Th>
+                        <Th center>Have</Th>
+                        <Th center>Need</Th>
+                        <Th center>Muster</Th>
+                        <Th right>Unit Price</Th>
+                        <Th right>Stock Value</Th>
+                        {isAdmin && <Th center>Adjust</Th>}
+                        <Th center>Detail</Th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {group.map(item => {
+                        const stock = invMap[item.item] ?? { item: item.item, current_qty: 0, required_qty: 0, unit_value: 0 };
+                        const shortfall = stock.required_qty > 0 ? stock.required_qty - stock.current_qty : 0;
+                        const musterMet = stock.required_qty > 0 && shortfall <= 0;
+                        const musterShort = stock.required_qty > 0 && shortfall > 0;
+                        const unitPrice = stock.unit_value ?? 0;
+                        const stockVal = unitPrice * stock.current_qty;
+                        return (
+                          <tr key={item.item} className="border-b border-[color:var(--line-soft)] last:border-b-0">
+                            <td className="px-3 py-2.5 align-middle">
+                              <div className="flex items-center gap-2">
+                                <span className="tick flex-shrink-0" style={{ ['--c' as string]: hue, height: 16 }} />
+                                <div>
+                                  <span className="font-display font-semibold text-sm text-ink-100">{item.item}</span>
+                                  {item.subType && <div className="text-[10px] text-ink-300">{item.subType}</div>}
+                                </div>
+                              </div>
+                            </td>
+                            <td className="px-3 py-2.5 text-center">
+                              {isAdmin ? (
+                                <input
+                                  type="number"
+                                  defaultValue={stock.current_qty}
+                                  onBlur={e => {
+                                    const v = parseInt(e.target.value, 10) || 0;
+                                    if (v !== stock.current_qty) onSetInventory(item.item, v, stock.required_qty);
+                                  }}
+                                  className="w-14 px-1.5 py-1 bg-black/40 border border-gold-500/15 rounded text-sm font-bold text-center"
+                                />
+                              ) : (
+                                <span className="font-bold text-sm">{stock.current_qty}</span>
+                              )}
+                            </td>
+                            <td className="px-3 py-2.5 text-center">
+                              {isAdmin ? (
+                                <input
+                                  type="number"
+                                  defaultValue={stock.required_qty}
+                                  onBlur={e => {
+                                    const v = parseInt(e.target.value, 10) || 0;
+                                    if (v !== stock.required_qty) onSetInventory(item.item, stock.current_qty, v);
+                                  }}
+                                  className="w-14 px-1.5 py-1 bg-black/40 border border-gold-500/15 rounded text-sm text-ink-100/70 text-center"
+                                />
+                              ) : (
+                                <span className="text-sm text-ink-300">{stock.required_qty || '—'}</span>
+                              )}
+                            </td>
+                            <td className="px-3 py-2.5 text-center">
+                              {musterShort && (
+                                <span className="inline-flex items-center gap-1 text-sm" style={{ color: 'var(--warn)' }}>
+                                  <span className="swatch-dot" style={{ ['--c' as string]: 'var(--warn)' }} />
+                                  −{shortfall}
+                                </span>
+                              )}
+                              {musterMet && (
+                                <span className="text-xs" style={{ color: 'var(--ok)' }}>✓ met</span>
+                              )}
+                            </td>
+                            <td className="px-3 py-2.5 text-right">
+                              <span className="num text-sm" style={{ color: 'var(--gold)' }}>{unitPrice > 0 ? fmtRings(unitPrice) : '—'}</span>
+                            </td>
+                            <td className="px-3 py-2.5 text-right">
+                              <span className="num text-sm" style={{ color: 'var(--gold)' }}>{stockVal > 0 ? fmtRings(stockVal) : '—'}</span>
+                            </td>
+                            {isAdmin && (
+                              <td className="px-3 py-2.5 text-center">
+                                <div className="inline-flex gap-1">
+                                  <button onClick={() => onLogInventory(item.item, 1, 'In')} className="px-2 py-1 bg-sage-500/15 text-sage-500 border border-sage-500/30 rounded font-bold text-sm">+</button>
+                                  <button onClick={() => onLogInventory(item.item, 1, 'Out')} disabled={stock.current_qty <= 0} className="px-2 py-1 bg-red-500/15 text-red-300 border border-red-500/30 rounded font-bold text-sm disabled:opacity-30">−</button>
+                                </div>
+                              </td>
+                            )}
+                            <td className="px-3 py-2.5 text-center">
+                              <button onClick={() => setOpenItem(item)} className="btn btn-ghost btn-sm" title="View details">
+                                <Icons.BookOpen size={13} />
+                              </button>
+                            </td>
+                          </tr>
+                        );
+                      })}
+                    </tbody>
+                  </table>
+                </div>
+              </div>
+            );
+          })}
         </div>
       )}
 
       {/* Recent transactions */}
       {data.inventoryLog.length > 0 && (
         <div className="mt-10">
-          <h3 className="text-lg font-display font-bold text-gold-300 mb-3">Recent Transactions</h3>
+          <SectionHeader title="Recent Transactions" />
           <div className="card overflow-hidden">
             <table className="w-full">
               <thead className="bg-gold-500/10">
@@ -464,47 +453,6 @@ function InventoryView({
   );
 }
 
-function TypeTabBtn({
-  label, count, shortfalls, active, color, Icon, onClick
-}: {
-  label: string;
-  count: number;
-  shortfalls: number;
-  active: boolean;
-  color: string;
-  Icon: typeof Icons.Package;
-  onClick: () => void;
-}) {
-  return (
-    <button
-      onClick={onClick}
-      className="relative inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium rounded-lg border transition-all whitespace-nowrap"
-      style={{
-        background: active ? `linear-gradient(180deg, ${color}30, ${color}15)` : 'transparent',
-        color: active ? color : 'rgba(232,230,227,0.5)',
-        borderColor: active ? `${color}50` : 'rgba(201,169,97,0.15)',
-        fontWeight: active ? 600 : 500,
-      }}
-    >
-      <Icon size={12} />
-      {label}
-      <span
-        className="px-1.5 py-0.5 rounded text-[9px] font-bold ml-0.5"
-        style={{
-          background: active ? `${color}25` : 'rgba(255,255,255,0.07)',
-          color: active ? color : 'rgba(232,230,227,0.35)',
-        }}
-      >
-        {count}
-      </span>
-      {shortfalls > 0 && (
-        <span className="absolute -top-1.5 -right-1.5 w-4 h-4 rounded-full bg-red-500 border border-ink-900 text-[8px] grid place-items-center text-white font-bold leading-none">
-          {shortfalls > 9 ? '9+' : shortfalls}
-        </span>
-      )}
-    </button>
-  );
-}
 
 function ItemDetailModal({
   item, stock, isAdmin, onSetInventoryPrice, onLogInventory, onClose
