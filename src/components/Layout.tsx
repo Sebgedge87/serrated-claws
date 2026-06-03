@@ -335,14 +335,13 @@ export function Layout() {
 
         {!lance.loading && !lance.error && !selectedMember && (
           <>
-            {activeTab === 'overview' && <OverviewTab data={lance.data} onNavigate={setActiveTab} />}
+            {activeTab === 'overview' && <OverviewTab data={lance.data} filteredMembers={lance.data.members} isAdmin={isAdmin} onNavigate={setActiveTab} />}
             {activeHouse && (
               <HouseTab
                 house={activeHouse}
                 data={lance.data}
                 search={search}
                 isAdmin={isAdmin}
-                canManageHouse={perms.canManageHouse(activeHouse.id)}
                 onUpsert={lance.upsertMember}
                 onUnassign={lance.unassignMember}
                 onDelete={lance.deleteMember}
