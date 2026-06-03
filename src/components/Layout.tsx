@@ -342,7 +342,6 @@ export function Layout() {
                 data={lance.data}
                 search={search}
                 isAdmin={isAdmin}
-                canManageHouse={perms.canManageHouse(activeHouse.id)}
                 onUpsert={lance.upsertMember}
                 onUnassign={lance.unassignMember}
                 onDelete={lance.deleteMember}
