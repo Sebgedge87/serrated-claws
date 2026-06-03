@@ -277,8 +277,13 @@ function Masthead({
               <CustomSelect
                 value={form.player_name ?? ''}
                 onChange={v => set('player_name', v || null)}
-                options={memberships?.map(m => ({ value: m.profile?.display_name ?? m.profile?.email ?? m.profile_id, label: m.profile?.display_name ?? m.profile?.email ?? '(unknown)' })) ?? []}
-                placeholder="— None —"
+                options={(memberships ?? [])
+                  .map(m => {
+                    const name = m.profile?.display_name || m.profile?.email || null;
+                    return name ? { value: name, label: name } : null;
+                  })
+                  .filter((o): o is { value: string; label: string } => o !== null)}
+                placeholder="— Select player —"
               />
             </div>
             <div>
