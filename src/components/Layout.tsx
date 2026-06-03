@@ -420,21 +420,6 @@ export function Layout() {
         )}
       </div></main>
 
-      {/* Mobile-only FAB for adding a person. Hidden on ≥ sm where the
-          action bar carries the button directly. */}
-      {isAdmin && (
-        <button
-          onClick={() => setShowAddPerson(true)}
-          className="sm:hidden fixed bottom-5 right-5 w-14 h-14 rounded-full grid place-items-center z-40 text-ink-900"
-          style={{
-            background: 'linear-gradient(180deg, #d4b46d, #b8954c)',
-            boxShadow: '0 12px 30px -8px rgba(201,169,97,0.55), 0 1px 0 rgba(255,255,255,0.3) inset',
-          }}
-          aria-label="Add person"
-        >
-          <Icons.Plus size={26} />
-        </button>
-      )}
 
       {showAddHouse && (
         <AddHouseModal

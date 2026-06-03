@@ -14,6 +14,7 @@ import { Field } from '@/components/ui/Field';
 import { SectionHeader } from '@/components/ui/SectionHeader';
 import { DataRow } from '@/components/ui/DataRow';
 import { Pill } from '@/components/ui/Pill';
+import { Modal } from '@/components/Modal';
 
 interface Props {
   member: Member;
@@ -1048,48 +1049,132 @@ function SkillsSection({
         <p className="text-xs text-ink-100/40 text-center py-4">No skills recorded{canEdit ? ' · click Add Skills to begin' : ''}</p>
       )}
 
-      {/* Add skills panel */}
+      {/* Add skills modal */}
       {adding && (
-        <div className="mt-3 border-t pt-3 space-y-3" style={{ borderColor: 'var(--line-soft)' }}>
-          {pending.length > 0 && (
-            <div className="space-y-1">
-              <div className="eyebrow mb-1">Queued</div>
-              {pending.map((p, i) => {
-                const colors = SKILL_CATEGORY_COLORS[p.category];
+        <Modal
+          onClose={cancelAdding}
+          title="Add Skills"
+          icon={<Icons.Plus size={20} />}
+          accent="var(--gold)"
+          width="md"
+          footer={
+            <>
+              <button onClick={cancelAdding} className="btn btn-ghost">Cancel</button>
+              <button
+                onClick={saveAll}
+                disabled={!pending.length || busy || xpRemaining < 0}
+                className="btn btn-primary"
+              >
+                {busy ? 'Saving…' : pending.length > 1 ? `Save ${pending.length} Skills` : 'Save Skill'}
+              </button>
+            </>
+          }
+        >
+          <div className="space-y-3">
+            <div className="text-[11px] flex items-center gap-2">
+              <span className={cx('font-semibold', xpRemaining < 0 ? 'text-red-400' : '')} style={xpRemaining >= 0 ? { color: 'var(--gold)' } : undefined}>
+                {xpRemaining}xp remaining
+              </span>
+              <span className="text-ink-100/30">({xpSpent + pendingXp} / {totalXp} used)</span>
+            </div>
+
+            {pending.length > 0 && (
+              <div className="space-y-1">
+                <div className="eyebrow mb-1">Queued</div>
+                {pending.map((p, i) => {
+                  const colors = SKILL_CATEGORY_COLORS[p.category];
+                  return (
+                    <div key={i} className="flex items-center gap-2 px-2.5 py-1.5 rounded-lg text-xs" style={{ background: colors.bg, color: colors.text }}>
+                      <span className="flex-1">{p.skill_name}{p.rank > 1 ? ` ×${p.rank}` : ''}</span>
+                      <span className="opacity-60">{p.xpCost}xp</span>
+                      <button onClick={() => setPending(q => q.filter((_, j) => j !== i))} className="opacity-50 hover:opacity-100">
+                        <Icons.X size={11} />
+                      </button>
+                    </div>
+                  );
+                })}
+              </div>
+            )}
+
+            <SkillPicker xpRemaining={xpRemaining} onQueue={queueSkill} />
+          </div>
+        </Modal>
+      )}
+    </div>
+  );
+}
+
+// ── Item Picker (custom dark dropdown replacing native <select>) ──────────────
+
+function ItemPicker({ value, onChange }: { value: string; onChange: (v: string) => void }) {
+  const [open, setOpen] = useState(false);
+  const [query, setQuery] = useState('');
+  const entry = EMPIRE_CATALOGUE.find(c => c.item === value);
+
+  const types = Array.from(new Set(EMPIRE_CATALOGUE.map(c => c.type)));
+  const filtered = query.trim()
+    ? EMPIRE_CATALOGUE.filter(c => c.item.toLowerCase().includes(query.toLowerCase()))
+    : EMPIRE_CATALOGUE;
+
+  function pick(name: string) { onChange(name); setOpen(false); setQuery(''); }
+
+  return (
+    <div className="relative">
+      <button
+        type="button"
+        autoFocus
+        className={cx('input text-sm w-full text-left flex items-center justify-between gap-2', open && 'border-gold-300')}
+        onClick={() => setOpen(o => !o)}
+      >
+        <span className={value ? 'text-ink-100' : 'text-ink-100/40'}>
+          {value ? `${value}${entry?.unit ? ` (${entry.unit})` : ''}` : '— choose item —'}
+        </span>
+        <Icons.ChevronDown size={14} className="text-ink-100/40 flex-shrink-0" />
+      </button>
+      {open && (
+        <div className="absolute top-full left-0 right-0 z-30 mt-1 bg-ink-800 border border-gold-500/25 rounded-lg shadow-lift overflow-hidden">
+          <div className="p-2 border-b border-gold-500/15">
+            <input
+              autoFocus
+              className="input text-sm w-full py-1.5"
+              placeholder="Search items…"
+              value={query}
+              onChange={e => setQuery(e.target.value)}
+              onKeyDown={e => {
+                if (e.key === 'Escape') { setOpen(false); setQuery(''); }
+                if (e.key === 'Enter' && filtered.length === 1) pick(filtered[0].item);
+              }}
+            />
+          </div>
+          <div className="max-h-60 overflow-y-auto">
+            {query.trim() ? (
+              filtered.length === 0
+                ? <div className="px-3 py-3 text-xs text-ink-100/40 text-center">No items match</div>
+                : filtered.map(c => (
+                  <button key={c.item} onClick={() => pick(c.item)}
+                    className="w-full text-left px-3 py-2 text-sm hover:bg-gold-500/10 flex items-center justify-between gap-2 border-b border-gold-500/8 last:border-0">
+                    <span className="text-ink-100">{c.item}</span>
+                    <span className="text-[10px] text-ink-100/40">{c.type}</span>
+                  </button>
+                ))
+            ) : (
+              types.map(type => {
+                const items = EMPIRE_CATALOGUE.filter(c => c.type === type);
                 return (
-                  <div key={i} className="flex items-center gap-2 px-2.5 py-1.5 rounded-lg text-xs" style={{ background: colors.bg, color: colors.text }}>
-                    <span className="flex-1">{p.skill_name}{p.rank > 1 ? ` ×${p.rank}` : ''}</span>
-                    <span className="opacity-60">{p.xpCost}xp</span>
-                    <button onClick={() => setPending(q => q.filter((_, j) => j !== i))} className="opacity-50 hover:opacity-100">
-                      <Icons.X size={11} />
-                    </button>
+                  <div key={type}>
+                    <div className="px-3 py-1 text-[10px] uppercase tracking-widest font-semibold sticky top-0 bg-ink-800 z-10" style={{ color: 'var(--gold)' }}>
+                      {type}
+                    </div>
+                    {items.map(c => (
+                      <button key={c.item} onClick={() => pick(c.item)}
+                        className="w-full text-left px-3 py-2 text-sm hover:bg-gold-500/10 flex items-center justify-between gap-2 border-b border-gold-500/8 last:border-0 transition-colors">
+                        <span className="text-ink-100">{c.item}{c.unit ? ` (${c.unit})` : ''}</span>
+                      </button>
+                    ))}
                   </div>
                 );
-              })}
-            </div>
-          )}
-
-          <div className="text-[11px] flex items-center gap-2">
-            <span className={cx('font-semibold', xpRemaining < 0 ? 'text-red-400' : '')} style={xpRemaining >= 0 ? { color: 'var(--gold)' } : undefined}>
-              {xpRemaining}xp remaining
-            </span>
-            <span className="text-ink-100/30">({xpSpent + pendingXp} / {totalXp} used)</span>
-          </div>
-
-          <SkillPicker
-            xpRemaining={xpRemaining}
-            onQueue={queueSkill}
-          />
-
-          <div className="flex items-center justify-between">
-            <button onClick={cancelAdding} className="btn btn-ghost btn-sm text-xs">Cancel</button>
-            <button
-              onClick={saveAll}
-              disabled={!pending.length || busy || xpRemaining < 0}
-              className="btn btn-primary btn-sm text-xs"
-            >
-              {busy ? 'Saving…' : pending.length > 1 ? `Save ${pending.length} Skills` : 'Save Skill'}
-            </button>
+              })
+            )}
           </div>
         </div>
       )}
@@ -1714,25 +1799,13 @@ function CharInventorySectionPage({
           <div className="grid grid-cols-[1fr_5rem] gap-2">
             <div>
               <label className="eyebrow block mb-1">Item</label>
-              <select
-                autoFocus
-                className="input text-sm"
+              <ItemPicker
                 value={newItem.item}
-                onChange={e => {
-                  const name = e.target.value;
+                onChange={name => {
                   const entry = EMPIRE_CATALOGUE.find(c => c.item === name);
                   setNewItem(n => ({ ...n, item: name, category: entry?.type ?? n.category }));
                 }}
-              >
-                <option value="">— choose item —</option>
-                {Array.from(new Set(EMPIRE_CATALOGUE.map(c => c.type))).map(type => (
-                  <optgroup key={type} label={type}>
-                    {EMPIRE_CATALOGUE.filter(c => c.type === type).map(c => (
-                      <option key={c.item} value={c.item}>{c.item}{c.unit ? ` (${c.unit})` : ''}</option>
-                    ))}
-                  </optgroup>
-                ))}
-              </select>
+              />
             </div>
             <div>
               <label className="eyebrow block mb-1">Qty</label>

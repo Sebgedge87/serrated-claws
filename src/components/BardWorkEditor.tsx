@@ -20,22 +20,26 @@ interface SlashCmd {
   key: string;
   label: string;
   description: string;
+  hint: string;
+  icon: React.ReactNode;
+  category: string;
   action: 'insert' | 'type';
   value: string;
 }
 
 const SLASH_COMMANDS: SlashCmd[] = [
-  { key: 'h1',       label: '/h1',       description: 'Heading 1',   action: 'insert', value: '\n# '     },
-  { key: 'h2',       label: '/h2',       description: 'Heading 2',   action: 'insert', value: '\n## '    },
-  { key: 'h3',       label: '/h3',       description: 'Heading 3',   action: 'insert', value: '\n### '   },
-  { key: 'quote',    label: '/quote',    description: 'Blockquote',  action: 'insert', value: '\n> '     },
-  { key: 'hr',       label: '/hr',       description: 'Divider',     action: 'insert', value: '\n---\n'  },
-  { key: 'bullet',   label: '/bullet',   description: 'Bullet list', action: 'insert', value: '\n- '     },
-  { key: 'numbered', label: '/numbered', description: 'Numbered list', action: 'insert', value: '\n1. '  },
-  { key: 'story',    label: '/story',    description: 'Set type: Story', action: 'type', value: 'story'  },
-  { key: 'feat',     label: '/feat',     description: 'Set type: Feat',  action: 'type', value: 'feat'   },
-  { key: 'song',     label: '/song',     description: 'Set type: Song',  action: 'type', value: 'song'   },
-  { key: 'poem',     label: '/poem',     description: 'Set type: Poem',  action: 'type', value: 'poem'   },
+  { key: 'text',     label: 'Text',          description: 'Plain paragraph',       hint: 'p',    icon: <span style={{ fontFamily: 'serif', fontSize: '13px', fontWeight: 700, lineHeight: 1 }}>P</span>,     category: 'Basic blocks', action: 'insert', value: '\n'      },
+  { key: 'h1',       label: 'Heading 1',     description: 'Large section heading',  hint: '#',    icon: <span style={{ fontFamily: 'serif', fontSize: '11px', fontWeight: 800, lineHeight: 1 }}>H1</span>,    category: 'Basic blocks', action: 'insert', value: '\n# '    },
+  { key: 'h2',       label: 'Heading 2',     description: 'Medium section heading', hint: '##',   icon: <span style={{ fontFamily: 'serif', fontSize: '11px', fontWeight: 800, lineHeight: 1 }}>H2</span>,    category: 'Basic blocks', action: 'insert', value: '\n## '   },
+  { key: 'h3',       label: 'Heading 3',     description: 'Small section heading',  hint: '###',  icon: <span style={{ fontFamily: 'serif', fontSize: '11px', fontWeight: 800, lineHeight: 1 }}>H3</span>,    category: 'Basic blocks', action: 'insert', value: '\n### '  },
+  { key: 'bullet',   label: 'Bulleted list', description: 'Create a simple list',   hint: '-',    icon: <span style={{ fontSize: '16px', lineHeight: 1 }}>•</span>,                                            category: 'Basic blocks', action: 'insert', value: '\n- '    },
+  { key: 'numbered', label: 'Numbered list', description: 'Create a numbered list', hint: '1.',   icon: <span style={{ fontFamily: 'monospace', fontSize: '10px', fontWeight: 700, lineHeight: 1 }}>1.</span>, category: 'Basic blocks', action: 'insert', value: '\n1. '   },
+  { key: 'quote',    label: 'Quote',         description: 'Capture a quotation',    hint: '>',    icon: <span style={{ fontSize: '14px', fontWeight: 700, lineHeight: 1, fontStyle: 'italic' }}>"</span>,      category: 'Basic blocks', action: 'insert', value: '\n> '    },
+  { key: 'hr',       label: 'Divider',       description: 'Visually divide sections', hint: '---', icon: <span style={{ fontSize: '12px', lineHeight: 1 }}>—</span>,                                          category: 'Basic blocks', action: 'insert', value: '\n---\n' },
+  { key: 'story',    label: 'Story',         description: 'Set work type to Story', hint: 'type', icon: <span style={{ fontSize: '11px', lineHeight: 1 }}>📖</span>,                                           category: 'Work type',    action: 'type',   value: 'story'   },
+  { key: 'feat',     label: 'Feat',          description: 'Set work type to Feat',  hint: 'type', icon: <span style={{ fontSize: '11px', lineHeight: 1 }}>⚔️</span>,                                           category: 'Work type',    action: 'type',   value: 'feat'    },
+  { key: 'song',     label: 'Song',          description: 'Set work type to Song',  hint: 'type', icon: <span style={{ fontSize: '11px', lineHeight: 1 }}>🎵</span>,                                           category: 'Work type',    action: 'type',   value: 'song'    },
+  { key: 'poem',     label: 'Poem',          description: 'Set work type to Poem',  hint: 'type', icon: <span style={{ fontSize: '11px', lineHeight: 1 }}>✦</span>,                                            category: 'Work type',    action: 'type',   value: 'poem'    },
 ];
 
 const WORK_TYPE_OPTIONS: { value: WorkType; label: string }[] = [
@@ -142,9 +146,18 @@ export function BardWorkEditor({ initial, lanceId, houseId, authorMemberId, onSa
   const textareaRef = useRef<HTMLTextAreaElement>(null);
   const slashStartPosRef = useRef<number>(-1);
 
-  const filteredCmds = SLASH_COMMANDS.filter(c =>
-    slashFilter === '' || c.key.startsWith(slashFilter.toLowerCase())
-  );
+  const [menuSearch, setMenuSearch] = useState('');
+  const menuSearchRef = useRef<HTMLInputElement>(null);
+
+  const filteredCmds = SLASH_COMMANDS.filter(c => {
+    const q = (slashFilter || menuSearch).toLowerCase();
+    return q === '' || c.key.includes(q) || c.label.toLowerCase().includes(q) || c.description.toLowerCase().includes(q);
+  });
+
+  const groupedCmds = filteredCmds.reduce<Record<string, SlashCmd[]>>((acc, cmd) => {
+    (acc[cmd.category] ??= []).push(cmd);
+    return acc;
+  }, {});
 
   // Toolbar insert helpers
   const insertAt = useCallback((before: string, after = '', placeholder = '') => {
@@ -248,6 +261,14 @@ export function BardWorkEditor({ initial, lanceId, houseId, authorMemberId, onSa
     }
   }
 
+  // Focus search input when slash menu opens
+  useEffect(() => {
+    if (slashMenuOpen) {
+      setMenuSearch('');
+      requestAnimationFrame(() => menuSearchRef.current?.focus());
+    }
+  }, [slashMenuOpen]);
+
   // Close slash menu on outside click
   useEffect(() => {
     if (!slashMenuOpen) return;
@@ -279,53 +300,65 @@ export function BardWorkEditor({ initial, lanceId, houseId, authorMemberId, onSa
   }
 
   return (
-    <div className="fixed inset-0 z-50 flex items-start justify-center p-0 sm:p-4 bg-black/80 backdrop-blur-md overflow-y-auto" onClick={onClose}>
+    <div className="fixed inset-0 z-50 flex items-start justify-center p-0 sm:p-6 bg-black/80 backdrop-blur-md overflow-y-auto" onClick={onClose}>
       <div
-        className="w-full max-w-4xl bg-gradient-to-b from-ink-800/98 to-ink-900/98 border border-gold-500/30 rounded-none sm:rounded-2xl min-h-screen sm:min-h-0 sm:my-4"
-        style={{ boxShadow: '0 30px 80px -20px rgba(0,0,0,0.9)' }}
+        className="w-full max-w-4xl sm:my-4"
+        style={{
+          background: 'rgb(var(--ink-800))',
+          border: '1px solid var(--line)',
+          borderRadius: '10px',
+          boxShadow: '0 30px 80px -20px rgba(0,0,0,0.9)',
+        }}
         onClick={e => e.stopPropagation()}
       >
         {/* Header */}
-        <div className="flex items-center gap-3 px-6 py-4 border-b border-gold-500/15" style={{ background: 'linear-gradient(180deg, rgba(201,169,97,0.08), transparent)' }}>
-          <div className="w-9 h-9 rounded-lg grid place-items-center text-gold-300 border border-gold-300/30" style={{ background: 'linear-gradient(180deg, rgba(201,169,97,0.25), rgba(201,169,97,0.1))' }}>
+        <div className="flex items-center gap-3 px-6 py-4" style={{ borderBottom: '1px solid var(--line)' }}>
+          <div className="w-9 h-9 rounded-lg grid place-items-center flex-shrink-0"
+               style={{ background: 'rgba(203,171,104,0.12)', border: '1px solid var(--line)', color: 'var(--gold)' }}>
             <Icons.Feather size={18} />
           </div>
-          <h2 className="text-lg font-display font-bold text-ink-100 flex-1">{initial ? 'Edit Work' : 'New Bard Work'}</h2>
+          <h2 className="font-display font-bold text-xl text-ink-100 flex-1">{initial ? 'Edit Work' : 'New Bard Work'}</h2>
           <button onClick={onClose} className="btn btn-ghost btn-sm"><Icons.X size={16} /></button>
         </div>
 
-        {/* Meta row */}
-        <div className="px-6 py-4 border-b border-gold-500/10 grid sm:grid-cols-[1fr_auto] gap-3">
+        {/* Meta row — title + type pill group */}
+        <div className="px-6 py-4 flex flex-wrap gap-3 items-center" style={{ borderBottom: '1px solid var(--line-soft)' }}>
           <input
-            className="input text-lg font-display"
+            className="input text-lg font-display flex-1 min-w-[200px]"
             placeholder="Title…"
             value={title}
             onChange={e => setTitle(e.target.value)}
           />
-          <select
-            className="input w-auto"
-            value={workType}
-            onChange={e => setWorkType(e.target.value as WorkType)}
-          >
+          {/* Type toggle — small pill group, no native select */}
+          <div className="flex bg-black/30 border border-gold-500/15 rounded p-0.5 flex-shrink-0">
             {WORK_TYPE_OPTIONS.map(opt => (
-              <option key={opt.value} value={opt.value}>{opt.label}</option>
+              <button
+                key={opt.value}
+                onClick={() => setWorkType(opt.value)}
+                className={cx(
+                  'px-2.5 py-1 text-[11px] rounded-sm transition-colors capitalize',
+                  workType === opt.value ? 'bg-gold-500/20 text-gold-300' : 'text-ink-300 hover:text-ink-100'
+                )}
+              >
+                {opt.label}
+              </button>
             ))}
-          </select>
+          </div>
         </div>
 
         {/* Toolbar */}
-        <div className="px-6 py-2 border-b border-gold-500/10 flex flex-wrap gap-1 items-center">
+        <div className="px-6 py-2 flex flex-wrap gap-1 items-center" style={{ borderBottom: '1px solid var(--line-soft)' }}>
           <ToolbarBtn title="Bold (**text**)" onClick={() => insertAt('**', '**', 'bold text')}>
             <span className="font-bold text-sm">B</span>
           </ToolbarBtn>
           <ToolbarBtn title="Italic (*text*)" onClick={() => insertAt('*', '*', 'italic text')}>
             <span className="italic text-sm">I</span>
           </ToolbarBtn>
-          <div className="w-px h-5 bg-gold-500/20 mx-1" />
+          <div className="w-px h-5 mx-1" style={{ background: 'var(--line)' }} />
           <ToolbarBtn title="Heading 1" onClick={() => insertAt('\n# ', '', 'Heading')}>H1</ToolbarBtn>
           <ToolbarBtn title="Heading 2" onClick={() => insertAt('\n## ', '', 'Heading')}>H2</ToolbarBtn>
           <ToolbarBtn title="Heading 3" onClick={() => insertAt('\n### ', '', 'Heading')}>H3</ToolbarBtn>
-          <div className="w-px h-5 bg-gold-500/20 mx-1" />
+          <div className="w-px h-5 mx-1" style={{ background: 'var(--line)' }} />
           <ToolbarBtn title="Blockquote" onClick={() => insertAt('\n> ', '', 'quote')}>
             <Icons.Scroll size={13} />
           </ToolbarBtn>
@@ -334,55 +367,117 @@ export function BardWorkEditor({ initial, lanceId, houseId, authorMemberId, onSa
           <ToolbarBtn title="Numbered list" onClick={() => insertAt('\n1. ', '', 'item')}>1.</ToolbarBtn>
           <div className="flex-1" />
           <div className="flex bg-black/30 border border-gold-500/15 rounded p-0.5">
-            <button
-              onClick={() => setPreview(false)}
-              className={cx('px-2.5 py-1 text-[11px] rounded-sm transition-colors', !preview ? 'bg-gold-500/20 text-gold-300' : 'text-ink-300 hover:text-ink-100')}
-            >Edit</button>
-            <button
-              onClick={() => setPreview(true)}
-              className={cx('px-2.5 py-1 text-[11px] rounded-sm transition-colors', preview ? 'bg-gold-500/20 text-gold-300' : 'text-ink-300 hover:text-ink-100')}
-            >Preview</button>
+            <button onClick={() => setPreview(false)} className={cx('px-2.5 py-1 text-[11px] rounded-sm transition-colors', !preview ? 'bg-gold-500/20 text-gold-300' : 'text-ink-300 hover:text-ink-100')}>Edit</button>
+            <button onClick={() => setPreview(true)}  className={cx('px-2.5 py-1 text-[11px] rounded-sm transition-colors',  preview ? 'bg-gold-500/20 text-gold-300' : 'text-ink-300 hover:text-ink-100')}>Preview</button>
           </div>
         </div>
 
         {/* Editor / Preview area */}
-        <div className="px-6 py-4 relative" style={{ minHeight: 320 }}>
+        <div className="px-6 py-4 relative" style={{ minHeight: 360 }}>
           {preview ? (
             <div
-              className="prose prose-invert max-w-none text-ink-100 min-h-[320px]"
-              dangerouslySetInnerHTML={{ __html: renderMarkdown(content) || '<p class="text-ink-100/30 italic">Nothing to preview…</p>' }}
+              className="prose prose-invert max-w-none text-ink-100 min-h-[360px]"
+              dangerouslySetInnerHTML={{ __html: renderMarkdown(content) || '<p style="color:rgba(236,228,211,0.3);font-style:italic">Nothing to preview…</p>' }}
             />
           ) : (
             <div className="relative">
               <textarea
                 ref={textareaRef}
-                className="input w-full font-mono text-sm resize-none leading-relaxed"
-                style={{ minHeight: 320 }}
+                className="w-full font-mono text-sm resize-none leading-relaxed bg-transparent outline-none"
+                style={{
+                  minHeight: 360,
+                  color: 'rgb(var(--ink-100))',
+                  border: 'none',
+                  padding: 0,
+                }}
                 placeholder={"Start writing…\n\nTip: type / at the start of a line for commands"}
                 value={content}
                 onChange={handleContentChange}
                 onKeyDown={handleKeyDown}
               />
-              {/* Slash menu */}
-              {slashMenuOpen && filteredCmds.length > 0 && (
+              {/* Slash menu — Notion-style block picker */}
+              {slashMenuOpen && (
                 <div
-                  className="absolute left-0 top-full mt-1 z-10 w-64 bg-ink-800/98 border border-gold-500/30 rounded-lg shadow-2xl overflow-hidden"
+                  className="absolute left-0 top-0 z-20 w-80"
+                  style={{
+                    background: 'rgb(20,18,14)',
+                    border: '1px solid var(--line-strong)',
+                    borderRadius: '8px',
+                    boxShadow: '0 16px 48px rgba(0,0,0,0.8)',
+                    overflow: 'hidden',
+                  }}
                   onClick={e => e.stopPropagation()}
                 >
-                  {filteredCmds.map((cmd, i) => (
-                    <button
-                      key={cmd.key}
-                      className={cx(
-                        'w-full px-3 py-2 text-left flex items-center gap-2.5 text-sm transition-colors',
-                        i === slashIndex ? 'bg-gold-500/20 text-gold-300' : 'text-ink-100 hover:bg-gold-500/10'
-                      )}
-                      onMouseEnter={() => setSlashIndex(i)}
-                      onClick={() => handleSlashCommand(cmd)}
-                    >
-                      <span className="font-mono text-xs text-gold-400 w-20 flex-shrink-0">{cmd.label}</span>
-                      <span className="text-ink-100/60 text-xs">{cmd.description}</span>
-                    </button>
-                  ))}
+                  {/* Search input */}
+                  <div className="flex items-center gap-2 px-3 py-2.5" style={{ borderBottom: '1px solid var(--line-soft)' }}>
+                    <Icons.Search size={13} style={{ color: 'rgb(var(--ink-300))', flexShrink: 0 }} />
+                    <input
+                      ref={menuSearchRef}
+                      className="flex-1 bg-transparent outline-none text-sm"
+                      style={{ color: 'rgb(var(--ink-100))' }}
+                      placeholder="Filter…"
+                      value={menuSearch}
+                      onChange={e => { setMenuSearch(e.target.value); setSlashIndex(0); }}
+                      onKeyDown={e => {
+                        if (e.key === 'ArrowDown') { e.preventDefault(); setSlashIndex(i => Math.min(i + 1, filteredCmds.length - 1)); }
+                        if (e.key === 'ArrowUp')   { e.preventDefault(); setSlashIndex(i => Math.max(i - 1, 0)); }
+                        if (e.key === 'Enter' || e.key === 'Tab') { e.preventDefault(); if (filteredCmds[slashIndex]) handleSlashCommand(filteredCmds[slashIndex]); }
+                        if (e.key === 'Escape') { setSlashMenuOpen(false); slashStartPosRef.current = -1; textareaRef.current?.focus(); }
+                      }}
+                    />
+                  </div>
+                  {/* Block groups */}
+                  <div style={{ maxHeight: 320, overflowY: 'auto' }}>
+                    {filteredCmds.length === 0 ? (
+                      <div className="px-4 py-6 text-center text-sm" style={{ color: 'rgb(var(--ink-300))' }}>No results</div>
+                    ) : (
+                      Object.entries(groupedCmds).map(([category, cmds]) => {
+                        const categoryStart = filteredCmds.indexOf(cmds[0]);
+                        return (
+                          <div key={category}>
+                            <div className="px-3 pt-3 pb-1" style={{ fontSize: '10px', letterSpacing: '0.1em', textTransform: 'uppercase', color: 'rgb(var(--ink-300))', fontFamily: "'Figtree', system-ui, sans-serif" }}>
+                              {category}
+                            </div>
+                            {cmds.map((cmd, j) => {
+                              const globalIdx = categoryStart + j;
+                              const active = globalIdx === slashIndex;
+                              return (
+                                <button
+                                  key={cmd.key}
+                                  className="w-full px-3 py-2 text-left flex items-center gap-3 transition-colors"
+                                  style={active ? { background: 'rgba(203,171,104,0.12)' } : undefined}
+                                  onMouseEnter={() => setSlashIndex(globalIdx)}
+                                  onClick={() => handleSlashCommand(cmd)}
+                                >
+                                  {/* Icon box */}
+                                  <div
+                                    className="flex-shrink-0 flex items-center justify-center"
+                                    style={{
+                                      width: 28, height: 28, borderRadius: 5,
+                                      background: active ? 'rgba(203,171,104,0.15)' : 'rgba(255,255,255,0.06)',
+                                      border: `1px solid ${active ? 'rgba(203,171,104,0.3)' : 'rgba(255,255,255,0.08)'}`,
+                                      color: active ? 'var(--gold)' : 'rgb(var(--ink-100))',
+                                    }}
+                                  >
+                                    {cmd.icon}
+                                  </div>
+                                  {/* Label + description */}
+                                  <div className="flex-1 min-w-0">
+                                    <div className="text-sm font-medium" style={{ color: active ? 'var(--gold)' : 'rgb(var(--ink-100))', lineHeight: 1.2 }}>{cmd.label}</div>
+                                    <div className="text-xs truncate mt-0.5" style={{ color: 'rgb(var(--ink-300))' }}>{cmd.description}</div>
+                                  </div>
+                                  {/* Hint */}
+                                  <span className="font-mono text-[10px] flex-shrink-0 px-1.5 py-0.5 rounded" style={{ background: 'rgba(255,255,255,0.06)', color: 'rgb(var(--ink-300))', border: '1px solid rgba(255,255,255,0.08)' }}>
+                                    {cmd.hint}
+                                  </span>
+                                </button>
+                              );
+                            })}
+                          </div>
+                        );
+                      })
+                    )}
+                  </div>
                 </div>
               )}
             </div>
@@ -390,15 +485,12 @@ export function BardWorkEditor({ initial, lanceId, houseId, authorMemberId, onSa
         </div>
 
         {/* Footer */}
-        <div className="px-6 py-4 border-t border-gold-500/15 flex items-center justify-between gap-3 bg-black/20">
-          {error && <p className="text-red-400 text-sm">{error}</p>}
-          {!error && <div />}
+        <div className="px-6 py-4 flex items-center justify-between gap-3" style={{ borderTop: '1px solid var(--line)' }}>
+          {error ? <p className="text-red-400 text-sm">{error}</p> : <div />}
           <div className="flex gap-2">
             <button onClick={onClose} className="btn btn-ghost" disabled={saving}>Cancel</button>
             <button onClick={handleSave} className="btn btn-primary" disabled={saving}>
-              {saving ? 'Saving…' : (
-                <><Icons.Save size={14} />Save</>
-              )}
+              {saving ? 'Saving…' : <><Icons.Save size={14} />Save</>}
             </button>
           </div>
         </div>
