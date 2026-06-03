@@ -36,7 +36,6 @@ export function OverviewTab({ data, filteredMembers, isAdmin, onNavigate }: Prop
   const totalMembers = data.members.length;
   const coven = data.members.filter(m => m.coven).length;
   const nobles = filteredMembers.filter(m => m.is_noble);
-  const active = filteredMembers.filter(m => m.status === 'active');
 
   // Resources aggregated
   const resourceCounts = new Map<string, number>();
