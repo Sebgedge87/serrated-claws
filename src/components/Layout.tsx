@@ -254,7 +254,7 @@ export function Layout() {
       <nav className="bg-ink-950/50 backdrop-blur border-b border-gold-500/15">
         <div className="page-wrap !px-2 sm:!px-4">
           <div className="relative">
-          <div className="flex overflow-x-auto scrollbar-hide" role="tablist">
+          <div className="flex overflow-x-auto scrollbar-hide pr-12" role="tablist">
             {tabs.flatMap(t => {
               const isActive = activeTab === t.id;
               const accent = t.color ?? 'rgb(212,180,109)'; // gold-300 fallback
