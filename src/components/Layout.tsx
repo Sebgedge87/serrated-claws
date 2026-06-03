@@ -10,7 +10,6 @@ import { HeaderUserMenu } from '@/components/HeaderUserMenu';
 import { LanceGate } from '@/components/LanceGate';
 import { OverviewTab } from '@/components/tabs/OverviewTab';
 import { HouseTab } from '@/components/tabs/HouseTab';
-import { UnassignedTab } from '@/tabs/UnassignedTab';
 import { CovensTab } from '@/tabs/CovensTab';
 import { FunctionsTab } from '@/tabs/FunctionsTab';
 import { BusinessesTab } from '@/tabs/BusinessesTab';
@@ -28,7 +27,7 @@ import type { Member } from '@/lib/types';
 
 const WIKI_URL = 'https://www.profounddecisions.co.uk/empire-wiki/Skills';
 
-type TabId = 'overview' | 'roster' | 'unassigned' | 'covens' | 'functions' | 'businesses' | 'inventory' | 'bank' | 'admin' | 'bards' | string;
+type TabId = 'overview' | 'roster' | 'covens' | 'functions' | 'businesses' | 'inventory' | 'bank' | 'admin' | 'bards' | string;
 
 export function Layout() {
   const { user, profile, signOut } = useAuth();
@@ -77,7 +76,6 @@ export function Layout() {
     { id: 'inventory', label: 'Inventory', Icon: Icons.Package, separator: true },
     { id: 'bank', label: 'Bank', Icon: Icons.Coins, separator: true },
     ...(canAccessBards ? [{ id: 'bards', label: 'Bards', Icon: Icons.Feather } as TabDef] : []),
-    ...(isAdmin ? [{ id: 'unassigned', label: 'Unassigned', Icon: Icons.Question } as TabDef] : []),
     ...(isAdmin ? [{ id: 'admin', label: 'Admin', Icon: Icons.Shield } as TabDef] : [])
   ];
 
@@ -366,7 +364,6 @@ export function Layout() {
                 } : {})}
               />
             )}
-            {activeTab === 'unassigned' && <UnassignedTab data={lance.data} isAdmin={isAdmin} onUpsert={lance.upsertMember} onDelete={lance.deleteMember} onUpsertCharInventory={lance.upsertCharInventory} onDeleteCharInventory={lance.deleteCharInventory} onUpsertSkill={lance.upsertCharacterSkill} onDeleteSkill={lance.deleteCharacterSkill} onUpsertRitual={lance.upsertCharacterRitual} onDeleteRitual={lance.deleteCharacterRitual} onViewMember={setSelectedMember} />}
             {activeTab === 'covens' && <CovensTab data={lance.data} isAdmin={isAdmin} canManageCoven={perms.canManageCoven} onUpsert={lance.upsertCoven} onDelete={lance.deleteCoven} onUpsertRitual={lance.upsertCovenRitual} onDeleteRitual={lance.deleteCovenRitual} />}
             {activeTab === 'functions' && <FunctionsTab data={lance.data} isAdmin={isAdmin} canManageFunction={perms.canManageFunction} onUpsert={lance.upsertFunction} onDelete={lance.deleteFunction} />}
             {activeTab === 'businesses' && <BusinessesTab data={lance.data} isAdmin={isAdmin} canManageBusiness={perms.canManageBusiness} onUpsert={lance.upsertBusiness} onDelete={lance.deleteBusiness} />}
@@ -415,6 +412,8 @@ export function Layout() {
                 onDeleteEvent={lance.deleteEvent}
                 onClearAttending={lance.clearAttending}
                 onRegenerateInviteCode={() => lances.regenerateInviteCode(lances.currentLanceId!)}
+                onDeleteMember={lance.deleteMember}
+                onViewMember={setSelectedMember}
               />
             )}
           </>
