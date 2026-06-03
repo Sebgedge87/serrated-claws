@@ -7,6 +7,8 @@ import { Modal, Field } from '@/components/Modal';
 import { useConfirm } from '@/components/ConfirmDialog';
 import { exportRitualsPdf } from '@/lib/parchmentPdf';
 import { initials } from '@/lib/utils';
+import { SectionHeader } from '@/components/ui/SectionHeader';
+import { DataRow } from '@/components/ui/DataRow';
 
 interface Props {
   data: LanceData;
@@ -20,6 +22,17 @@ interface Props {
 
 const A = '#b56eb5';
 const DOMAINS: RitualRealm[] = ['Spring', 'Summer', 'Autumn', 'Winter', 'Day', 'Night'];
+
+// Spec realm hues (flat, no alpha)
+const REALM_HUE: Record<RitualRealm, string> = {
+  Spring:  '#6F9D77',
+  Summer:  '#C2A24F',
+  Autumn:  '#BD7A4A',
+  Winter:  '#6F97C4',
+  Day:     '#CBB25A',
+  Night:   '#8A73BF',
+  Special: '#C07BA0',
+};
 
 
 export function CovensTab({ data, isAdmin, canManageCoven, onUpsert, onDelete, onUpsertRitual, onDeleteRitual }: Props) {

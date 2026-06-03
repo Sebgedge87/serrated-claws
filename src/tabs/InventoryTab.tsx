@@ -17,6 +17,7 @@ import type { RitualRealm } from '@/lib/ritualsCatalogue';
 import { Icons } from '@/components/Icons';
 import { Modal, Field } from '@/components/Modal';
 import { StockModal } from '@/components/modals/StockModal';
+import { SectionHeader } from '@/components/ui/SectionHeader';
 
 const ACCENT = '#e76eb5';
 
@@ -65,6 +66,18 @@ const TYPE_ICONS: Record<CatalogueType, typeof Icons.Package> = {
   'Carded / Consumable Item': Icons.Wand,
   Vis: Icons.Sparkles,
   'Magic Item': Icons.Wand
+};
+
+// Type hues for tick/swatch colours per spec
+const TYPE_HUE: Record<CatalogueType, string> = {
+  Herb:                    '#6BA673',
+  'Crafting Material':     '#5F90BD',
+  'Building Material':     '#C0864F',
+  'Carded / Consumable Item': '#9A7BBD',
+  'Magic Item':            '#B56860',
+  Vis:                     '#8F8A9C',
+  Currency:                '#C0A259',
+  'Resource Source':       '#C0A259',
 };
 
 const SUB_TABS: { id: SubView; label: string; Icon: typeof Icons.Package }[] = [
