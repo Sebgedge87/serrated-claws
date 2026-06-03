@@ -6,6 +6,7 @@ import { WorkTypePill, WORK_TYPE_STYLES } from '@/components/BardWorksSection';
 import { exportBardWorkPdf } from '@/lib/parchmentPdf';
 import { cx } from '@/lib/utils';
 import { useConfirm } from '@/components/ConfirmDialog';
+import { CustomSelect } from '@/components/ui/CustomSelect';
 
 // ── Filter types ───────────────────────────────────────────────────────────────
 
@@ -206,16 +207,12 @@ export function BardTab({ data, lanceId, currentMemberId, isAdmin, onUpsert, onD
         <div className="flex-1" />
 
         {/* House filter */}
-        <select
-          className="input input-sm w-auto text-xs"
+        <CustomSelect
           value={filterHouse}
-          onChange={e => setFilterHouse(e.target.value)}
-        >
-          <option value="all">All Houses</option>
-          {data.houses.map(h => (
-            <option key={h.id} value={h.id}>{h.name}</option>
-          ))}
-        </select>
+          onChange={v => setFilterHouse(v || 'all')}
+          options={[{ value: 'all', label: 'All Houses' }, ...data.houses.map(h => ({ value: h.id, label: h.name }))]}
+          placeholder=""
+        />
 
         {/* Group toggle */}
         <button

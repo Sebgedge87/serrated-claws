@@ -6,6 +6,7 @@ import { Icons } from '@/components/Icons';
 import { MemberCard } from '@/components/MemberCard';
 import { initials } from '@/lib/utils';
 import { exportRosterPdf, exportResourcesPdf } from '@/lib/parchmentPdf';
+import { CustomSelect } from '@/components/ui/CustomSelect';
 
 interface Props {
   data: LanceData;
@@ -481,16 +482,13 @@ function RolesSection({ memberships, data, currentUserId, currentRole, inviteCod
                     </div>
                   </td>
                   <td className="px-4 py-3">
-                    <select
+                    <CustomSelect
                       value={m.role}
                       disabled={busy === m.id || (isSelf && adminCount <= 1) || (!isSuperAdmin && m.role === 'super_admin')}
-                      onChange={e => setRole(m.id, e.target.value as UserRole)}
-                      className="px-2.5 py-1.5 bg-black/40 border border-gold-500/15 rounded text-sm cursor-pointer disabled:opacity-50"
-                      style={{ color: ROLE_COLORS[m.role] }}
-                      title={!isSuperAdmin && m.role === 'super_admin' ? "Only super admins can change this role" : isSelf && adminCount <= 1 ? "Can't demote the only admin" : undefined}
-                    >
-                      {availableRoles.map(r => <option key={r} value={r} style={{ color: ROLE_COLORS[r] }}>{r.replace('_', ' ')}</option>)}
-                    </select>
+                      onChange={v => setRole(m.id, v as UserRole)}
+                      options={availableRoles.map(r => ({ value: r, label: r.replace('_', ' '), color: ROLE_COLORS[r as UserRole] }))}
+                      placeholder=""
+                    />
                     {busy === m.id && <span className="ml-2 text-xs text-ink-100/50">Saving…</span>}
                   </td>
                   <td className="px-4 py-3">

@@ -377,13 +377,12 @@ function CharacterSkillsSection({
           </div>
 
           <div className="grid grid-cols-2 gap-2">
-            <select
-              className="input text-sm"
+            <CustomSelect
               value={newSkill.category}
-              onChange={e => setNewSkill(n => ({ ...n, category: e.target.value as SkillCategory }))}
-            >
-              {SKILL_CATEGORY_ORDER.map(c => <option key={c} value={c}>{c}</option>)}
-            </select>
+              onChange={v => setNewSkill(n => ({ ...n, category: v as SkillCategory }))}
+              options={SKILL_CATEGORY_ORDER.map(c => ({ value: c, label: c }))}
+              placeholder=""
+            />
             <div className="flex items-center gap-2">
               <label className="text-xs text-ink-100/50 whitespace-nowrap">Rank</label>
               <input
@@ -516,28 +515,22 @@ function CharacterRitualsSection({
           <div className="flex gap-2">
             <div className="flex-1">
               <label className="text-[10px] uppercase tracking-widest text-ink-100/40 block mb-1">Realm</label>
-              <select
-                className="input text-sm"
+              <CustomSelect
                 value={realm}
-                onChange={e => { setRealm(e.target.value as RitualRealm); setRitualName(''); }}
+                onChange={v => { setRealm(v as RitualRealm); setRitualName(''); }}
+                options={RITUAL_REALM_ORDER.map(r => ({ value: r, label: r }))}
+                placeholder=""
                 disabled={!!covenRealm}
-              >
-                {RITUAL_REALM_ORDER.map(r => <option key={r} value={r}>{r}</option>)}
-              </select>
+              />
             </div>
             <div className="flex-[2]">
               <label className="text-[10px] uppercase tracking-widest text-ink-100/40 block mb-1">Ritual</label>
-              <select
-                autoFocus
-                className="input text-sm"
+              <CustomSelect
                 value={ritualName}
-                onChange={e => setRitualName(e.target.value)}
-              >
-                <option value="">— choose ritual —</option>
-                {availableRituals.map(r => (
-                  <option key={r.name} value={r.name}>{r.name}</option>
-                ))}
-              </select>
+                onChange={setRitualName}
+                options={availableRituals.map(r => ({ value: r.name, label: r.name }))}
+                placeholder="— choose ritual —"
+              />
             </div>
           </div>
           {ritualName && (

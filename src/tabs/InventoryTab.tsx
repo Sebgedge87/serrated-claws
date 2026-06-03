@@ -18,6 +18,7 @@ import { Icons } from '@/components/Icons';
 import { Modal, Field } from '@/components/Modal';
 import { StockModal } from '@/components/modals/StockModal';
 import { SectionHeader } from '@/components/ui/SectionHeader';
+import { CustomSelect } from '@/components/ui/CustomSelect';
 
 const ACCENT = '#e76eb5';
 
@@ -1325,43 +1326,48 @@ function QueueModal({
         </Field>
 
         <Field label="Tier">
-          <select className="input" value={form.tier ?? 'apprentice'} onChange={e => set('tier', e.target.value)}>
-            <option value="apprentice">Apprentice</option>
-            <option value="journeyman">Journeyman</option>
-            <option value="adept">Adept</option>
-            <option value="masterwork">Masterwork</option>
-          </select>
+          <CustomSelect
+            value={form.tier ?? 'apprentice'}
+            onChange={v => set('tier', v)}
+            options={[{ value: 'apprentice', label: 'Apprentice' }, { value: 'journeyman', label: 'Journeyman' }, { value: 'adept', label: 'Adept' }, { value: 'masterwork', label: 'Masterwork' }]}
+            placeholder=""
+          />
         </Field>
 
         <Field label="Status">
-          <select className="input" value={form.status ?? 'planned'} onChange={e => set('status', e.target.value as CraftingQueueItem['status'])}>
-            <option value="planned">Planned</option>
-            <option value="materials-sourced">Materials Sourced</option>
-            <option value="in-progress">In Progress</option>
-            <option value="complete">Complete</option>
-            <option value="cancelled">Cancelled</option>
-          </select>
+          <CustomSelect
+            value={form.status ?? 'planned'}
+            onChange={v => set('status', v as CraftingQueueItem['status'])}
+            options={[{ value: 'planned', label: 'Planned' }, { value: 'materials-sourced', label: 'Materials Sourced' }, { value: 'in-progress', label: 'In Progress' }, { value: 'complete', label: 'Complete' }, { value: 'cancelled', label: 'Cancelled' }]}
+            placeholder=""
+          />
         </Field>
 
         <Field label="Crafter">
-          <select className="input" value={form.crafter_id ?? ''} onChange={e => set('crafter_id', e.target.value || null)}>
-            <option value="">— No crafter —</option>
-            {data.members.filter(m => m.status === 'active').map(m => <option key={m.id} value={m.id}>{m.name}</option>)}
-          </select>
+          <CustomSelect
+            value={form.crafter_id ?? ''}
+            onChange={v => set('crafter_id', v || null)}
+            options={data.members.filter(m => m.status === 'active').map(m => ({ value: m.id, label: m.name }))}
+            placeholder="— No crafter —"
+          />
         </Field>
 
         <Field label="Recipient" optional>
-          <select className="input" value={form.recipient_id ?? ''} onChange={e => set('recipient_id', e.target.value || null)}>
-            <option value="">— Unassigned —</option>
-            {data.members.filter(m => m.status === 'active').map(m => <option key={m.id} value={m.id}>{m.name}</option>)}
-          </select>
+          <CustomSelect
+            value={form.recipient_id ?? ''}
+            onChange={v => set('recipient_id', v || null)}
+            options={data.members.filter(m => m.status === 'active').map(m => ({ value: m.id, label: m.name }))}
+            placeholder="— Unassigned —"
+          />
         </Field>
 
         <Field label="Target Event" optional>
-          <select className="input" value={form.target_event ?? ''} onChange={e => set('target_event', e.target.value || null)}>
-            <option value="">— None —</option>
-            {[...data.events].sort((a, b) => b.sort_order - a.sort_order).map(ev => <option key={ev.id} value={ev.id}>{ev.name}</option>)}
-          </select>
+          <CustomSelect
+            value={form.target_event ?? ''}
+            onChange={v => set('target_event', v || null)}
+            options={[...data.events].sort((a, b) => b.sort_order - a.sort_order).map(ev => ({ value: ev.id, label: ev.name }))}
+            placeholder="— None —"
+          />
         </Field>
 
         <Field label="Materials Required (auto-filled from catalogue)" span="full">

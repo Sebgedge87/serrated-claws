@@ -6,6 +6,7 @@ import { useConfirm } from '@/components/ConfirmDialog';
 import { initials } from '@/lib/utils';
 import { SectionHeader } from '@/components/ui/SectionHeader';
 import { DataRow } from '@/components/ui/DataRow';
+import { CustomSelect } from '@/components/ui/CustomSelect';
 
 interface Props {
   data: LanceData;
@@ -163,16 +164,13 @@ export function BusinessesTab({ data, isAdmin, canManageBusiness, onUpsert, onDe
         </div>
 
         {canEdit && unselected.length > 0 && (
-          <select
-            className="input max-w-xs"
+          <CustomSelect
             value=""
-            onChange={e => { if (e.target.value) { setDetailForm(f => ({ ...f, owners: [...f.owners, e.target.value] })); e.currentTarget.value = ''; } }}
-          >
-            <option value="">+ Add owner…</option>
-            {unselected.map(m => (
-              <option key={m.id} value={m.id}>{m.name} · {data.houses.find(h => h.id === m.house_id)?.name ?? 'Unassigned'}</option>
-            ))}
-          </select>
+            onChange={v => { if (v) setDetailForm(f => ({ ...f, owners: [...f.owners, v] })); }}
+            options={unselected.map(m => ({ value: m.id, label: `${m.name} · ${data.houses.find(h => h.id === m.house_id)?.name ?? 'Unassigned'}` }))}
+            placeholder="+ Add owner…"
+            className="max-w-xs"
+          />
         )}
 
         {ConfirmDialog}
@@ -280,10 +278,13 @@ function BizModal({ data, onClose, onSave }: { data: LanceData; onClose: () => v
             ))}
           </div>
         )}
-        <select className="input" value="" onChange={e => { if (e.target.value) { setForm(f => ({ ...f, owners: [...f.owners, e.target.value] })); e.currentTarget.value = ''; } }} disabled={unselected.length === 0}>
-          <option value="">{unselected.length === 0 ? 'All members added' : '+ Add owner…'}</option>
-          {unselected.map(m => <option key={m.id} value={m.id}>{m.name} · {data.houses.find(h => h.id === m.house_id)?.name ?? 'Unassigned'}</option>)}
-        </select>
+        <CustomSelect
+          value=""
+          onChange={v => { if (v) setForm(f => ({ ...f, owners: [...f.owners, v] })); }}
+          options={unselected.map(m => ({ value: m.id, label: `${m.name} · ${data.houses.find(h => h.id === m.house_id)?.name ?? 'Unassigned'}` }))}
+          placeholder={unselected.length === 0 ? 'All members added' : '+ Add owner…'}
+          disabled={unselected.length === 0}
+        />
       </Field>
     </Modal>
   );

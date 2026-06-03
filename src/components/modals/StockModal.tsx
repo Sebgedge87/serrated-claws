@@ -4,6 +4,7 @@ import { MAGIC_ITEMS_CATALOGUE, TIER_LABELS } from '@/lib/magicItemsCatalogue';
 import type { CatalogueItem, ItemForm } from '@/lib/magicItemsCatalogue';
 import { Icons } from '@/components/Icons';
 import { Modal, Field } from '@/components/Modal';
+import { CustomSelect } from '@/components/ui/CustomSelect';
 
 const ACCENT = '#e76eb5';
 
@@ -111,65 +112,70 @@ export function StockModal({ data, initial, prefill, onClose, onSave }: Props) {
         </Field>
 
         <Field label="Tier">
-          <select className="input" value={form.tier ?? 'apprentice'} onChange={e => set('tier', e.target.value)}>
-            <option value="apprentice">Apprentice</option>
-            <option value="journeyman">Journeyman</option>
-            <option value="adept">Adept</option>
-            <option value="masterwork">Masterwork</option>
-          </select>
+          <CustomSelect
+            value={form.tier ?? 'apprentice'}
+            onChange={v => set('tier', v)}
+            options={[{ value: 'apprentice', label: 'Apprentice' }, { value: 'journeyman', label: 'Journeyman' }, { value: 'adept', label: 'Adept' }, { value: 'masterwork', label: 'Masterwork' }]}
+            placeholder=""
+          />
         </Field>
 
         <Field label="Form">
-          <select className="input" value={form.form ?? 'talisman'} onChange={e => set('form', e.target.value as ItemForm)}>
-            <option value="weapon-1h">Weapon (1H)</option>
-            <option value="weapon-great">Weapon (Great)</option>
-            <option value="weapon-polearm">Weapon (Polearm)</option>
-            <option value="weapon-spear">Weapon (Spear)</option>
-            <option value="weapon-implement">Weapon (Implement)</option>
-            <option value="weapon-paired">Weapon (Paired)</option>
-            <option value="armour">Armour</option>
-            <option value="talisman">Talisman</option>
-            <option value="talisman-icon">Talisman (Icon)</option>
-            <option value="talisman-reliquary">Talisman (Reliquary)</option>
-            <option value="talisman-paraphernalia">Talisman (Paraphernalia)</option>
-            <option value="standard">Standard</option>
-          </select>
+          <CustomSelect
+            value={form.form ?? 'talisman'}
+            onChange={v => set('form', v as ItemForm)}
+            options={[
+              { value: 'weapon-1h', label: 'Weapon (1H)' },
+              { value: 'weapon-great', label: 'Weapon (Great)' },
+              { value: 'weapon-polearm', label: 'Weapon (Polearm)' },
+              { value: 'weapon-spear', label: 'Weapon (Spear)' },
+              { value: 'weapon-implement', label: 'Weapon (Implement)' },
+              { value: 'weapon-paired', label: 'Weapon (Paired)' },
+              { value: 'armour', label: 'Armour' },
+              { value: 'talisman', label: 'Talisman' },
+              { value: 'talisman-icon', label: 'Talisman (Icon)' },
+              { value: 'talisman-reliquary', label: 'Talisman (Reliquary)' },
+              { value: 'talisman-paraphernalia', label: 'Talisman (Paraphernalia)' },
+              { value: 'standard', label: 'Standard' },
+            ]}
+            placeholder=""
+          />
         </Field>
 
         <Field label="Bonded To">
-          <select className="input" value={form.bonded_to ?? ''} onChange={e => set('bonded_to', e.target.value || null)}>
-            <option value="">— Unassigned —</option>
-            {data.members.filter(m => m.status === 'active').map(m => (
-              <option key={m.id} value={m.id}>{m.name}</option>
-            ))}
-          </select>
+          <CustomSelect
+            value={form.bonded_to ?? ''}
+            onChange={v => set('bonded_to', v || null)}
+            options={data.members.filter(m => m.status === 'active').map(m => ({ value: m.id, label: m.name }))}
+            placeholder="— Unassigned —"
+          />
         </Field>
 
         <Field label="Status">
-          <select className="input" value={form.status ?? 'available'} onChange={e => set('status', e.target.value as MagicItemStock['status'])}>
-            <option value="available">Available</option>
-            <option value="bonded">Bonded</option>
-            <option value="reserved">Reserved</option>
-            <option value="expired">Expired</option>
-          </select>
+          <CustomSelect
+            value={form.status ?? 'available'}
+            onChange={v => set('status', v as MagicItemStock['status'])}
+            options={[{ value: 'available', label: 'Available' }, { value: 'bonded', label: 'Bonded' }, { value: 'reserved', label: 'Reserved' }, { value: 'expired', label: 'Expired' }]}
+            placeholder=""
+          />
         </Field>
 
         <Field label="Created at Event" optional>
-          <select className="input" value={form.created_at_event ?? ''} onChange={e => set('created_at_event', e.target.value || null)}>
-            <option value="">— None —</option>
-            {[...data.events].sort((a, b) => b.sort_order - a.sort_order).map(ev => (
-              <option key={ev.id} value={ev.id}>{ev.name}</option>
-            ))}
-          </select>
+          <CustomSelect
+            value={form.created_at_event ?? ''}
+            onChange={v => set('created_at_event', v || null)}
+            options={[...data.events].sort((a, b) => b.sort_order - a.sort_order).map(ev => ({ value: ev.id, label: ev.name }))}
+            placeholder="— None —"
+          />
         </Field>
 
         <Field label="Expires After Event" optional>
-          <select className="input" value={form.expires_after_event ?? ''} onChange={e => set('expires_after_event', e.target.value || null)}>
-            <option value="">— None —</option>
-            {[...data.events].sort((a, b) => b.sort_order - a.sort_order).map(ev => (
-              <option key={ev.id} value={ev.id}>{ev.name}</option>
-            ))}
-          </select>
+          <CustomSelect
+            value={form.expires_after_event ?? ''}
+            onChange={v => set('expires_after_event', v || null)}
+            options={[...data.events].sort((a, b) => b.sort_order - a.sort_order).map(ev => ({ value: ev.id, label: ev.name }))}
+            placeholder="— None —"
+          />
         </Field>
 
         <Field label="Notes" optional span="full">

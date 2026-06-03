@@ -6,6 +6,7 @@ import { useConfirm } from '@/components/ConfirmDialog';
 import { initials } from '@/lib/utils';
 import { SectionHeader } from '@/components/ui/SectionHeader';
 import { DataRow } from '@/components/ui/DataRow';
+import { CustomSelect } from '@/components/ui/CustomSelect';
 
 interface Props {
   data: LanceData;
@@ -83,15 +84,13 @@ export function FunctionsTab({ data, isAdmin, canManageFunction, onUpsert, onDel
               <h2 className="font-display font-bold text-3xl text-ink-100 m-0">{fn.name}</h2>
             )}
             {canEdit ? (
-              <select
-                className="mt-1 text-sm bg-transparent border border-transparent hover:border-gold-500/30 focus:border-gold-500/50 rounded px-1 -mx-1 outline-none transition-colors"
-                style={{ color: detailForm.leader ? A : 'rgba(255,255,255,0.4)' }}
+              <CustomSelect
                 value={detailForm.leader ?? ''}
-                onChange={e => setDetailForm(f => ({ ...f, leader: e.target.value || null }))}
-              >
-                <option value="">— No leader —</option>
-                {activeMembers.map(m => <option key={m.id} value={m.id}>{m.name}</option>)}
-              </select>
+                onChange={v => setDetailForm(f => ({ ...f, leader: v || null }))}
+                options={activeMembers.map(m => ({ value: m.id, label: m.name }))}
+                placeholder="— No leader —"
+                className="mt-1"
+              />
             ) : (
               fn.leader && <p className="text-sm m-0 mt-0.5" style={{ color: A }}>Led by {data.members.find(m => m.id === fn.leader)?.name ?? '—'}</p>
             )}
@@ -224,10 +223,12 @@ function FnModal({ members, onClose, onSave }: { members: LanceData['members']; 
       footer={<><button onClick={onClose} className="btn btn-ghost">Cancel</button><button onClick={save} disabled={busy || !form.name?.trim()} className="btn btn-primary">{busy ? 'Saving…' : 'Create'}</button></>}>
       <Field label="Name"><input className="input" value={form.name ?? ''} onChange={e => setForm({ ...form, name: e.target.value })} autoFocus /></Field>
       <Field label="Leader" optional>
-        <select className="input" value={form.leader ?? ''} onChange={e => setForm({ ...form, leader: e.target.value || null })}>
-          <option value="">— None —</option>
-          {activeMembers.map(m => <option key={m.id} value={m.id}>{m.name}</option>)}
-        </select>
+        <CustomSelect
+          value={form.leader ?? ''}
+          onChange={v => setForm({ ...form, leader: v || null })}
+          options={activeMembers.map(m => ({ value: m.id, label: m.name }))}
+          placeholder="— None —"
+        />
       </Field>
       <Field label="Description" optional><textarea rows={3} className="input resize-y" value={form.description ?? ''} onChange={e => setForm({ ...form, description: e.target.value || null })} /></Field>
     </Modal>
