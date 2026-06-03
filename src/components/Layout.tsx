@@ -16,7 +16,9 @@ import { FunctionsTab } from '@/tabs/FunctionsTab';
 import { BusinessesTab } from '@/tabs/BusinessesTab';
 import { InventoryTab } from '@/tabs/InventoryTab';
 import { AdminTab } from '@/tabs/AdminTab';
+import { BankTab } from '@/tabs/BankTab';
 import { BardTab } from '@/tabs/BardTab';
+import { RosterTab } from '@/tabs/RosterTab';
 import { AddHouseModal } from '@/components/modals/AddHouseModal';
 import { AddPersonModal } from '@/components/modals/AddPersonModal';
 import { CharacterSheetPage } from '@/components/CharacterSheetPage';
@@ -26,7 +28,7 @@ import type { Member } from '@/lib/types';
 
 const WIKI_URL = 'https://www.profounddecisions.co.uk/empire-wiki/Skills';
 
-type TabId = 'overview' | 'unassigned' | 'covens' | 'functions' | 'businesses' | 'inventory' | 'admin' | 'bards' | string;
+type TabId = 'overview' | 'roster' | 'unassigned' | 'covens' | 'functions' | 'businesses' | 'inventory' | 'bank' | 'admin' | 'bards' | string;
 
 export function Layout() {
   const { user, profile, signOut } = useAuth();
@@ -61,6 +63,7 @@ export function Layout() {
   };
   const tabs: TabDef[] = [
     { id: 'overview', label: 'Overview', Icon: Icons.House },
+    { id: 'roster', label: 'Roster', Icon: Icons.Users },
     ...lance.data.houses.map(h => ({
       id: h.id,
       label: h.name.replace('House ', ''),
@@ -72,6 +75,7 @@ export function Layout() {
     { id: 'functions', label: 'Functions', Icon: Icons.Swords },
     { id: 'businesses', label: 'Businesses', Icon: Icons.Briefcase },
     { id: 'inventory', label: 'Inventory', Icon: Icons.Package, separator: true },
+    { id: 'bank', label: 'Bank', Icon: Icons.Coins, separator: true },
     ...(canAccessBards ? [{ id: 'bards', label: 'Bards', Icon: Icons.Feather } as TabDef] : []),
     ...(isAdmin ? [{ id: 'unassigned', label: 'Unassigned', Icon: Icons.Question } as TabDef] : []),
     ...(isAdmin ? [{ id: 'admin', label: 'Admin', Icon: Icons.Shield } as TabDef] : [])
@@ -336,6 +340,7 @@ export function Layout() {
         {!lance.loading && !lance.error && !selectedMember && (
           <>
             {activeTab === 'overview' && <OverviewTab data={lance.data} filteredMembers={lance.data.members} isAdmin={isAdmin} onNavigate={setActiveTab} />}
+            {activeTab === 'roster' && <RosterTab data={lance.data} isAdmin={isAdmin} onViewMember={setSelectedMember} />}
             {activeHouse && (
               <HouseTab
                 house={activeHouse}
@@ -376,6 +381,13 @@ export function Layout() {
                 onDeleteStock={lance.deleteMagicItemStock}
                 onUpsertQueue={lance.upsertCraftingQueueItem}
                 onDeleteQueue={lance.deleteCraftingQueueItem}
+              />
+            )}
+            {activeTab === 'bank' && (
+              <BankTab
+                data={lance.data}
+                isAdmin={isAdmin}
+                onUpsertInventory={lance.setInventory}
               />
             )}
             {activeTab === 'bards' && (

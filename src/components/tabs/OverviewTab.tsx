@@ -87,8 +87,8 @@ export function OverviewTab({ data, filteredMembers, isAdmin, onNavigate }: Prop
         }}
       >
         {[
-          { label: 'Members',        value: totalMembers,        tab: null as string | null },
-          { label: 'Nobles',         value: nobles.length,       tab: null as string | null },
+          { label: 'Members',        value: totalMembers,        tab: 'roster' as string | null },
+          { label: 'Nobles',         value: nobles.length,       tab: 'roster' as string | null },
           { label: 'Coven Members',  value: coven,               tab: 'covens' as string | null },
           { label: 'Active',         value: active.length,       tab: null as string | null },
           { label: 'Businesses',     value: data.businesses.length, tab: 'businesses' as string | null },
