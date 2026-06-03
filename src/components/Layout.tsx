@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef } from 'react';
+import { useState } from 'react';
 import { useAuth } from '@/hooks/useAuth';
 import { useLanceData } from '@/hooks/useLanceData';
 import { useLances } from '@/hooks/useLances';
