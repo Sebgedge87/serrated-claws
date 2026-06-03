@@ -14,6 +14,7 @@ interface Props {
   onUpsert: (m: Partial<Member> & { name: string }) => Promise<void>;
   onUnassign: (id: string) => Promise<void>;
   onDelete: (id: string) => Promise<void>;
+  onDeleteHouse?: () => Promise<void>;
   onUpsertCharInventory?: (item: Omit<CharInventoryItem, 'id'> & { id?: string }) => Promise<void>;
   onDeleteCharInventory?: (id: string) => Promise<void>;
   onUpsertSkill?: (skill: Omit<CharacterSkill, 'id'> & { id?: string }) => Promise<void>;
@@ -23,7 +24,7 @@ interface Props {
   onViewMember?: (m: Member) => void;
 }
 
-export function HouseTab({ house, data, search, isAdmin, onUpsert, onUnassign, onDelete, onUpsertCharInventory, onDeleteCharInventory, onUpsertSkill, onDeleteSkill, onUpsertRitual, onDeleteRitual, onViewMember }: Props) {
+export function HouseTab({ house, data, search, isAdmin, onUpsert, onUnassign, onDelete, onDeleteHouse, onUpsertCharInventory, onDeleteCharInventory, onUpsertSkill, onDeleteSkill, onUpsertRitual, onDeleteRitual, onViewMember }: Props) {
   const [editing, setEditing] = useState<Member | null>(null);
   const c = house.primary_color ?? '#d4b46d';
 
@@ -65,7 +66,7 @@ export function HouseTab({ house, data, search, isAdmin, onUpsert, onUnassign, o
 
       {isAdmin && (
         <div className="mb-4">
-          <button className="text-xs text-red-400/60 hover:text-red-400 transition-colors">
+          <button className="text-xs text-red-400/60 hover:text-red-400 transition-colors" onClick={onDeleteHouse}>
             ⚠ Delete house
           </button>
         </div>
