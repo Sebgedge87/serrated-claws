@@ -184,7 +184,7 @@ function LedgerTable({ members, isAdmin, houseColor, onView, onUnassign, onDelet
       <div
         className="grid sm:hidden"
         style={{
-          gridTemplateColumns: '36px 1fr auto',
+          gridTemplateColumns: '36px 1fr auto auto',
           gap: '10px',
           padding: '6px 12px',
           borderBottom: '1px solid var(--line)',
@@ -195,7 +195,7 @@ function LedgerTable({ members, isAdmin, houseColor, onView, onUnassign, onDelet
           fontWeight: 700,
         }}
       >
-        <span /><span>Member</span><span>Status</span>
+        <span /><span>Member</span><span>Status</span><span />
       </div>
       {members.map(m => (
         <MemberLedgerRow

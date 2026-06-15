@@ -33,7 +33,7 @@ export function MemberLedgerRow({
         tabIndex={0}
         onClick={onView}
         onKeyDown={e => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); onView(); } }}
-        className="grid grid-cols-[36px_1fr_auto] sm:grid-cols-[36px_1.4fr_90px_1fr_100px_88px_104px]
+        className="grid grid-cols-[36px_1fr_auto_auto] sm:grid-cols-[36px_1.4fr_90px_1fr_100px_88px_104px]
                    gap-2.5 sm:gap-3.5 items-center
                    px-3 sm:px-4 py-3 sm:py-2.5 text-sm border-b border-gold-500/8 cursor-pointer
                    transition-colors hover:bg-gold-500/5
@@ -75,7 +75,7 @@ export function MemberLedgerRow({
         </div>
 
         {/* Actions — stop propagation so row click doesn't fire too */}
-        <div className="hidden sm:flex justify-end gap-1.5" onClick={e => e.stopPropagation()}>
+        <div className="flex justify-end gap-1.5" onClick={e => e.stopPropagation()}>
           <button onClick={onView} className="btn btn-ghost btn-sm" aria-label={`Open ${member.name}`} title="Open character sheet">
             <Icons.BookOpen size={12} />
           </button>
