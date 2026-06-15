@@ -59,7 +59,7 @@ export function HouseTab({ house, data, search, isAdmin, onUpsert, onUnassign, o
           {monogramOf(house.name)}
         </div>
         <div className="flex-1 min-w-0">
-          <h2 className="font-display text-4xl font-bold text-ink-100 m-0">{house.name}</h2>
+          <h2 className="font-display text-2xl sm:text-4xl font-bold text-ink-100 m-0">{house.name}</h2>
           <p className="text-sm text-ink-100/60 m-0 tracking-wider">
             {houseMembers.length} sworn · {houseMembers.filter(m => m.is_noble).length} noble
             {house.motto && <span className="italic"> · "{house.motto}"</span>}
@@ -162,12 +162,12 @@ function LedgerTable({ members, isAdmin, houseColor, onView, onUnassign, onDelet
         background: 'rgb(var(--ink-800))',
       }}
     >
-      {/* Column header */}
+      {/* Column header — 2-col on mobile, full 7-col on sm+ */}
       <div
+        className="hidden sm:grid"
         style={{
-          display: 'grid',
-          gridTemplateColumns: '36px 1.4fr 90px 1fr 110px 80px 100px',
-          gap: '12px',
+          gridTemplateColumns: '36px 1.4fr 90px 1fr 100px 88px 104px',
+          gap: '14px',
           padding: '8px 16px',
           borderBottom: '1px solid var(--line)',
           fontSize: '10px',
@@ -179,6 +179,23 @@ function LedgerTable({ members, isAdmin, houseColor, onView, onUnassign, onDelet
       >
         <span /><span>Member</span><span>Rank</span><span>Role</span>
         <span>Income</span><span>Status</span><span />
+      </div>
+      {/* Mobile header — just member + status */}
+      <div
+        className="grid sm:hidden"
+        style={{
+          gridTemplateColumns: '36px 1fr auto',
+          gap: '10px',
+          padding: '6px 12px',
+          borderBottom: '1px solid var(--line)',
+          fontSize: '10px',
+          letterSpacing: '0.12em',
+          textTransform: 'uppercase',
+          color: 'rgb(var(--ink-300))',
+          fontWeight: 700,
+        }}
+      >
+        <span /><span>Member</span><span>Status</span>
       </div>
       {members.map(m => (
         <MemberLedgerRow

@@ -171,7 +171,7 @@ export function Layout() {
               <Icons.Swords size={24} />
             </div>
             <div>
-              <h1 className="text-4xl font-display font-bold m-0 text-gold-300 select-none">
+              <h1 className="text-2xl sm:text-4xl font-display font-bold m-0 text-gold-300 select-none">
                 {lance.settings?.name ?? lances.currentLance?.name ?? 'The Serrated Claws'}
               </h1>
               <p className="text-xs uppercase tracking-[0.15em] text-ink-100/50 mt-1">Lance Management System</p>
@@ -252,8 +252,8 @@ export function Layout() {
         </div>
       </div></div>
 
-      {/* Tabs */}
-      <nav className="bg-ink-950/50 backdrop-blur border-b border-gold-500/15">
+      {/* Tabs — hidden on mobile (replaced by bottom nav) */}
+      <nav className="hidden sm:block bg-ink-950/50 backdrop-blur border-b border-gold-500/15">
         <div className="relative px-2 sm:px-4">
           <div className="flex overflow-x-auto scrollbar-hide pr-4" role="tablist" ref={(el) => { if (el) { const active = el.querySelector('[aria-selected="true"]') as HTMLElement; if (active) active.scrollIntoView({ inline: 'nearest', block: 'nearest' }); } }}>
             {tabs.flatMap(t => {
@@ -306,7 +306,7 @@ export function Layout() {
       </nav>
 
       {/* Content */}
-      <main className="py-8 sm:py-10 animate-fade-in">
+      <main className="py-8 sm:py-10 pb-24 sm:pb-10 animate-fade-in">
       <div className="page-wrap">
         {lance.loading && <div className="text-ink-100/60 text-center py-20">Loading roster…</div>}
         {lance.error && <ErrorBanner error={lance.error} />}
@@ -421,6 +421,47 @@ export function Layout() {
         )}
       </div></main>
 
+
+      {/* Mobile bottom navigation — visible only on small screens */}
+      <nav
+        className="sm:hidden fixed bottom-0 inset-x-0 z-40 bg-ink-900/95 backdrop-blur-xl border-t border-gold-500/15 flex overflow-x-auto scrollbar-hide"
+        style={{ paddingBottom: 'env(safe-area-inset-bottom)' }}
+      >
+        {tabs.map(t => {
+          const isActive = activeTab === t.id;
+          const accent = t.color ?? 'rgb(212,180,109)';
+          return (
+            <button
+              key={t.id}
+              role="tab"
+              aria-selected={isActive}
+              title={t.label}
+              onClick={() => { setActiveTab(t.id); setSelectedMember(null); if (navigator.vibrate) navigator.vibrate(8); }}
+              className={cx(
+                'flex flex-col items-center justify-center gap-1 flex-shrink-0 px-3 py-2.5 min-w-[60px] transition-colors',
+                isActive ? 'text-gold-300' : 'text-ink-300'
+              )}
+              style={isActive && t.color ? { color: t.color } : undefined}
+            >
+              {t.monogram ? (
+                <span
+                  className="font-display font-bold text-[10px] grid place-items-center rounded w-5 h-5"
+                  style={{
+                    background: `linear-gradient(135deg, ${accent}55, ${accent}20)`,
+                    border: `1px solid ${accent}88`,
+                    color: accent,
+                  }}
+                >
+                  {t.monogram}
+                </span>
+              ) : (
+                <t.Icon size={18} />
+              )}
+              <span className="text-[9px] font-medium tracking-wide uppercase truncate max-w-[56px]">{t.label}</span>
+            </button>
+          );
+        })}
+      </nav>
 
       {showAddHouse && (
         <AddHouseModal

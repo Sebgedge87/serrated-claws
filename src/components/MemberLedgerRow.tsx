@@ -33,8 +33,9 @@ export function MemberLedgerRow({
         tabIndex={0}
         onClick={onView}
         onKeyDown={e => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); onView(); } }}
-        className="grid grid-cols-[36px_1.4fr_90px_1fr_100px_88px_104px] gap-3.5 items-center
-                   px-4 py-2.5 text-sm border-b border-gold-500/8 cursor-pointer
+        className="grid grid-cols-[36px_1fr_auto] sm:grid-cols-[36px_1.4fr_90px_1fr_100px_88px_104px]
+                   gap-2.5 sm:gap-3.5 items-center
+                   px-3 sm:px-4 py-3 sm:py-2.5 text-sm border-b border-gold-500/8 cursor-pointer
                    transition-colors hover:bg-gold-500/5
                    focus:outline-none focus:bg-gold-500/8"
       >
@@ -66,15 +67,15 @@ export function MemberLedgerRow({
           )}
         </div>
 
-        <span className="text-[12px] text-ink-100 truncate">{member.rank ?? '—'}</span>
-        <span className="text-[12px] text-gold-300 truncate">{member.function ?? '—'}</span>
-        <span className="text-[12px] font-mono text-gold-50/85">{income ?? '—'}</span>
+        <span className="hidden sm:block text-[12px] text-ink-100 truncate">{member.rank ?? '—'}</span>
+        <span className="hidden sm:block text-[12px] text-gold-300 truncate">{member.function ?? '—'}</span>
+        <span className="hidden sm:block text-[12px] font-mono text-gold-50/85">{income ?? '—'}</span>
         <div className="overflow-hidden">
           <span className={`pill pill-${member.status.toLowerCase()}`}>{member.status}</span>
         </div>
 
         {/* Actions — stop propagation so row click doesn't fire too */}
-        <div className="flex justify-end gap-1.5" onClick={e => e.stopPropagation()}>
+        <div className="hidden sm:flex justify-end gap-1.5" onClick={e => e.stopPropagation()}>
           <button onClick={onView} className="btn btn-ghost btn-sm" aria-label={`Open ${member.name}`} title="Open character sheet">
             <Icons.BookOpen size={12} />
           </button>
