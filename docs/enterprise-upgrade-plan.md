@@ -1,6 +1,6 @@
 # Serrated Claws ⚔ — Enterprise Upgrade Plan
 
-> From working app to production-ready platform · **10–15 engineering days**
+> From working app to production-ready platform · **12–17 engineering days**
 
 ---
 
@@ -24,7 +24,7 @@
 
 | Area | Detail |
 |---|---|
-| Active bugs | 16 confirmed bugs affecting data display, races, and UX |
+| Active bugs | 25 confirmed bugs affecting data display, races, logic, and UX |
 | Dead/duplicate code | ~1,000 lines across 9 dead files and 3 duplicate components |
 | God component | `Layout.tsx` is 510 lines, passes 8–14 props to every tab |
 | URL routing | All tabs are `activeTab` state — nothing is bookmarkable |
@@ -38,7 +38,7 @@
 
 | Metric | Before | After |
 |---|---|---|
-| Active bugs | **16** | 0 |
+| Active bugs | **25** | 0 |
 | Dead files | **9** | 0 |
 | `Layout.tsx` line count | **510** | < 200 |
 | Max props per tab component | **14** | 3 |
@@ -98,9 +98,9 @@ Apply the same to all six affected tables.
 ---
 
 ## Phase 1 — Bug Fixes
-**3 days · No schema changes · Ship immediately**
+**4 days · No schema changes · Ship immediately**
 
-### All 16 Bugs
+### Logic & Runtime Bugs
 
 | # | Bug | File | Fix |
 |---|---|---|---|
@@ -120,8 +120,22 @@ Apply the same to all six affected tables.
 | 14 | Auth flash — `loading` false before profile resolves | `useAuth.tsx:29` | Track `sessionResolved` + `profileResolved` separately; keep `loading = true` until both done |
 | 15 | BankTab `EditableQty` rapid click race | `BankTab.tsx` | Add `busy` ref, disable buttons during async `onChange`, set in `finally` |
 | 16 | `upsertMember` reads stale inventory from closure | `useLanceData.ts:178–193` | Replace closure read with live Supabase query for the specific item |
+| 17 | Global `super_admin` profile role bypasses per-lance permission | `Layout.tsx:37` | Tighten `isAdmin` — require per-lance role unless viewing own profile; only `super_admin` in the current lance membership should see AdminTab |
+| 18 | Auto-clear attendance fires on every `reload()` including silent ones — races across tabs | `useLanceData.ts:113–121` | Move to a Supabase Edge Function or cron triggered once daily; remove from `reload()` |
+| 19 | `deleteBusiness` doesn't delete `business_owners` rows first | `useLanceData.ts:255–259` | Add `await supabase.from('business_owners').delete().eq('business_id', id)` before deleting the business row |
+| 20 | `joinLance` / `leaveLance` / `createLance` / `regenerateInviteCode` missing `reloadMemberships` in `useCallback` deps | `useLances.ts:54–89` | Extract `reloadMemberships` to a `useCallback` and add it to each dependent callback's dep array |
+| 21 | `AddHouseModal` navigates to client-generated `house.id` before DB confirms PK | `Layout.tsx:469–474` | Await `upsertHouse` return value; use the server-confirmed ID for navigation |
+| 22 | `upsertBardWork` uses `onConflict: 'id'` but new records have no `id` — `created_at` not set | `useLanceData.ts:413` | For new records omit the `id` field so the DB generates it; set `created_at` explicitly or ensure DB default exists |
 
-**Definition of done:** All 16 fixed, `npm run build` clean, no `dangerouslySetInnerHTML` without DOMPurify, settings form pre-populates, treasury rapid clicks produce correct balance.
+### UX & Display Bugs
+
+| # | Bug | File | Fix |
+|---|---|---|---|
+| 23 | BardWorksSection (Chronicles) silently absent for admins who aren't bards | `Layout.tsx:360–365` | Always forward `lanceId`, `onUpsertBardWork`, `onDeleteBardWork` to `HouseTab`; gate add/edit actions inside the section by `canAccessBards`, not the section itself |
+| 24 | CovensTab delete requires `isAdmin && canManage` — admin who doesn't lead a coven can't delete it | `CovensTab.tsx:198–203` | Show delete button for `isAdmin` unconditionally; `canManage` check is only needed for edit actions |
+| 25 | Inventory "Have"/"Need" inputs use `defaultValue` — don't update when data refreshes | `InventoryTab.tsx:344–361` | Change to controlled `value=` with `onChange` handler; hold editable state locally and sync on blur |
+
+**Definition of done:** All 25 fixed, `npm run build` clean, no `dangerouslySetInnerHTML` without DOMPurify, settings form pre-populates, treasury rapid clicks produce correct balance.
 
 ---
 
@@ -284,16 +298,22 @@ DB triggers on `members`, `houses`, `covens`, `events` populate it. AdminTab get
 
 ### 5.3 Missing UI Gaps (no schema changes)
 
-| Gap | Fix |
-|---|---|
-| No "Mark all attending" | One Supabase update, add button to EventsSection in AdminTab |
-| No "Mark event as cleared" in UI | Add checkbox to EventModal (`cleared` field already in `LanceEvent` type) |
-| Tithe not editable from character sheet | Add inline toggle for `tithe_paid` / `tithe_notes` for admins |
-| No assign path in AdminTab UnassignedSection | Add house selection dropdown to UnassignedSection |
-| No error feedback on modal save | Wrap all save handlers in try/catch, display inline error |
-| BardTab hides "New Work" silently | Show explanatory banner when user has no character/bard function |
-| Bard access gated on fragile string match | Add `is_bard_function` boolean to `functions` table |
-| No resend confirmation email | Add "Resend confirmation" link in `SignIn.tsx` calling `supabase.auth.resend()` |
+| Gap | File | Fix |
+|---|---|---|
+| No "Mark all attending" | `AdminTab.tsx` | One Supabase update, add button to EventsSection |
+| No "Mark event as cleared" in UI | `AdminTab.tsx` | Add checkbox to EventModal (`cleared` field already in `LanceEvent` type) |
+| Tithe not editable from character sheet | `CharacterSheetPage.tsx` | Add inline toggle for `tithe_paid` / `tithe_notes` for admins |
+| No assign path in AdminTab UnassignedSection | `AdminTab.tsx` | Add house selection dropdown to UnassignedSection |
+| No error feedback on modal save | Multiple modals | Wrap all save handlers in try/catch, display inline error |
+| BardTab hides "New Work" silently | `BardTab.tsx:140` | Show explanatory banner when user has no character/bard function |
+| Bard access gated on fragile function name string match | `Layout.tsx:39` | Add `is_bard_function` boolean to `functions` table; use that instead of `name.includes('bard')` |
+| No resend confirmation email | `SignIn.tsx` | Add "Resend confirmation" link calling `supabase.auth.resend()` |
+| "Add Person" / "House" buttons visible on every tab | `Layout.tsx:237–246` | Make action bar buttons contextual — hide or change based on active route |
+| HeaderUserMenu lists all tabs on mobile — cluttered with 5+ houses | `HeaderUserMenu.tsx:95–115` | Remove tab list from dropdown; mobile bottom nav already handles this |
+| Inventory sub-tabs missing `aria-selected` | `InventoryTab.tsx:134–145` | Add `aria-selected` and `active` class to match top-level tab pattern |
+| `CreateCharacterScreen` opened with `lanceId!` non-null assertion | `Layout.tsx:490` | Add null guard before rendering `CreateCharacterScreen`; show loading or redirect if `lanceId` is null |
+| "Leave this lance" available even when user is the only admin | `HeaderUserMenu.tsx:167` | Check if user is the sole admin; show warning and require reassigning another admin first |
+| `OverviewTab` uses inline `style={}` throughout — bypasses design tokens | `OverviewTab.tsx` | Migrate all inline styles to Tailwind classes and CSS custom properties to match the rest of the app |
 
 ### 5.4 Pagination / Virtualisation
 
@@ -325,7 +345,7 @@ Reinstall: `npm install -D @playwright/test`
 ## Recommended Sequencing
 
 ```
-Week 1    │ Phase 1 — 16 bug fixes (no schema changes, safe to ship)
+Week 1    │ Phase 1 — 25 bug fixes (no schema changes, safe to ship)
 Week 2    │ Phase 2 — Dead code deletion + component consolidation  
 Week 2–3  │ Phase 3 — LanceContext + URL routing (highest impact)
 Week 3    │ Phase 4 — Supabase security (coordinate DB access)
