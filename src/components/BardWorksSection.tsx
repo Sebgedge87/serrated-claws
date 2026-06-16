@@ -5,6 +5,7 @@ import { BardWorkEditor, renderMarkdown } from '@/components/BardWorkEditor';
 import { exportBardWorkPdf } from '@/lib/parchmentPdf';
 import { cx } from '@/lib/utils';
 import { useConfirm } from '@/components/ConfirmDialog';
+import { useLance } from '@/contexts/LanceContext';
 
 // ── Work type styling ──────────────────────────────────────────────────────────
 
@@ -125,15 +126,11 @@ function WorkCard({ work, data, currentMemberId, isAdmin, onEdit, onDelete }: Wo
 
 interface Props {
   houseId: string;
-  lanceId: string;
-  data: LanceData;
   currentMemberId: string | null;
-  isAdmin: boolean;
-  onUpsertBardWork: (work: Omit<BardWork, 'id' | 'created_at' | 'updated_at'> & { id?: string }) => Promise<void>;
-  onDeleteBardWork: (id: string) => Promise<void>;
 }
 
-export function BardWorksSection({ houseId, lanceId, data, currentMemberId, isAdmin, onUpsertBardWork, onDeleteBardWork }: Props) {
+export function BardWorksSection({ houseId, currentMemberId }: Props) {
+  const { lanceId, data, isAdmin, upsertBardWork: onUpsertBardWork, deleteBardWork: onDeleteBardWork } = useLance();
   const [editorOpen, setEditorOpen] = useState(false);
   const [editingWork, setEditingWork] = useState<BardWork | null>(null);
 

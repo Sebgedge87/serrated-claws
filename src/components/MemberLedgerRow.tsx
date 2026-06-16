@@ -7,21 +7,14 @@ interface Props {
   member: Member;
   isAdmin: boolean;
   houseColor: string;
+  functionName?: string | null;
   onView: () => void;
   onUnassign?: () => Promise<void> | void;
   onDelete?: () => Promise<void> | void;
 }
 
-/**
- * Compact single-line member row for ledger-mode rosters. Click anywhere on
- * the row to open the character sheet; action buttons stopPropagation so
- * they don't double-trigger.
- *
- * Column grid (matches the header in HouseTab.LedgerTable):
- *   [avatar] [name+player] [rank] [function] [income] [status] [actions]
- */
 export function MemberLedgerRow({
-  member, isAdmin, houseColor, onView, onUnassign, onDelete,
+  member, isAdmin, houseColor, functionName, onView, onUnassign, onDelete,
 }: Props) {
   const { confirm, Dialog } = useConfirm();
   const income = formatIncome(member.rings_per_event, member.crowns_per_event, member.thrones_per_event);
@@ -33,8 +26,9 @@ export function MemberLedgerRow({
         tabIndex={0}
         onClick={onView}
         onKeyDown={e => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); onView(); } }}
-        className="grid grid-cols-[36px_1.4fr_90px_1fr_100px_88px_104px] gap-3.5 items-center
-                   px-4 py-2.5 text-sm border-b border-gold-500/8 cursor-pointer
+        className="grid grid-cols-[36px_1fr_auto_auto] sm:grid-cols-[36px_1.4fr_90px_1fr_100px_88px_104px]
+                   gap-2.5 sm:gap-3.5 items-center
+                   px-3 sm:px-4 py-3 sm:py-2.5 text-sm border-b border-gold-500/8 cursor-pointer
                    transition-colors hover:bg-gold-500/5
                    focus:outline-none focus:bg-gold-500/8"
       >
@@ -66,9 +60,9 @@ export function MemberLedgerRow({
           )}
         </div>
 
-        <span className="text-[12px] text-ink-100 truncate">{member.rank ?? '—'}</span>
-        <span className="text-[12px] text-gold-300 truncate">{member.function ?? '—'}</span>
-        <span className="text-[12px] font-mono text-gold-50/85">{income ?? '—'}</span>
+        <span className="hidden sm:block text-[12px] text-ink-100 truncate">{member.rank ?? '—'}</span>
+        <span className="hidden sm:block text-[12px] text-gold-300 truncate">{functionName ?? member.function ?? '—'}</span>
+        <span className="hidden sm:block text-[12px] font-mono text-gold-50/85">{income ?? '—'}</span>
         <div className="overflow-hidden">
           <span className={`pill pill-${member.status.toLowerCase()}`}>{member.status}</span>
         </div>

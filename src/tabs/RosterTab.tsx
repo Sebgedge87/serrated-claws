@@ -1,10 +1,9 @@
 import { useState } from 'react';
-import type { LanceData, Member } from '@/lib/types';
+import type { Member } from '@/lib/types';
 import { SectionHeader } from '@/components/ui/SectionHeader';
+import { useLance } from '@/contexts/LanceContext';
 
 interface Props {
-  data: LanceData;
-  isAdmin: boolean;
   initialFilter?: 'all' | 'nobles';
   onViewMember: (m: Member) => void;
 }
@@ -21,14 +20,17 @@ function statusLabel(status: Member['status']) {
   return 'Inactive';
 }
 
-export function RosterTab({ data, isAdmin: _isAdmin, initialFilter = 'all', onViewMember }: Props) {
+export function RosterTab({ initialFilter = 'all', onViewMember }: Props) {
+  const { data } = useLance();
   const [filter, setFilter] = useState<'all' | 'nobles'>(initialFilter);
   const [search, setSearch] = useState('');
+  const [page, setPage] = useState(0);
+  const PAGE_SIZE = 50;
 
   const houseById = new Map(data.houses.map(h => [h.id, h]));
 
   const q = search.trim().toLowerCase();
-  const members = data.members
+  const allFiltered = data.members
     .filter(m => filter === 'nobles' ? m.is_noble : true)
     .filter(m => {
       if (!q) return true;
@@ -38,12 +40,14 @@ export function RosterTab({ data, isAdmin: _isAdmin, initialFilter = 'all', onVi
         .some(v => v!.toLowerCase().includes(q));
     })
     .sort((a, b) => {
-      // Nobles first, then alphabetical
       if (a.is_noble !== b.is_noble) return a.is_noble ? -1 : 1;
       return a.name.localeCompare(b.name);
     });
 
   const totalAll = data.members.length;
+  const totalPages = Math.ceil(allFiltered.length / PAGE_SIZE);
+  const safePage = Math.min(page, Math.max(0, totalPages - 1));
+  const members = allFiltered.slice(safePage * PAGE_SIZE, (safePage + 1) * PAGE_SIZE);
 
   return (
     <div>
@@ -77,7 +81,7 @@ export function RosterTab({ data, isAdmin: _isAdmin, initialFilter = 'all', onVi
         {(['all', 'nobles'] as const).map(f => (
           <button
             key={f}
-            onClick={() => setFilter(f)}
+            onClick={() => { setFilter(f); setPage(0); }}
             style={{
               display: 'inline-flex',
               alignItems: 'center',
@@ -108,7 +112,7 @@ export function RosterTab({ data, isAdmin: _isAdmin, initialFilter = 'all', onVi
         ))}
         <input
           value={search}
-          onChange={e => setSearch(e.target.value)}
+          onChange={e => { setSearch(e.target.value); setPage(0); }}
           placeholder="Search name, house, rank…"
           className="input"
           style={{ flex: 1, minWidth: '180px' }}
@@ -125,10 +129,10 @@ export function RosterTab({ data, isAdmin: _isAdmin, initialFilter = 'all', onVi
           overflow: 'hidden',
         }}
       >
-        {/* Header row */}
+        {/* Header row — 2-col mobile, 6-col on sm+ */}
         <div
+          className="hidden sm:grid"
           style={{
-            display: 'grid',
             gridTemplateColumns: '3px 1fr 140px 120px 140px 90px',
             background: 'rgb(var(--ink-800))',
             borderBottom: '1px solid var(--line)',
@@ -152,6 +156,19 @@ export function RosterTab({ data, isAdmin: _isAdmin, initialFilter = 'all', onVi
             </div>
           ))}
         </div>
+        <div
+          className="grid sm:hidden"
+          style={{
+            gridTemplateColumns: '3px 1fr 90px',
+            background: 'rgb(var(--ink-800))',
+            borderBottom: '1px solid var(--line)',
+          }}
+        >
+          <div />
+          {['Character', 'Status'].map(col => (
+            <div key={col} className="eyebrow" style={{ padding: '8px 10px', fontSize: '10px', letterSpacing: '0.1em', textTransform: 'uppercase', color: 'rgb(var(--ink-400))' }}>{col}</div>
+          ))}
+        </div>
 
         {members.length === 0 && (
           <div style={{ padding: '32px', textAlign: 'center', color: 'rgb(var(--ink-400))', fontSize: '14px' }}>
@@ -169,14 +186,12 @@ export function RosterTab({ data, isAdmin: _isAdmin, initialFilter = 'all', onVi
               key={m.id}
               onClick={() => onViewMember(m)}
               style={{
-                display: 'grid',
-                gridTemplateColumns: '3px 1fr 140px 120px 140px 90px',
                 borderTop: i === 0 ? 'none' : '1px solid var(--line-soft)',
                 cursor: 'pointer',
                 background: 'transparent',
                 transition: 'background 0.1s',
               }}
-              className="hover:bg-white/[0.025]"
+              className="grid sm:grid-cols-[3px_1fr_140px_120px_140px_90px] grid-cols-[3px_1fr_90px] hover:bg-white/[0.025]"
             >
               {/* House-colour spine */}
               <div style={{ background: spineColor, alignSelf: 'stretch' }} />
@@ -202,8 +217,8 @@ export function RosterTab({ data, isAdmin: _isAdmin, initialFilter = 'all', onVi
                 )}
               </div>
 
-              {/* House */}
-              <div style={{ padding: '12px 12px', display: 'flex', alignItems: 'center' }}>
+              {/* House — hidden on mobile */}
+              <div className="hidden sm:flex" style={{ padding: '12px 12px', alignItems: 'center' }}>
                 {house ? (
                   <span style={{ fontSize: '13px', color: house.primary_color }}>
                     {house.name.replace('House ', '')}
@@ -213,13 +228,13 @@ export function RosterTab({ data, isAdmin: _isAdmin, initialFilter = 'all', onVi
                 )}
               </div>
 
-              {/* Rank */}
-              <div style={{ padding: '12px 12px', display: 'flex', alignItems: 'center' }}>
+              {/* Rank — hidden on mobile */}
+              <div className="hidden sm:flex" style={{ padding: '12px 12px', alignItems: 'center' }}>
                 <span style={{ fontSize: '13px', color: 'rgb(var(--ink-300))' }}>{m.rank ?? '—'}</span>
               </div>
 
-              {/* Role / function */}
-              <div style={{ padding: '12px 12px', display: 'flex', alignItems: 'center' }}>
+              {/* Role / function — hidden on mobile */}
+              <div className="hidden sm:flex" style={{ padding: '12px 12px', alignItems: 'center' }}>
                 <span style={{ fontSize: '13px', color: 'rgb(var(--ink-300))' }}>
                   {m.function ?? m.military_function ?? '—'}
                 </span>
@@ -242,6 +257,24 @@ export function RosterTab({ data, isAdmin: _isAdmin, initialFilter = 'all', onVi
           );
         })}
       </div>
+
+      {totalPages > 1 && (
+        <div className="flex items-center justify-between mt-4 text-sm text-ink-100/60">
+          <span>{allFiltered.length} members · page {safePage + 1} of {totalPages}</span>
+          <div className="flex gap-2">
+            <button
+              onClick={() => setPage(p => Math.max(0, p - 1))}
+              disabled={safePage === 0}
+              className="btn btn-ghost btn-sm"
+            >← Prev</button>
+            <button
+              onClick={() => setPage(p => Math.min(totalPages - 1, p + 1))}
+              disabled={safePage >= totalPages - 1}
+              className="btn btn-ghost btn-sm"
+            >Next →</button>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

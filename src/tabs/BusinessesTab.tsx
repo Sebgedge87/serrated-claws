@@ -7,20 +7,18 @@ import { initials } from '@/lib/utils';
 import { SectionHeader } from '@/components/ui/SectionHeader';
 import { DataRow } from '@/components/ui/DataRow';
 import { CustomSelect } from '@/components/ui/CustomSelect';
+import { useLance } from '@/contexts/LanceContext';
 
 interface Props {
-  data: LanceData;
-  isAdmin: boolean;
   canManageBusiness: (id: string) => boolean;
-  onUpsert: (b: Partial<Business> & { id: string; name: string }) => Promise<void>;
-  onDelete: (id: string) => Promise<void>;
 }
 
 const A = '#7eb0d4';
 
 type DetailForm = Partial<Business> & { owners: string[] };
 
-export function BusinessesTab({ data, isAdmin, canManageBusiness, onUpsert, onDelete }: Props) {
+export function BusinessesTab({ canManageBusiness }: Props) {
+  const { data, isAdmin, upsertBusiness: onUpsert, deleteBusiness: onDelete } = useLance();
   const [selected, setSelected] = useState<string | null>(null);
   const [creating, setCreating] = useState(false);
   const [detailForm, setDetailForm] = useState<DetailForm>({ owners: [] });
@@ -201,8 +199,7 @@ export function BusinessesTab({ data, isAdmin, canManageBusiness, onUpsert, onDe
           <span className="flex-1 min-w-0">Venture</span>
           <span className="w-28 hidden sm:block">Kind</span>
           <span className="w-36 hidden md:block">Proprietor</span>
-          <span className="w-20 text-right hidden sm:block">Income</span>
-          <span className="w-20 text-right">Status</span>
+          <span className="w-20 text-right">Owners</span>
         </div>
 
         {data.businesses.map(b => {
@@ -213,13 +210,7 @@ export function BusinessesTab({ data, isAdmin, canManageBusiness, onUpsert, onDe
               <span className="flex-1 min-w-0 font-display text-[17px] font-semibold text-ink-100 truncate">{b.name}</span>
               <span className="w-28 text-xs text-ink-300 hidden sm:block truncate">{b.type ?? '—'}</span>
               <span className="w-36 text-xs text-ink-300 hidden md:block truncate">{firstOwner ? firstOwner.name : '—'}</span>
-              <span className="w-20 text-right num text-[var(--gold)] hidden sm:block">—</span>
-              <span className="w-20 text-right">
-                <span className="inline-flex items-center gap-1 text-xs text-ink-300">
-                  <span className="w-1.5 h-1.5 rounded-full bg-[color:var(--ok)] flex-shrink-0" />
-                  Active
-                </span>
-              </span>
+              <span className="w-20 text-right text-xs text-ink-300">{owners.length} owner{owners.length !== 1 ? 's' : ''}</span>
             </DataRow>
           );
         })}

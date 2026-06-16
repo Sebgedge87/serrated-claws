@@ -1,14 +1,10 @@
 import { useState } from 'react';
-import type { LanceData } from '@/lib/types';
 import { memberIncomeRings } from '@/lib/utils';
+import { useLance } from '@/contexts/LanceContext';
 
-interface Props {
-  data: LanceData;
-  isAdmin: boolean;
-  onUpsertInventory?: (item: string, current: number, required: number) => Promise<void>;
-}
-
-export function BankTab({ data, isAdmin, onUpsertInventory }: Props) {
+export function BankTab() {
+  const { data, isAdmin, settings, setInventory: onUpsertInventory } = useLance();
+  const lanceName = settings?.name;
   const inv = Object.fromEntries(data.inventory.map(i => [i.item, i]));
   const rings   = inv['Ring']?.current_qty   ?? 0;
   const crowns  = inv['Crown']?.current_qty  ?? 0;
@@ -40,7 +36,7 @@ export function BankTab({ data, isAdmin, onUpsertInventory }: Props) {
         Treasury
       </h2>
       <p style={{ fontFamily: "'Spectral', serif", fontStyle: 'italic', fontSize: '14px', color: 'rgb(var(--ink-300))', marginBottom: '32px' }}>
-        House funds and income — The Serrated Claws
+        House funds and income{lanceName ? ` — ${lanceName}` : ''}
       </p>
 
       <div className="grid grid-cols-[repeat(auto-fit,minmax(300px,1fr))] gap-4 mb-10">
@@ -197,6 +193,48 @@ export function BankTab({ data, isAdmin, onUpsertInventory }: Props) {
           </div>
         </div>
       )}
+
+      {/* Inventory transaction log */}
+      {data.inventoryLog.length > 0 && (
+        <div className="mb-10">
+          <div className="eyebrow mb-3" style={{ fontSize: '10px', letterSpacing: '0.12em', textTransform: 'uppercase' }}>
+            Recent Transactions
+          </div>
+          <div className="card overflow-hidden">
+            <table className="w-full">
+              <thead>
+                <tr className="border-b border-[color:var(--line)]">
+                  <th className="px-4 py-2.5 text-left text-[11px] uppercase tracking-widest font-bold text-ink-100/60">Item</th>
+                  <th className="px-4 py-2.5 text-center text-[11px] uppercase tracking-widest font-bold text-ink-100/60">Direction</th>
+                  <th className="px-4 py-2.5 text-center text-[11px] uppercase tracking-widest font-bold text-ink-100/60">Amount</th>
+                  <th className="px-4 py-2.5 text-left text-[11px] uppercase tracking-widest font-bold text-ink-100/60 hidden sm:table-cell">Notes</th>
+                  <th className="px-4 py-2.5 text-right text-[11px] uppercase tracking-widest font-bold text-ink-100/60 hidden sm:table-cell">Date</th>
+                </tr>
+              </thead>
+              <tbody>
+                {data.inventoryLog.map((entry, idx) => {
+                  const dirColor = entry.direction === 'In' ? 'var(--ok)' : entry.direction === 'Out' ? 'var(--danger)' : 'rgb(var(--ink-300))';
+                  return (
+                    <tr key={entry.id} className={idx > 0 ? 'border-t border-[color:var(--line-soft)]' : ''}>
+                      <td className="px-4 py-2 text-sm font-semibold" style={{ color: 'rgb(var(--ink-100))' }}>{entry.item}</td>
+                      <td className="px-4 py-2 text-center">
+                        <span className="text-xs font-semibold" style={{ color: dirColor }}>{entry.direction}</span>
+                      </td>
+                      <td className="px-4 py-2 text-center">
+                        <span className="num text-sm" style={{ color: dirColor }}>{entry.direction === 'Out' ? '−' : '+'}{entry.amount}</span>
+                      </td>
+                      <td className="px-4 py-2 text-xs text-ink-100/60 hidden sm:table-cell">{entry.notes ?? '—'}</td>
+                      <td className="px-4 py-2 text-xs text-ink-100/50 text-right hidden sm:table-cell">
+                        {new Date(entry.ts).toLocaleDateString()}
+                      </td>
+                    </tr>
+                  );
+                })}
+              </tbody>
+            </table>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
@@ -214,7 +252,7 @@ function EditableQty({ value, onChange }: { value: number; onChange: (v: number)
   return (
     <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '4px' }}>
       <button
-        onClick={() => { const nv = Math.max(0, local - 1); setLocal(nv); commit(nv); }}
+        onClick={async () => { const nv = Math.max(0, local - 1); setLocal(nv); await commit(nv); }}
         disabled={busy || local <= 0}
         style={{ width: '20px', height: '20px', borderRadius: '4px', background: 'rgba(180,50,50,0.2)', color: '#f87171', border: '1px solid rgba(180,50,50,0.3)', fontSize: '14px', lineHeight: 1, cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center' }}
       >−</button>
@@ -226,7 +264,7 @@ function EditableQty({ value, onChange }: { value: number; onChange: (v: number)
         style={{ width: '52px', textAlign: 'center', background: 'transparent', border: 'none', fontFamily: 'inherit', fontSize: '22px', color: 'var(--gold)', fontWeight: 700 }}
       />
       <button
-        onClick={() => { const nv = local + 1; setLocal(nv); commit(nv); }}
+        onClick={async () => { const nv = local + 1; setLocal(nv); await commit(nv); }}
         disabled={busy}
         style={{ width: '20px', height: '20px', borderRadius: '4px', background: 'rgba(109,212,126,0.2)', color: '#6dd47e', border: '1px solid rgba(109,212,126,0.3)', fontSize: '14px', lineHeight: 1, cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center' }}
       >+</button>

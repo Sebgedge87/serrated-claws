@@ -4,6 +4,7 @@ import { useLanceData } from '@/hooks/useLanceData';
 import { useLances } from '@/hooks/useLances';
 import { usePermissions } from '@/hooks/usePermissions';
 import { useTheme } from '@/hooks/useTheme';
+import { LanceProvider } from '@/contexts/LanceContext';
 import { Icons } from '@/components/Icons';
 import { useConfirm } from '@/components/ConfirmDialog';
 import { HeaderUserMenu } from '@/components/HeaderUserMenu';
@@ -34,7 +35,7 @@ export function Layout() {
   const lances = useLances(user?.id ?? null);
   const lance = useLanceData(lances.currentLanceId);
   const perms = usePermissions(lances.currentMembership, lance.data);
-  const isAdmin = lances.currentMembership?.role === 'admin' || lances.currentMembership?.role === 'super_admin' || profile?.role === 'super_admin';
+  const isAdmin = lances.currentMembership?.role === 'admin' || lances.currentMembership?.role === 'super_admin' || (!!lances.currentMembership && profile?.role === 'super_admin');
   const currentMember = lance.data.members.find(m => m.id === (profile?.member_id ?? null));
   const bardFunctionIds = new Set(lance.data.functions.filter(f => f.name.toLowerCase().includes('bard')).map(f => f.id));
   const isBard = !!currentMember?.function && bardFunctionIds.has(currentMember.function);
@@ -157,7 +158,58 @@ export function Layout() {
 
   const currentMembership = lances.currentMembership;
 
+  const lanceContextValue = {
+    lanceId: lances.currentLanceId!,
+    data: lance.data,
+    memberships: lance.memberships,
+    settings: lance.settings,
+    loading: lance.loading,
+    error: lance.error,
+    isAdmin,
+    reload: lance.reload,
+    upsertHouse: lance.upsertHouse,
+    deleteHouse: lance.deleteHouse,
+    upsertMember: lance.upsertMember,
+    unassignMember: lance.unassignMember,
+    deleteMember: lance.deleteMember,
+    upsertBusiness: lance.upsertBusiness,
+    deleteBusiness: lance.deleteBusiness,
+    upsertCoven: lance.upsertCoven,
+    deleteCoven: lance.deleteCoven,
+    upsertFunction: lance.upsertFunction,
+    deleteFunction: lance.deleteFunction,
+    setInventory: lance.setInventory,
+    setInventoryPrice: lance.setInventoryPrice,
+    logInventory: lance.logInventory,
+    upsertProfile: lance.upsertProfile,
+    upsertSettings: lance.upsertSettings,
+    addMembership: lance.addMembership,
+    resetInventoryQty: lance.resetInventoryQty,
+    clearInventoryLog: lance.clearInventoryLog,
+    upsertEvent: lance.upsertEvent,
+    deleteEvent: lance.deleteEvent,
+    clearAttending: lance.clearAttending,
+    upsertCharInventory: lance.upsertCharInventory,
+    deleteCharInventory: lance.deleteCharInventory,
+    upsertCharacterSkill: lance.upsertCharacterSkill,
+    deleteCharacterSkill: lance.deleteCharacterSkill,
+    upsertCharacterRitual: lance.upsertCharacterRitual,
+    deleteCharacterRitual: lance.deleteCharacterRitual,
+    upsertCharacterSpell: lance.upsertCharacterSpell,
+    deleteCharacterSpell: lance.deleteCharacterSpell,
+    upsertMagicItemStock: lance.upsertMagicItemStock,
+    deleteMagicItemStock: lance.deleteMagicItemStock,
+    upsertCraftingQueueItem: lance.upsertCraftingQueueItem,
+    deleteCraftingQueueItem: lance.deleteCraftingQueueItem,
+    upsertCovenRitual: lance.upsertCovenRitual,
+    deleteCovenRitual: lance.deleteCovenRitual,
+    updateCovenMana: lance.updateCovenMana,
+    upsertBardWork: lance.upsertBardWork,
+    deleteBardWork: lance.deleteBardWork,
+  };
+
   return (
+    <LanceProvider value={lanceContextValue}>
     <div className="min-h-screen">
       {/* Header */}
       <header className="relative overflow-hidden border-b border-gold-500/15 bg-gradient-to-br from-ink-900/95 to-ink-800/95">
@@ -171,7 +223,7 @@ export function Layout() {
               <Icons.Swords size={24} />
             </div>
             <div>
-              <h1 className="text-4xl font-display font-bold m-0 text-gold-300 select-none">
+              <h1 className="text-2xl sm:text-4xl font-display font-bold m-0 text-gold-300 select-none">
                 {lance.settings?.name ?? lances.currentLance?.name ?? 'The Serrated Claws'}
               </h1>
               <p className="text-xs uppercase tracking-[0.15em] text-ink-100/50 mt-1">Lance Management System</p>
@@ -245,6 +297,9 @@ export function Layout() {
               </button>
             </>
           )}
+          <button onClick={() => lance.reload(true)} className="btn btn-ghost" title="Refresh data" disabled={lance.loading}>
+            <Icons.Refresh size={16} className={lance.loading ? 'animate-spin' : ''} />
+          </button>
           <button onClick={exportCsv} className="btn btn-ghost" title="Export CSV">
             <Icons.Download size={16} />
             <span className="hidden sm:inline">Export</span>
@@ -252,8 +307,8 @@ export function Layout() {
         </div>
       </div></div>
 
-      {/* Tabs */}
-      <nav className="bg-ink-950/50 backdrop-blur border-b border-gold-500/15">
+      {/* Tabs — hidden on mobile (replaced by bottom nav) */}
+      <nav className="hidden sm:block bg-ink-950/50 backdrop-blur border-b border-gold-500/15">
         <div className="relative px-2 sm:px-4">
           <div className="flex overflow-x-auto scrollbar-hide pr-4" role="tablist" ref={(el) => { if (el) { const active = el.querySelector('[aria-selected="true"]') as HTMLElement; if (active) active.scrollIntoView({ inline: 'nearest', block: 'nearest' }); } }}>
             {tabs.flatMap(t => {
@@ -306,7 +361,7 @@ export function Layout() {
       </nav>
 
       {/* Content */}
-      <main className="py-8 sm:py-10 animate-fade-in">
+      <main className="py-8 sm:py-10 pb-24 sm:pb-10 animate-fade-in">
       <div className="page-wrap">
         {lance.loading && <div className="text-ink-100/60 text-center py-20">Loading roster…</div>}
         {lance.error && <ErrorBanner error={lance.error} />}
@@ -338,14 +393,15 @@ export function Layout() {
 
         {!lance.loading && !lance.error && !selectedMember && (
           <>
-            {activeTab === 'overview' && <OverviewTab data={lance.data} filteredMembers={lance.data.members} isAdmin={isAdmin} onNavigate={setActiveTab} />}
-            {activeTab === 'roster' && <RosterTab data={lance.data} isAdmin={isAdmin} onViewMember={setSelectedMember} />}
+            {activeTab === 'overview' && <OverviewTab data={lance.data} filteredMembers={search.trim() ? lance.data.members.filter(m => [m.name, m.player_name, m.rank, m.function, m.military_function].filter(Boolean).some(v => v!.toLowerCase().includes(search.trim().toLowerCase()))) : lance.data.members} isAdmin={isAdmin} onNavigate={setActiveTab} />}
+            {activeTab === 'roster' && <RosterTab onViewMember={setSelectedMember} />}
             {activeHouse && (
               <HouseTab
                 house={activeHouse}
                 data={lance.data}
                 search={search}
                 isAdmin={isAdmin}
+                currentMemberId={profile?.member_id ?? null}
                 onUpsert={lance.upsertMember}
                 onUnassign={lance.unassignMember}
                 onDelete={lance.deleteMember}
@@ -357,61 +413,18 @@ export function Layout() {
                 onUpsertRitual={lance.upsertCharacterRitual}
                 onDeleteRitual={lance.deleteCharacterRitual}
                 onViewMember={setSelectedMember}
-                {...(canAccessBards ? {
-                  lanceId: lances.currentLanceId ?? '',
-                  currentMemberIdForBard: profile?.member_id ?? null,
-                  onUpsertBardWork: lance.upsertBardWork,
-                  onDeleteBardWork: lance.deleteBardWork,
-                } : {})}
               />
             )}
-            {activeTab === 'covens' && <CovensTab data={lance.data} isAdmin={isAdmin} canManageCoven={perms.canManageCoven} onUpsert={lance.upsertCoven} onDelete={lance.deleteCoven} onUpsertRitual={lance.upsertCovenRitual} onDeleteRitual={lance.deleteCovenRitual} />}
-            {activeTab === 'functions' && <FunctionsTab data={lance.data} isAdmin={isAdmin} canManageFunction={perms.canManageFunction} onUpsert={lance.upsertFunction} onDelete={lance.deleteFunction} />}
-            {activeTab === 'businesses' && <BusinessesTab data={lance.data} isAdmin={isAdmin} canManageBusiness={perms.canManageBusiness} onUpsert={lance.upsertBusiness} onDelete={lance.deleteBusiness} />}
-            {activeTab === 'inventory' && (
-              <InventoryTab
-                data={lance.data}
-                isAdmin={isAdmin}
-                onSetInventory={lance.setInventory}
-                onSetInventoryPrice={lance.setInventoryPrice}
-                onLogInventory={lance.logInventory}
-                onUpsertStock={lance.upsertMagicItemStock}
-                onDeleteStock={lance.deleteMagicItemStock}
-                onUpsertQueue={lance.upsertCraftingQueueItem}
-                onDeleteQueue={lance.deleteCraftingQueueItem}
-              />
-            )}
-            {activeTab === 'treasury' && (
-              <BankTab
-                data={lance.data}
-                isAdmin={isAdmin}
-                onUpsertInventory={lance.setInventory}
-              />
-            )}
-            {activeTab === 'bards' && (
-              <BardTab
-                data={lance.data}
-                lanceId={lances.currentLanceId ?? ''}
-                currentMemberId={profile?.member_id ?? null}
-                isAdmin={isAdmin}
-                onUpsert={lance.upsertBardWork}
-                onDelete={lance.deleteBardWork}
-              />
-            )}
+            {activeTab === 'covens' && <CovensTab canManageCoven={perms.canManageCoven} />}
+            {activeTab === 'functions' && <FunctionsTab canManageFunction={perms.canManageFunction} />}
+            {activeTab === 'businesses' && <BusinessesTab canManageBusiness={perms.canManageBusiness} />}
+            {activeTab === 'inventory' && <InventoryTab />}
+            {activeTab === 'treasury' && <BankTab />}
+            {activeTab === 'bards' && <BardTab currentMemberId={profile?.member_id ?? null} />}
             {activeTab === 'admin' && isAdmin && (
               <AdminTab
-                data={lance.data}
-                memberships={lance.memberships}
-                settings={lance.settings}
                 currentUserId={user!.id}
                 inviteCode={lances.currentLance?.invite_code ?? null}
-                onUpdateProfile={lance.upsertProfile}
-                onUpsertSettings={lance.upsertSettings}
-                onResetInventoryQty={lance.resetInventoryQty}
-                onClearInventoryLog={lance.clearInventoryLog}
-                onUpsertEvent={lance.upsertEvent}
-                onDeleteEvent={lance.deleteEvent}
-                onClearAttending={lance.clearAttending}
                 onRegenerateInviteCode={() => lances.regenerateInviteCode(lances.currentLanceId!)}
                 onDeleteMember={lance.deleteMember}
                 onViewMember={setSelectedMember}
@@ -422,13 +435,55 @@ export function Layout() {
       </div></main>
 
 
+      {/* Mobile bottom navigation — visible only on small screens */}
+      <nav
+        className="sm:hidden fixed bottom-0 inset-x-0 z-40 bg-ink-900/95 backdrop-blur-xl border-t border-gold-500/15 flex overflow-x-auto scrollbar-hide"
+        style={{ paddingBottom: 'env(safe-area-inset-bottom)' }}
+      >
+        {tabs.map(t => {
+          const isActive = activeTab === t.id;
+          const accent = t.color ?? 'rgb(212,180,109)';
+          return (
+            <button
+              key={t.id}
+              role="tab"
+              aria-selected={isActive}
+              title={t.label}
+              onClick={() => { setActiveTab(t.id); setSelectedMember(null); if (navigator.vibrate) navigator.vibrate(8); }}
+              className={cx(
+                'flex flex-col items-center justify-center gap-1 flex-shrink-0 px-3 py-2.5 min-w-[60px] transition-colors',
+                isActive ? 'text-gold-300' : 'text-ink-300'
+              )}
+              style={isActive && t.color ? { color: t.color } : undefined}
+            >
+              {t.monogram ? (
+                <span
+                  className="font-display font-bold text-[10px] grid place-items-center rounded w-5 h-5"
+                  style={{
+                    background: `linear-gradient(135deg, ${accent}55, ${accent}20)`,
+                    border: `1px solid ${accent}88`,
+                    color: accent,
+                  }}
+                >
+                  {t.monogram}
+                </span>
+              ) : (
+                <t.Icon size={18} />
+              )}
+              <span className="text-[9px] font-medium tracking-wide uppercase truncate max-w-[56px]">{t.label}</span>
+            </button>
+          );
+        })}
+      </nav>
+
       {showAddHouse && (
         <AddHouseModal
           onClose={() => setShowAddHouse(false)}
           onSave={async house => {
             await lance.upsertHouse(house);
             setShowAddHouse(false);
-            setActiveTab(house.id);
+            // Navigate to overview; the new house tab appears after data reloads
+            setActiveTab('overview');
           }}
         />
       )}
@@ -454,6 +509,7 @@ export function Layout() {
       )}
       {ConfirmDialog}
     </div>
+    </LanceProvider>
   );
 }
 

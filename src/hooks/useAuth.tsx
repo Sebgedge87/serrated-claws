@@ -24,12 +24,28 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    supabase.auth.getSession().then(({ data }) => {
+    let cancelled = false;
+
+    async function init() {
+      const { data } = await supabase.auth.getSession();
+      if (cancelled) return;
       setSession(data.session);
-      setLoading(false);
+      if (data.session?.user) {
+        const { data: profileData } = await supabase.from('profiles').select('*').eq('id', data.session.user.id).single();
+        if (!cancelled) setProfile((profileData as Profile) ?? null);
+      }
+      if (!cancelled) setLoading(false);
+    }
+
+    init();
+
+    const { data: sub } = supabase.auth.onAuthStateChange((_evt, sess) => {
+      if (!cancelled) setSession(sess);
     });
-    const { data: sub } = supabase.auth.onAuthStateChange((_evt, sess) => setSession(sess));
-    return () => sub.subscription.unsubscribe();
+    return () => {
+      cancelled = true;
+      sub.subscription.unsubscribe();
+    };
   }, []);
 
   useEffect(() => {

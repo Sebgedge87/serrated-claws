@@ -42,14 +42,14 @@ export function useLances(userId: string | null) {
   const currentMembership = memberships.find(m => m.lance_id === currentLanceId) ?? null;
   const currentLance = currentMembership?.lance ?? null;
 
-  async function reloadMemberships() {
+  const reloadMemberships = useCallback(async () => {
     if (!userId) return;
     const { data: ms } = await supabase
       .from('lance_memberships')
       .select('*, lance:lances(*), profile:profiles(email, display_name)')
       .eq('profile_id', userId);
     setMemberships((ms ?? []) as MembershipWithLance[]);
-  }
+  }, [userId]);
 
   const joinLance = useCallback(async (code: string) => {
     const { data, error } = await supabase.rpc('join_lance_by_code', { p_code: code });
@@ -57,14 +57,14 @@ export function useLances(userId: string | null) {
     const lance = data as { id: string } | null;
     await reloadMemberships();
     if (lance) setCurrentLanceId(lance.id);
-  }, [userId]);
+  }, [reloadMemberships]);
 
   const leaveLance = useCallback(async (lanceId: string) => {
     const { error } = await supabase.rpc('leave_lance', { p_lance_id: lanceId });
     if (error) throw new Error(error.message);
     await reloadMemberships();
     setCurrentLanceIdState(null);
-  }, [userId]);
+  }, [reloadMemberships]);
 
   const moveCharacterToLance = useCallback(async (memberId: string, lanceId: string) => {
     const { error } = await supabase.rpc('move_member_to_lance', { p_member_id: memberId, p_target_lance_id: lanceId });
@@ -76,7 +76,7 @@ export function useLances(userId: string | null) {
     if (error) throw new Error(error.message);
     await reloadMemberships();
     return data as string;
-  }, [userId]);
+  }, [reloadMemberships]);
 
   const createLance = useCallback(async (name: string, motto?: string): Promise<string> => {
     const { data, error } = await supabase.rpc('create_lance', { p_name: name, p_motto: motto ?? null });
@@ -86,7 +86,7 @@ export function useLances(userId: string | null) {
     await reloadMemberships();
     setCurrentLanceId(lance.id);
     return lance.id;
-  }, [userId]);
+  }, [reloadMemberships]);
 
   return { memberships, currentLanceId, currentLance, currentMembership, setCurrentLanceId, loading, createLance, joinLance, leaveLance, moveCharacterToLance, regenerateInviteCode };
 }

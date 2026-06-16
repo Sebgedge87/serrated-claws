@@ -7,18 +7,16 @@ import { initials } from '@/lib/utils';
 import { SectionHeader } from '@/components/ui/SectionHeader';
 import { DataRow } from '@/components/ui/DataRow';
 import { CustomSelect } from '@/components/ui/CustomSelect';
+import { useLance } from '@/contexts/LanceContext';
 
 interface Props {
-  data: LanceData;
-  isAdmin: boolean;
   canManageFunction: (id: string) => boolean;
-  onUpsert: (f: Partial<Func> & { id: string; name: string }) => Promise<void>;
-  onDelete: (id: string) => Promise<void>;
 }
 
 const A = '#d4b46d';
 
-export function FunctionsTab({ data, isAdmin, canManageFunction, onUpsert, onDelete }: Props) {
+export function FunctionsTab({ canManageFunction }: Props) {
+  const { data, isAdmin, upsertFunction: onUpsert, deleteFunction: onDelete } = useLance();
   const [selected, setSelected] = useState<string | null>(null);
   const [creating, setCreating] = useState(false);
   const [detailForm, setDetailForm] = useState<Partial<Func>>({});
