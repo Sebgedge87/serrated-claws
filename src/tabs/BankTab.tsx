@@ -1,8 +1,19 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { memberIncomeRings } from '@/lib/utils';
 import { useLance } from '@/contexts/LanceContext';
+import { InventoryTab } from '@/tabs/InventoryTab';
+import { BusinessesTab } from '@/tabs/BusinessesTab';
 
-export function BankTab() {
+type TreasuryView = 'holdings' | 'stock' | 'ventures';
+
+const SUB_TABS: { id: TreasuryView; label: string }[] = [
+  { id: 'holdings', label: 'Holdings' },
+  { id: 'stock', label: 'Stock' },
+  { id: 'ventures', label: 'Ventures' },
+];
+
+export function BankTab({ canManageBusiness }: { canManageBusiness: (id: string) => boolean }) {
+  const [view, setView] = useState<TreasuryView>('holdings');
   const { data, isAdmin, settings, setInventory: onUpsertInventory } = useLance();
   const lanceName = settings?.name;
   const inv = Object.fromEntries(data.inventory.map(i => [i.item, i]));
@@ -35,9 +46,34 @@ export function BankTab() {
       <h2 style={{ fontFamily: "'Cormorant Garamond', serif", fontSize: '38px', fontWeight: 600, lineHeight: 1.1, color: 'var(--gold)', marginBottom: '4px' }}>
         Treasury
       </h2>
-      <p style={{ fontFamily: "'Spectral', serif", fontStyle: 'italic', fontSize: '14px', color: 'rgb(var(--ink-300))', marginBottom: '32px' }}>
+      <p style={{ fontFamily: "'Spectral', serif", fontStyle: 'italic', fontSize: '14px', color: 'rgb(var(--ink-300))', marginBottom: '20px' }}>
         House funds and income{lanceName ? ` — ${lanceName}` : ''}
       </p>
+
+      {/* Sub-tab nav */}
+      <div className="flex gap-1 mb-8 border-b border-gold-500/15 pb-0">
+        {SUB_TABS.map(t => (
+          <button
+            key={t.id}
+            onClick={() => setView(t.id)}
+            className="px-4 py-2 text-sm font-semibold transition-colors relative"
+            style={{
+              color: view === t.id ? 'var(--gold)' : 'rgb(var(--ink-300))',
+              borderBottom: view === t.id ? '2px solid var(--gold)' : '2px solid transparent',
+              marginBottom: '-1px',
+              background: 'none',
+              border: 'none',
+              cursor: 'pointer',
+            }}
+          >
+            {t.label}
+          </button>
+        ))}
+      </div>
+
+      {view === 'stock' && <InventoryTab />}
+      {view === 'ventures' && <BusinessesTab canManageBusiness={canManageBusiness} />}
+      {view !== 'holdings' ? null : (<>
 
       <div className="grid grid-cols-[repeat(auto-fit,minmax(300px,1fr))] gap-4 mb-10">
         {/* Treasury panel */}
@@ -235,6 +271,7 @@ export function BankTab() {
           </div>
         </div>
       )}
+      </>)}
     </div>
   );
 }
@@ -242,6 +279,8 @@ export function BankTab() {
 function EditableQty({ value, onChange }: { value: number; onChange: (v: number) => void }) {
   const [local, setLocal] = useState(value);
   const [busy, setBusy] = useState(false);
+
+  useEffect(() => { setLocal(value); }, [value]);
 
   async function commit(v: number) {
     if (v === value || busy) return;

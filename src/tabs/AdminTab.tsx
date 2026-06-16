@@ -1,6 +1,6 @@
 import { useState, useRef, useEffect } from 'react';
 import { createPortal } from 'react-dom';
-import type { CharInventoryItem, CharacterRitual, CharacterSkill, LanceData, LanceEvent, LanceMembership, LanceSettings, Member, UserRole } from '@/lib/types';
+import type { LanceData, LanceEvent, LanceMembership, LanceSettings, Member, UserRole } from '@/lib/types';
 import { useConfirm } from '@/components/ConfirmDialog';
 import { Icons } from '@/components/Icons';
 import { MemberCard } from '@/components/MemberCard';
@@ -8,6 +8,7 @@ import { initials } from '@/lib/utils';
 import { exportRosterPdf, exportResourcesPdf } from '@/lib/parchmentPdf';
 import { CustomSelect } from '@/components/ui/CustomSelect';
 import { useLance } from '@/contexts/LanceContext';
+import { FunctionsTab } from '@/tabs/FunctionsTab';
 
 interface Props {
   currentUserId: string;
@@ -15,18 +16,13 @@ interface Props {
   onRegenerateInviteCode: () => Promise<string>;
   onDeleteMember?: (id: string) => Promise<void>;
   onViewMember?: (m: Member) => void;
-  onUpsertCharInventory?: (item: Omit<CharInventoryItem, 'id'> & { id?: string }) => Promise<void>;
-  onDeleteCharInventory?: (id: string) => Promise<void>;
-  onUpsertSkill?: (skill: Omit<CharacterSkill, 'id'> & { id?: string }) => Promise<void>;
-  onDeleteSkill?: (id: string) => Promise<void>;
-  onUpsertRitual?: (ritual: Omit<CharacterRitual, 'id'> & { id?: string }) => Promise<void>;
-  onDeleteRitual?: (id: string) => Promise<void>;
+  canManageFunction: (id: string) => boolean;
 }
 
 const A = '#d4b46d';
 const ROLE_COLORS: Record<UserRole, string> = { super_admin: '#f0a040', admin: '#d4b46d', member: '#7eb0d4', viewer: '#9ca3af' };
 
-export function AdminTab({ currentUserId, inviteCode, onRegenerateInviteCode, onDeleteMember, onViewMember }: Props) {
+export function AdminTab({ currentUserId, inviteCode, onRegenerateInviteCode, onDeleteMember, onViewMember, canManageFunction }: Props) {
   const { data, memberships, settings, isAdmin: _isAdmin, upsertProfile: onUpdateProfile, upsertSettings: onUpsertSettings, resetInventoryQty: onResetInventoryQty, clearInventoryLog: onClearInventoryLog, upsertEvent: onUpsertEvent, deleteEvent: onDeleteEvent, clearAttending: onClearAttending } = useLance();
   const currentRole = memberships.find(m => m.profile_id === currentUserId)?.role ?? 'admin';
   const isSuperAdmin = currentRole === 'super_admin';
@@ -46,9 +42,12 @@ export function AdminTab({ currentUserId, inviteCode, onRegenerateInviteCode, on
         </div>
       </div>
 
-      <StatsSection data={data} memberships={memberships} isSuperAdmin={isSuperAdmin} />
       <UnassignedSection data={data} isAdmin onDelete={onDeleteMember} onViewMember={onViewMember} />
       <EventsSection events={data.events} data={data} onUpsert={onUpsertEvent} onDelete={onDeleteEvent} onClearAttending={onClearAttending} />
+      <section>
+        <SectionHeading icon={<Icons.Swords size={16} />} title="Functions" />
+        <FunctionsTab canManageFunction={canManageFunction} />
+      </section>
       <SettingsSection settings={settings} onSave={onUpsertSettings} />
       <RolesSection memberships={memberships} data={data} currentUserId={currentUserId} currentRole={currentRole} inviteCode={inviteCode} onUpdateProfile={onUpdateProfile} onRegenerateInviteCode={onRegenerateInviteCode} />
       {isSuperAdmin && <ExportSection data={data} memberships={memberships} />}
@@ -76,90 +75,17 @@ function UnassignedSection({ data, isAdmin, onDelete, onViewMember }: { data: La
 
 // ── Stats ─────────────────────────────────────────────────────────────────────
 
-function StatsSection({ data, memberships, isSuperAdmin }: { data: LanceData; memberships: LanceMembership[]; isSuperAdmin: boolean }) {
-  const active = data.members.filter(m => m.status === 'active').length;
-  const inactive = data.members.filter(m => m.status === 'inactive').length;
-  const kia = data.members.filter(m => m.status === 'KIA').length;
-  const shortfalls = data.inventory.filter(v => v.required_qty > v.current_qty).length;
-  const superAdminCount = memberships.filter(m => m.role === 'super_admin').length;
-  const adminCount = memberships.filter(m => m.role === 'admin').length;
-  const memberCount = memberships.filter(m => m.role === 'member').length;
-  const viewerCount = memberships.filter(m => m.role === 'viewer').length;
-  const linkedActive = memberships.filter(m =>
-    m.member_id && data.members.find(mem => mem.id === m.member_id && mem.status === 'active')
-  ).length;
-
-  const houseRows = data.houses.map(h => ({
-    name: h.name,
-    count: data.members.filter(m => m.house_id === h.id).length,
-    color: h.primary_color
-  }));
-  const unassigned = data.members.filter(m => !m.house_id).length;
-
-  return (
-    <section>
-      <SectionHeading icon={<Icons.House size={16} />} title="Overview" />
-      <div className="grid grid-cols-[repeat(auto-fill,minmax(200px,1fr))] gap-4 mb-6">
-        <StatCard label="Total Members" value={data.members.length} sub={`${active} active · ${inactive} inactive · ${kia} KIA`} color={A} />
-        <StatCard label="Houses" value={data.houses.length} sub={`${unassigned} unassigned member${unassigned !== 1 ? 's' : ''}`} color="#7eb0d4" />
-        <StatCard label="User Accounts" value={memberships.length}
-          sub={isSuperAdmin
-            ? `${linkedActive} active · ${superAdminCount > 0 ? `${superAdminCount} super · ` : ''}${adminCount} admin · ${memberCount} member · ${viewerCount} viewer`
-            : `${adminCount} admin · ${memberCount} member · ${viewerCount} viewer`}
-          color="#b56eb5" />
-        <StatCard label="Inventory" value={data.inventory.filter(v => v.current_qty > 0).length + ' held'} sub={shortfalls > 0 ? `${shortfalls} shortfall${shortfalls !== 1 ? 's' : ''}` : 'No shortfalls'} color={shortfalls > 0 ? '#f87171' : '#6dd47e'} />
-      </div>
-
-      {houseRows.length > 0 && (
-        <div className="card overflow-hidden">
-          <table className="w-full">
-            <thead className="bg-gold-500/10">
-              <tr>
-                <th className="px-4 py-2.5 text-[11px] uppercase tracking-widest font-bold text-left text-ink-100">House</th>
-                <th className="px-4 py-2.5 text-[11px] uppercase tracking-widest font-bold text-right text-ink-100">Members</th>
-                <th className="px-4 py-2.5 text-[11px] uppercase tracking-widest font-bold text-left text-ink-100 w-48">Share</th>
-              </tr>
-            </thead>
-            <tbody>
-              {houseRows.map((h, i) => (
-                <tr key={h.name} className={i > 0 ? 'border-t border-gold-500/10' : ''}>
-                  <td className="px-4 py-2.5 font-semibold text-sm">{h.name}</td>
-                  <td className="px-4 py-2.5 text-right font-bold text-sm">{h.count}</td>
-                  <td className="px-4 py-2.5">
-                    <div className="h-2 rounded-full overflow-hidden bg-black/30 w-40">
-                      <div className="h-full rounded-full" style={{ width: `${data.members.length ? (h.count / data.members.length) * 100 : 0}%`, background: h.color || A }} />
-                    </div>
-                  </td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        </div>
-      )}
-    </section>
-  );
-}
-
-function StatCard({ label, value, sub, color }: { label: string; value: string | number; sub: string; color: string }) {
-  return (
-    <div className="card p-5" style={{ borderTop: `2px solid ${color}50` }}>
-      <div className="text-[10px] uppercase tracking-widest text-ink-100/50 font-semibold mb-1">{label}</div>
-      <div className="text-3xl font-display font-bold mb-1" style={{ color }}>{value}</div>
-      <div className="text-xs text-ink-100/50">{sub}</div>
-    </div>
-  );
-}
-
-// ── Settings ──────────────────────────────────────────────────────────────────
-
 // ── Events ────────────────────────────────────────────────────────────────────
 
 function EventsSection({ events, data, onUpsert, onDelete, onClearAttending }: { events: LanceEvent[]; data: LanceData; onUpsert: (ev: Partial<LanceEvent> & { name: string; start_date: string }) => Promise<void>; onDelete: (id: string) => Promise<void>; onClearAttending: () => Promise<void> }) {
   const [editing, setEditing] = useState<Partial<LanceEvent> | null>(null);
   const { confirm, Dialog: ConfirmDialog } = useConfirm();
   const today = new Date(); today.setHours(0, 0, 0, 0);
-  const attendingMembers = data.members.filter(m => m.attending_event);
-  const nextEvent = events.find(ev => !ev.cleared);
+  const attendingMembers = data.members.filter(m => m.attending_event === true);
+  const nextEvent = [...events]
+    .filter(ev => !ev.cleared)
+    .sort((a, b) => a.start_date.localeCompare(b.start_date))
+    .find(ev => new Date(ev.start_date) >= today);
 
   function fmtDate(d: string) {
     return new Date(d).toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: '2-digit' });

@@ -117,7 +117,7 @@ export function useLanceData(lanceId: string | null) {
             const clearAfter = new Date(ev.end_date ?? ev.start_date);
             clearAfter.setDate(clearAfter.getDate() + 1);
             if (today >= clearAfter) {
-              await supabase.from('members').update({ attending_event: false }).eq('attending_event', true).eq('lance_id', lanceId);
+              await supabase.from('members').update({ attending_event: null }).eq('attending_event', true).eq('lance_id', lanceId);
               await supabase.from('events').update({ cleared: true }).eq('id', ev.id);
             }
           }
@@ -327,7 +327,7 @@ export function useLanceData(lanceId: string | null) {
   }, [lanceId, reload]);
 
   const clearAttending = useCallback(async () => {
-    const { error: err } = await supabase.from('members').update({ attending_event: false }).eq('attending_event', true).eq('lance_id', lanceId);
+    const { error: err } = await supabase.from('members').update({ attending_event: null }).eq('lance_id', lanceId);
     if (err) throw new Error(err.message);
     await reload(true);
   }, [lanceId, reload]);

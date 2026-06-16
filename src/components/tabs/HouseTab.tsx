@@ -29,9 +29,10 @@ interface Props {
   onUpsertRitual?: (ritual: Omit<CharacterRitual, 'id'> & { id?: string }) => Promise<void>;
   onDeleteRitual?: (id: string) => Promise<void>;
   onViewMember?: (m: Member) => void;
+  onBack?: () => void;
 }
 
-export function HouseTab({ house, data, search, isAdmin, currentMemberId, onUpsert, onUnassign, onDelete, onDeleteHouse, onUpsertCharInventory, onDeleteCharInventory, onUpsertSkill, onDeleteSkill, onUpsertRitual, onDeleteRitual, onViewMember }: Props) {
+export function HouseTab({ house, data, search, isAdmin, currentMemberId, onUpsert, onUnassign, onDelete, onDeleteHouse, onUpsertCharInventory, onDeleteCharInventory, onUpsertSkill, onDeleteSkill, onUpsertRitual, onDeleteRitual, onViewMember, onBack }: Props) {
   const { confirm, Dialog: ConfirmDialog } = useConfirm();
   const [editing, setEditing] = useState<Member | null>(null);
   const [view, setView] = useState<ViewMode>(() => {
@@ -53,6 +54,12 @@ export function HouseTab({ house, data, search, isAdmin, currentMemberId, onUpse
       {/* House-colour top rule */}
       <div style={{ height: '2px', background: `linear-gradient(90deg, ${c}, transparent)` }} />
       <div className="hairline-fade" />
+
+      {onBack && (
+        <button onClick={onBack} className="btn btn-ghost btn-sm mb-3 mt-2">
+          ← Houses
+        </button>
+      )}
 
       {/* Masthead */}
       <div className="flex items-center gap-3.5 mb-2 mt-3">
