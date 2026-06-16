@@ -12,9 +12,11 @@ const SUB_TABS: { id: TreasuryView; label: string }[] = [
   { id: 'ventures', label: 'Ventures' },
 ];
 
-export function BankTab({ canManageBusiness }: { canManageBusiness: (id: string) => boolean }) {
-  const [view, setView] = useState<TreasuryView>('holdings');
-  const { data, isAdmin, settings, setInventory: onUpsertInventory } = useLance();
+export function BankTab({ canManageBusiness, initialView }: { canManageBusiness: (id: string) => boolean; initialView?: TreasuryView }) {
+  const [view, setView] = useState<TreasuryView>(initialView ?? 'holdings');
+  const [collectBusy, setCollectBusy] = useState(false);
+  const [collectError, setCollectError] = useState<string | null>(null);
+  const { data, isAdmin, settings, setInventory: onUpsertInventory, logInventory: onLogInventory } = useLance();
   const lanceName = settings?.name;
   const inv = Object.fromEntries(data.inventory.map(i => [i.item, i]));
   const rings   = inv['Ring']?.current_qty   ?? 0;
@@ -28,6 +30,44 @@ export function BankTab({ canManageBusiness }: { canManageBusiness: (id: string)
     0,
   );
   const tithingRings = Math.round(grossIncomeRings * 0.1);
+
+  // Attending members who have stipends — used for tithe collection
+  const attendingIncomeMembers = data.members.filter(
+    m => m.attending_event === true && memberIncomeRings(m.rings_per_event, m.crowns_per_event, m.thrones_per_event) > 0
+  );
+  const attendingTitheRings = Math.round(
+    attendingIncomeMembers.reduce((s, m) => s + memberIncomeRings(m.rings_per_event, m.crowns_per_event, m.thrones_per_event), 0) * 0.1
+  );
+
+  async function collectTithe() {
+    if (!onLogInventory) return;
+    setCollectBusy(true);
+    setCollectError(null);
+    try {
+      // Distribute tithe amount across Ring/Crown/Throne denominations
+      // First convert total tithe rings into largest denominations possible
+      let remaining = attendingTitheRings;
+      const newThrones = Math.floor(remaining / 160);
+      remaining -= newThrones * 160;
+      const newCrowns = Math.floor(remaining / 20);
+      remaining -= newCrowns * 20;
+      const newRings = remaining;
+
+      const eventName = data.events.filter(ev => !ev.cleared)
+        .sort((a, b) => a.start_date.localeCompare(b.start_date))
+        .find(ev => new Date(ev.start_date) >= new Date(new Date().toDateString()))?.name ?? 'event';
+
+      const note = `Tithe from ${attendingIncomeMembers.length} attending member${attendingIncomeMembers.length !== 1 ? 's' : ''} — ${eventName}`;
+
+      if (newRings > 0)   await onLogInventory('Ring',   newRings,   'In', note);
+      if (newCrowns > 0)  await onLogInventory('Crown',  newCrowns,  'In', note);
+      if (newThrones > 0) await onLogInventory('Throne', newThrones, 'In', note);
+    } catch (e) {
+      setCollectError((e as Error).message);
+    } finally {
+      setCollectBusy(false);
+    }
+  }
 
   const incomeMembers = data.members
     .filter(m => memberIncomeRings(m.rings_per_event, m.crowns_per_event, m.thrones_per_event) > 0)
@@ -137,6 +177,35 @@ export function BankTab({ canManageBusiness }: { canManageBusiness: (id: string)
                   {' · '}
                   <span className="num">{(grossIncomeRings / 160).toFixed(2)} t</span>
                 </span>
+              </div>
+            )}
+            {isAdmin && (
+              <div style={{ marginTop: '12px', borderTop: '1px solid var(--line-soft)', paddingTop: '12px' }}>
+                <div style={{ marginBottom: '6px', color: 'rgb(var(--ink-300))' }}>
+                  {attendingIncomeMembers.length} member{attendingIncomeMembers.length !== 1 ? 's' : ''} attending with stipend
+                  {attendingTitheRings > 0 && (
+                    <span className="num" style={{ color: 'var(--ok)', marginLeft: '6px' }}>+{attendingTitheRings} rings tithe</span>
+                  )}
+                </div>
+                <button
+                  onClick={collectTithe}
+                  disabled={collectBusy || attendingTitheRings === 0}
+                  style={{
+                    padding: '6px 14px',
+                    borderRadius: '6px',
+                    background: attendingTitheRings > 0 ? 'rgba(109,212,126,0.15)' : 'rgba(255,255,255,0.05)',
+                    color: attendingTitheRings > 0 ? 'var(--ok)' : 'rgb(var(--ink-400))',
+                    border: `1px solid ${attendingTitheRings > 0 ? 'rgba(109,212,126,0.3)' : 'var(--line)'}`,
+                    fontSize: '12px',
+                    fontWeight: 600,
+                    cursor: attendingTitheRings > 0 ? 'pointer' : 'default',
+                    fontFamily: 'inherit',
+                    opacity: collectBusy ? 0.6 : 1,
+                  }}
+                >
+                  {collectBusy ? 'Collecting…' : 'Collect Event Tithe'}
+                </button>
+                {collectError && <div style={{ marginTop: '6px', color: 'var(--danger)', fontSize: '11px' }}>{collectError}</div>}
               </div>
             )}
           </div>

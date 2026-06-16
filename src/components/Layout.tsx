@@ -35,6 +35,7 @@ export function Layout() {
   const isAdmin = lances.currentMembership?.role === 'admin' || lances.currentMembership?.role === 'super_admin' || (!!lances.currentMembership && profile?.role === 'super_admin');
   const [activeTab, setActiveTab] = useState<TabId>('overview');
   const [activeHouse, setActiveHouse] = useState<House | null>(null);
+  const [treasuryView, setTreasuryView] = useState<'holdings' | 'stock' | 'ventures'>('holdings');
   const [search, setSearch] = useState('');
   const [searchOpen, setSearchOpen] = useState(false);
   const searchRef = useRef<HTMLDivElement>(null);
@@ -405,7 +406,8 @@ export function Layout() {
                   // Map legacy IDs that no longer exist as top-level tabs
                   const house = lance.data.houses.find(h => h.id === id);
                   if (house) { setActiveTab('houses'); setActiveHouse(house); return; }
-                  if (id === 'inventory' || id === 'businesses') { setActiveTab('treasury'); setActiveHouse(null); return; }
+                  if (id === 'inventory') { setActiveTab('treasury'); setTreasuryView('stock'); setActiveHouse(null); return; }
+                  if (id === 'businesses') { setActiveTab('treasury'); setTreasuryView('ventures'); setActiveHouse(null); return; }
                   setActiveTab(id as TabId);
                   setActiveHouse(null);
                 }}
@@ -439,7 +441,7 @@ export function Layout() {
               );
             })()}
             {activeTab === 'covens' && <CovensTab canManageCoven={perms.canManageCoven} />}
-            {activeTab === 'treasury' && <BankTab canManageBusiness={perms.canManageBusiness} />}
+            {activeTab === 'treasury' && <BankTab canManageBusiness={perms.canManageBusiness} initialView={treasuryView} />}
             {activeTab === 'admin' && isAdmin && (
               <AdminTab
                 currentUserId={user!.id}
