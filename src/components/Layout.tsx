@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useRef, useState } from 'react';
 import { useAuth } from '@/hooks/useAuth';
 import { useLanceData } from '@/hooks/useLanceData';
 import { useLances } from '@/hooks/useLances';
@@ -11,24 +11,21 @@ import { HeaderUserMenu } from '@/components/HeaderUserMenu';
 import { LanceGate } from '@/components/LanceGate';
 import { OverviewTab } from '@/components/tabs/OverviewTab';
 import { HouseTab } from '@/components/tabs/HouseTab';
+import { HousesTab } from '@/tabs/HousesTab';
 import { CovensTab } from '@/tabs/CovensTab';
-import { FunctionsTab } from '@/tabs/FunctionsTab';
-import { BusinessesTab } from '@/tabs/BusinessesTab';
-import { InventoryTab } from '@/tabs/InventoryTab';
 import { AdminTab } from '@/tabs/AdminTab';
 import { BankTab } from '@/tabs/BankTab';
-import { BardTab } from '@/tabs/BardTab';
-import { RosterTab } from '@/tabs/RosterTab';
+import { AttendingBanner } from '@/components/AttendingBanner';
 import { AddHouseModal } from '@/components/modals/AddHouseModal';
 import { AddPersonModal } from '@/components/modals/AddPersonModal';
 import { CharacterSheetPage } from '@/components/CharacterSheetPage';
 import { CreateCharacterScreen } from '@/components/CreateCharacterScreen';
-import { cx, monogramOf } from '@/lib/utils';
-import type { Member } from '@/lib/types';
+import { cx } from '@/lib/utils';
+import type { House, Member } from '@/lib/types';
 
 const WIKI_URL = 'https://www.profounddecisions.co.uk/empire-wiki/Skills';
 
-type TabId = 'overview' | 'roster' | 'covens' | 'functions' | 'businesses' | 'inventory' | 'treasury' | 'admin' | 'bards' | string;
+type TabId = 'overview' | 'houses' | 'covens' | 'treasury' | 'admin';
 
 export function Layout() {
   const { user, profile, signOut } = useAuth();
@@ -36,12 +33,11 @@ export function Layout() {
   const lance = useLanceData(lances.currentLanceId);
   const perms = usePermissions(lances.currentMembership, lance.data);
   const isAdmin = lances.currentMembership?.role === 'admin' || lances.currentMembership?.role === 'super_admin' || (!!lances.currentMembership && profile?.role === 'super_admin');
-  const currentMember = lance.data.members.find(m => m.id === (profile?.member_id ?? null));
-  const bardFunctionIds = new Set(lance.data.functions.filter(f => f.name.toLowerCase().includes('bard')).map(f => f.id));
-  const isBard = !!currentMember?.function && bardFunctionIds.has(currentMember.function);
-  const canAccessBards = isAdmin || isBard;
   const [activeTab, setActiveTab] = useState<TabId>('overview');
+  const [activeHouse, setActiveHouse] = useState<House | null>(null);
   const [search, setSearch] = useState('');
+  const [searchOpen, setSearchOpen] = useState(false);
+  const searchRef = useRef<HTMLDivElement>(null);
   const [showAddHouse, setShowAddHouse] = useState(false);
   const [showAddPerson, setShowAddPerson] = useState(false);
   const [selectedMember, setSelectedMember] = useState<Member | null>(null);
@@ -49,36 +45,24 @@ export function Layout() {
   const { Dialog: ConfirmDialog } = useConfirm();
   const { theme, toggleTheme } = useTheme();
 
-
-  type TabDef = {
-    id: string;
-    label: string;
-    Icon: typeof Icons.House;
-    /** house primary_color, drives both monogram tile and active underline */
-    color?: string;
-    /** 2-letter house monogram (renders instead of an icon when set) */
-    monogram?: string;
-    /** renders a thin vertical divider before this tab to separate clusters */
-    separator?: boolean;
-  };
+  type TabDef = { id: TabId; label: string; Icon: typeof Icons.House };
   const tabs: TabDef[] = [
     { id: 'overview', label: 'Overview', Icon: Icons.House },
-    { id: 'roster', label: 'Roster', Icon: Icons.Users },
-    ...lance.data.houses.map(h => ({
-      id: h.id,
-      label: h.name.replace('House ', ''),
-      Icon: Icons.Shield,
-      color: h.primary_color,
-      monogram: monogramOf(h.name),
-    })),
-    { id: 'covens', label: 'Covens', Icon: Icons.Sparkles },
-    { id: 'functions', label: 'Functions', Icon: Icons.Swords },
-    { id: 'businesses', label: 'Businesses', Icon: Icons.Briefcase },
-    { id: 'inventory', label: 'Inventory', Icon: Icons.Package, separator: true },
-    { id: 'treasury', label: 'Treasury', Icon: Icons.Coins, separator: true },
-    ...(canAccessBards ? [{ id: 'bards', label: 'Bards', Icon: Icons.Feather } as TabDef] : []),
-    ...(isAdmin ? [{ id: 'admin', label: 'Admin', Icon: Icons.Shield } as TabDef] : [])
+    { id: 'houses',   label: 'Houses',   Icon: Icons.Shield },
+    { id: 'covens',   label: 'Covens',   Icon: Icons.Sparkles },
+    { id: 'treasury', label: 'Treasury', Icon: Icons.Coins },
+    ...(isAdmin ? [{ id: 'admin' as TabId, label: 'Admin', Icon: Icons.Shield }] : []),
   ];
+
+  // Global search results
+  const q = search.trim().toLowerCase();
+  const searchResults = q.length >= 2 ? {
+    members: lance.data.members.filter(m =>
+      [m.name, m.player_name, m.rank].filter(Boolean).some(v => v!.toLowerCase().includes(q))
+    ).slice(0, 6),
+    houses: lance.data.houses.filter(h => h.name.toLowerCase().includes(q)).slice(0, 4),
+    covens: lance.data.covens.filter(c => c.name.toLowerCase().includes(q)).slice(0, 3),
+  } : null;
 
   function exportCsv() {
     const q = (v: unknown) => `"${String(v ?? '').replace(/"/g, '""')}"`;
@@ -135,8 +119,6 @@ export function Layout() {
     a.download = `serrated-claws-${new Date().toISOString().split('T')[0]}.csv`;
     a.click();
   }
-
-  const activeHouse = lance.data.houses.find(h => h.id === activeTab);
 
   // Show LanceGate if no lance is selected or user has no memberships
   const gate = !lances.loading && (lances.memberships.length === 0 || (!lances.currentLanceId && lances.memberships.length > 1));
@@ -262,7 +244,7 @@ export function Layout() {
               onSignOut={signOut}
               wikiUrl={WIKI_URL}
               navTabs={tabs.map(t => ({ id: t.id, label: t.label, active: activeTab === t.id }))}
-              onNavigate={id => { setActiveTab(id); setSelectedMember(null); }}
+              onNavigate={id => { setActiveTab(id as TabId); setSelectedMember(null); setActiveHouse(null); }}
             />
             <button onClick={toggleTheme} className="btn btn-ghost btn-sm" title={theme === 'dark' ? 'Switch to light mode' : 'Switch to dark mode'}>
               {theme === 'dark' ? <Icons.Sun size={14} /> : <Icons.Moon size={14} />}
@@ -274,14 +256,62 @@ export function Layout() {
       {/* Action bar */}
       <div className="sticky top-0 z-40 bg-ink-900/40 backdrop-blur-xl border-b border-gold-500/15">
       <div className="page-wrap py-3 flex gap-3 items-center">
-        <div className="relative flex-1 min-w-[160px]">
+        <div className="relative flex-1 min-w-[160px]" ref={searchRef}>
           <Icons.Search size={18} className="absolute left-3.5 top-1/2 -translate-y-1/2 text-ink-100/40 pointer-events-none" />
           <input
             value={search}
-            onChange={e => setSearch(e.target.value)}
-            placeholder="Search members, ranks, functions…"
+            onChange={e => { setSearch(e.target.value); setSearchOpen(true); }}
+            onFocus={() => setSearchOpen(true)}
+            onBlur={() => setTimeout(() => setSearchOpen(false), 150)}
+            placeholder="Search members, houses, covens…"
             className="input pl-11"
           />
+          {searchOpen && searchResults && (
+            <div className="absolute top-full left-0 right-0 mt-1 z-50 card border border-gold-500/20 overflow-hidden shadow-2xl" style={{ maxHeight: '360px', overflowY: 'auto' }}>
+              {searchResults.members.length === 0 && searchResults.houses.length === 0 && searchResults.covens.length === 0 && (
+                <div className="px-4 py-3 text-sm text-ink-100/40">No results for "{search}"</div>
+              )}
+              {searchResults.members.length > 0 && (
+                <>
+                  <div className="px-3 py-1.5 text-[10px] uppercase tracking-widest text-ink-100/40 font-semibold border-b border-gold-500/10">Members</div>
+                  {searchResults.members.map(m => (
+                    <button key={m.id} className="w-full text-left px-3 py-2.5 hover:bg-white/5 flex items-center gap-2.5 border-b border-gold-500/8 last:border-0 transition-colors"
+                      onMouseDown={() => { setSelectedMember(m); setSearch(''); setSearchOpen(false); }}>
+                      <Icons.Users size={13} className="text-gold-300/60 flex-shrink-0" />
+                      <div className="min-w-0">
+                        <div className="text-sm text-ink-100 truncate">{m.name}</div>
+                        {m.player_name && <div className="text-xs text-ink-100/40 truncate">{m.player_name}</div>}
+                      </div>
+                    </button>
+                  ))}
+                </>
+              )}
+              {searchResults.houses.length > 0 && (
+                <>
+                  <div className="px-3 py-1.5 text-[10px] uppercase tracking-widest text-ink-100/40 font-semibold border-b border-gold-500/10">Houses</div>
+                  {searchResults.houses.map(h => (
+                    <button key={h.id} className="w-full text-left px-3 py-2.5 hover:bg-white/5 flex items-center gap-2.5 border-b border-gold-500/8 last:border-0 transition-colors"
+                      onMouseDown={() => { setActiveTab('houses'); setActiveHouse(h); setSearch(''); setSearchOpen(false); setSelectedMember(null); }}>
+                      <Icons.Shield size={13} className="text-gold-300/60 flex-shrink-0" />
+                      <span className="text-sm text-ink-100 truncate">{h.name}</span>
+                    </button>
+                  ))}
+                </>
+              )}
+              {searchResults.covens.length > 0 && (
+                <>
+                  <div className="px-3 py-1.5 text-[10px] uppercase tracking-widest text-ink-100/40 font-semibold border-b border-gold-500/10">Covens</div>
+                  {searchResults.covens.map(c => (
+                    <button key={c.id} className="w-full text-left px-3 py-2.5 hover:bg-white/5 flex items-center gap-2.5 border-b border-gold-500/8 last:border-0 transition-colors"
+                      onMouseDown={() => { setActiveTab('covens'); setSearch(''); setSearchOpen(false); setSelectedMember(null); }}>
+                      <Icons.Sparkles size={13} className="text-gold-300/60 flex-shrink-0" />
+                      <span className="text-sm text-ink-100 truncate">{c.name}</span>
+                    </button>
+                  ))}
+                </>
+              )}
+            </div>
+          )}
         </div>
         {/* Button group — wraps as a unit so nothing strands on its own row */}
         <div className="flex gap-2 items-center flex-shrink-0">
@@ -309,56 +339,29 @@ export function Layout() {
 
       {/* Tabs — hidden on mobile (replaced by bottom nav) */}
       <nav className="hidden sm:block bg-ink-950/50 backdrop-blur border-b border-gold-500/15">
-        <div className="relative px-2 sm:px-4">
-          <div className="flex overflow-x-auto scrollbar-hide pr-4" role="tablist" ref={(el) => { if (el) { const active = el.querySelector('[aria-selected="true"]') as HTMLElement; if (active) active.scrollIntoView({ inline: 'nearest', block: 'nearest' }); } }}>
-            {tabs.flatMap(t => {
+        <div className="page-wrap">
+          <div className="flex" role="tablist">
+            {tabs.map(t => {
               const isActive = activeTab === t.id;
-              const accent = t.color ?? 'rgb(212,180,109)'; // gold-300 fallback
-              const btn = (
+              return (
                 <button
                   key={t.id}
                   role="tab"
                   aria-selected={isActive}
-                  title={t.label}
-                  onClick={() => { setActiveTab(t.id); setSelectedMember(null); }}
+                  onClick={() => { setActiveTab(t.id); setSelectedMember(null); if (t.id !== 'houses') setActiveHouse(null); }}
                   className={cx('tab-btn', isActive && 'active')}
-                  /* House-coloured underline/text when the tab is a house and active */
-                  style={isActive && t.color
-                    ? { color: t.color, borderBottomColor: t.color }
-                    : undefined}
                 >
-                  {t.monogram ? (
-                    <span
-                      aria-hidden="true"
-                      className="font-display font-bold text-[10px] grid place-items-center rounded w-5 h-5 flex-shrink-0"
-                      style={{
-                        background: `linear-gradient(135deg, ${accent}55, ${accent}20)`,
-                        border: `1px solid ${accent}88`,
-                        color: accent,
-                      }}
-                    >
-                      {t.monogram}
-                    </span>
-                  ) : (
-                    <t.Icon size={15} />
-                  )}
+                  <t.Icon size={15} />
                   <span>{t.label}</span>
                 </button>
               );
-              if (!t.separator) return [btn];
-              return [
-                <div key={`sep-${t.id}`} className="flex-shrink-0 w-px my-3 mx-1 bg-gold-500/20 self-stretch" />,
-                btn,
-              ];
             })}
           </div>
-          {/* Right-edge fade to signal scrollable content */}
-          <div
-            className="pointer-events-none absolute inset-y-0 right-0 w-12"
-            style={{ background: 'linear-gradient(to right, transparent, var(--color-ink-950, #0a0a0f))' }}
-          />
         </div>
       </nav>
+
+      {/* Attending event banner — shown for all users with unanswered attendance */}
+      <AttendingBanner />
 
       {/* Content */}
       <main className="py-8 sm:py-10 pb-24 sm:pb-10 animate-fade-in">
@@ -393,34 +396,43 @@ export function Layout() {
 
         {!lance.loading && !lance.error && !selectedMember && (
           <>
-            {activeTab === 'overview' && <OverviewTab data={lance.data} filteredMembers={search.trim() ? lance.data.members.filter(m => [m.name, m.player_name, m.rank, m.function, m.military_function].filter(Boolean).some(v => v!.toLowerCase().includes(search.trim().toLowerCase()))) : lance.data.members} isAdmin={isAdmin} onNavigate={setActiveTab} />}
-            {activeTab === 'roster' && <RosterTab onViewMember={setSelectedMember} />}
-            {activeHouse && (
-              <HouseTab
-                house={activeHouse}
+            {activeTab === 'overview' && (
+              <OverviewTab
                 data={lance.data}
-                search={search}
+                filteredMembers={lance.data.members}
                 isAdmin={isAdmin}
-                currentMemberId={profile?.member_id ?? null}
-                onUpsert={lance.upsertMember}
-                onUnassign={lance.unassignMember}
-                onDelete={lance.deleteMember}
-                onDeleteHouse={async () => { await lance.deleteHouse(activeHouse.id); setActiveTab('overview'); }}
-                onUpsertCharInventory={lance.upsertCharInventory}
-                onDeleteCharInventory={lance.deleteCharInventory}
-                onUpsertSkill={lance.upsertCharacterSkill}
-                onDeleteSkill={lance.deleteCharacterSkill}
-                onUpsertRitual={lance.upsertCharacterRitual}
-                onDeleteRitual={lance.deleteCharacterRitual}
-                onViewMember={setSelectedMember}
+                onNavigate={id => { setActiveTab(id as TabId); setActiveHouse(null); }}
               />
             )}
+            {activeTab === 'houses' && !activeHouse && (
+              <HousesTab onSelect={h => setActiveHouse(h)} />
+            )}
+            {activeTab === 'houses' && activeHouse && (() => {
+              const liveHouse = lance.data.houses.find(h => h.id === activeHouse.id) ?? activeHouse;
+              return (
+                <HouseTab
+                  house={liveHouse}
+                  data={lance.data}
+                  search={search}
+                  isAdmin={isAdmin}
+                  currentMemberId={profile?.member_id ?? null}
+                  onUpsert={lance.upsertMember}
+                  onUnassign={lance.unassignMember}
+                  onDelete={lance.deleteMember}
+                  onDeleteHouse={async () => { await lance.deleteHouse(liveHouse.id); setActiveHouse(null); }}
+                  onUpsertCharInventory={lance.upsertCharInventory}
+                  onDeleteCharInventory={lance.deleteCharInventory}
+                  onUpsertSkill={lance.upsertCharacterSkill}
+                  onDeleteSkill={lance.deleteCharacterSkill}
+                  onUpsertRitual={lance.upsertCharacterRitual}
+                  onDeleteRitual={lance.deleteCharacterRitual}
+                  onViewMember={setSelectedMember}
+                  onBack={() => setActiveHouse(null)}
+                />
+              );
+            })()}
             {activeTab === 'covens' && <CovensTab canManageCoven={perms.canManageCoven} />}
-            {activeTab === 'functions' && <FunctionsTab canManageFunction={perms.canManageFunction} />}
-            {activeTab === 'businesses' && <BusinessesTab canManageBusiness={perms.canManageBusiness} />}
-            {activeTab === 'inventory' && <InventoryTab />}
-            {activeTab === 'treasury' && <BankTab />}
-            {activeTab === 'bards' && <BardTab currentMemberId={profile?.member_id ?? null} />}
+            {activeTab === 'treasury' && <BankTab canManageBusiness={perms.canManageBusiness} />}
             {activeTab === 'admin' && isAdmin && (
               <AdminTab
                 currentUserId={user!.id}
@@ -428,6 +440,7 @@ export function Layout() {
                 onRegenerateInviteCode={() => lances.regenerateInviteCode(lances.currentLanceId!)}
                 onDeleteMember={lance.deleteMember}
                 onViewMember={setSelectedMember}
+                canManageFunction={perms.canManageFunction}
               />
             )}
           </>
@@ -435,42 +448,31 @@ export function Layout() {
       </div></main>
 
 
-      {/* Mobile bottom navigation — visible only on small screens */}
+      {/* Mobile bottom navigation */}
       <nav
-        className="sm:hidden fixed bottom-0 inset-x-0 z-40 bg-ink-900/95 backdrop-blur-xl border-t border-gold-500/15 flex overflow-x-auto scrollbar-hide"
+        className="sm:hidden fixed bottom-0 inset-x-0 z-40 bg-ink-900/95 backdrop-blur-xl border-t border-gold-500/15 flex"
         style={{ paddingBottom: 'env(safe-area-inset-bottom)' }}
       >
         {tabs.map(t => {
           const isActive = activeTab === t.id;
-          const accent = t.color ?? 'rgb(212,180,109)';
           return (
             <button
               key={t.id}
               role="tab"
               aria-selected={isActive}
-              title={t.label}
-              onClick={() => { setActiveTab(t.id); setSelectedMember(null); if (navigator.vibrate) navigator.vibrate(8); }}
+              onClick={() => {
+                setActiveTab(t.id);
+                setSelectedMember(null);
+                if (t.id !== 'houses') setActiveHouse(null);
+                if (navigator.vibrate) navigator.vibrate(8);
+              }}
               className={cx(
-                'flex flex-col items-center justify-center gap-1 flex-shrink-0 px-3 py-2.5 min-w-[60px] transition-colors',
+                'flex flex-col items-center justify-center gap-1 flex-1 py-2.5 transition-colors',
                 isActive ? 'text-gold-300' : 'text-ink-300'
               )}
-              style={isActive && t.color ? { color: t.color } : undefined}
             >
-              {t.monogram ? (
-                <span
-                  className="font-display font-bold text-[10px] grid place-items-center rounded w-5 h-5"
-                  style={{
-                    background: `linear-gradient(135deg, ${accent}55, ${accent}20)`,
-                    border: `1px solid ${accent}88`,
-                    color: accent,
-                  }}
-                >
-                  {t.monogram}
-                </span>
-              ) : (
-                <t.Icon size={18} />
-              )}
-              <span className="text-[9px] font-medium tracking-wide uppercase truncate max-w-[56px]">{t.label}</span>
+              <t.Icon size={18} />
+              <span className="text-[9px] font-medium tracking-wide uppercase">{t.label}</span>
             </button>
           );
         })}
@@ -482,8 +484,8 @@ export function Layout() {
           onSave={async house => {
             await lance.upsertHouse(house);
             setShowAddHouse(false);
-            // Navigate to overview; the new house tab appears after data reloads
-            setActiveTab('overview');
+            setActiveTab('houses');
+            setActiveHouse(null);
           }}
         />
       )}

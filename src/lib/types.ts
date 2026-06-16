@@ -119,7 +119,7 @@ export interface Member {
   coven: string | null;
   notes: string | null;
   claimed_by: string | null;
-  attending_event: boolean;
+  attending_event: boolean | null;
   territory: string | null;
   total_xp: number | null;
   tithe_paid: boolean;
