@@ -12,8 +12,8 @@ const SUB_TABS: { id: TreasuryView; label: string }[] = [
   { id: 'ventures', label: 'Ventures' },
 ];
 
-export function BankTab({ canManageBusiness }: { canManageBusiness: (id: string) => boolean }) {
-  const [view, setView] = useState<TreasuryView>('holdings');
+export function BankTab({ canManageBusiness, initialView }: { canManageBusiness: (id: string) => boolean; initialView?: TreasuryView }) {
+  const [view, setView] = useState<TreasuryView>(initialView ?? 'holdings');
   const { data, isAdmin, settings, setInventory: onUpsertInventory } = useLance();
   const lanceName = settings?.name;
   const inv = Object.fromEntries(data.inventory.map(i => [i.item, i]));
