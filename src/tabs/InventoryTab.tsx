@@ -220,14 +220,43 @@ function InventoryView({
 
   const invMap = useMemo(() => Object.fromEntries(data.inventory.map(i => [i.item, i])), [data.inventory]);
 
-  // Resource Source quantities are derived from member.resource field
+  // Catalogue Resource Source names keyed by lowercase for normalisation
+  const resourceCatalogueNames = useMemo(() =>
+    Object.fromEntries(
+      EMPIRE_CATALOGUE
+        .filter(i => i.type === 'Resource Source')
+        .map(i => [i.item.toLowerCase(), i.item])
+    ), []);
+
+  // Count members per resource type, normalised to catalogue casing.
+  // member.resource may be "Military Unit" or "Military Unit:Varushka" — take the part before ':'
   const resourceCounts = useMemo(() => {
     const counts: Record<string, number> = {};
     for (const m of data.members) {
-      if (m.resource) counts[m.resource] = (counts[m.resource] ?? 0) + 1;
+      if (!m.resource) continue;
+      const baseType = m.resource.split(':')[0].trim().toLowerCase();
+      const catalogueName = resourceCatalogueNames[baseType];
+      if (catalogueName) counts[catalogueName] = (counts[catalogueName] ?? 0) + 1;
     }
     return counts;
-  }, [data.members]);
+  }, [data.members, resourceCatalogueNames]);
+
+  // Per-resource breakdown: list of members for tooltip / expand
+  const resourceMembers = useMemo(() => {
+    const map: Record<string, Array<{ name: string; sub: string | null }>> = {};
+    for (const m of data.members) {
+      if (!m.resource) continue;
+      const colonIdx = m.resource.indexOf(':');
+      const baseType = (colonIdx >= 0 ? m.resource.slice(0, colonIdx) : m.resource).trim().toLowerCase();
+      const sub = colonIdx >= 0 ? m.resource.slice(colonIdx + 1).trim() : null;
+      const catalogueName = resourceCatalogueNames[baseType];
+      if (catalogueName) {
+        if (!map[catalogueName]) map[catalogueName] = [];
+        map[catalogueName].push({ name: m.name, sub });
+      }
+    }
+    return map;
+  }, [data.members, resourceCatalogueNames]);
 
 
   const totalStockValue = useMemo(() =>
@@ -237,7 +266,11 @@ function InventoryView({
   const NON_CURRENCY = EMPIRE_CATALOGUE.filter(i => i.type !== 'Currency');
   const items = showAll
     ? NON_CURRENCY
-    : NON_CURRENCY.filter(i => { const s = invMap[i.item]; return !!(s && (s.current_qty > 0 || s.required_qty > 0)); });
+    : NON_CURRENCY.filter(i => {
+        if (i.type === 'Resource Source') return (resourceCounts[i.item] ?? 0) > 0;
+        const s = invMap[i.item];
+        return !!(s && (s.current_qty > 0 || s.required_qty > 0));
+      });
 
   const filtered = items.filter(i => {
     if (search) {
@@ -335,7 +368,10 @@ function InventoryView({
                             </td>
                             <td className="px-3 py-2.5 text-center">
                               {isResourceSource ? (
-                                <span className="font-bold text-sm" title="Counted from member resources">{currentQty}</span>
+                                <ResourceCountCell
+                                  count={currentQty}
+                                  members={resourceMembers[item.item] ?? []}
+                                />
                               ) : isAdmin ? (
                                 <input
                                   key={`cur-${item.item}-${stock.current_qty}`}
@@ -1395,6 +1431,40 @@ function QueueModal({
         </Field>
       </div>
     </Modal>
+  );
+}
+
+// ============================================================
+// Resource count cell — shows count + expandable member list
+// ============================================================
+function ResourceCountCell({ count, members }: { count: number; members: Array<{ name: string; sub: string | null }> }) {
+  const [open, setOpen] = useState(false);
+  return (
+    <div className="flex flex-col items-center gap-1">
+      <button
+        onClick={() => setOpen(v => !v)}
+        title={count > 0 ? 'Click to see members' : 'No members with this resource'}
+        className="flex items-center gap-1"
+        style={{ background: 'none', border: 'none', cursor: count > 0 ? 'pointer' : 'default', padding: 0 }}
+      >
+        <span className="font-bold text-sm">{count}</span>
+        {count > 0 && (
+          <Icons.ChevronDown size={11} style={{ color: 'rgb(var(--ink-400))', transform: open ? 'rotate(180deg)' : 'none', transition: 'transform 0.15s' }} />
+        )}
+      </button>
+      {open && members.length > 0 && (
+        <div
+          className="text-left rounded-lg border p-2 w-max max-w-[200px]"
+          style={{ background: 'var(--inset)', borderColor: 'var(--line)', fontSize: '11px' }}
+        >
+          {members.map((m, i) => (
+            <div key={i} className="py-0.5" style={{ color: 'rgb(var(--ink-200))' }}>
+              {m.name}{m.sub && <span style={{ color: 'rgb(var(--ink-400))' }}> · {m.sub}</span>}
+            </div>
+          ))}
+        </div>
+      )}
+    </div>
   );
 }
 
