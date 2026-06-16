@@ -401,7 +401,14 @@ export function Layout() {
                 data={lance.data}
                 filteredMembers={lance.data.members}
                 isAdmin={isAdmin}
-                onNavigate={id => { setActiveTab(id as TabId); setActiveHouse(null); }}
+                onNavigate={id => {
+                  // Map legacy IDs that no longer exist as top-level tabs
+                  const house = lance.data.houses.find(h => h.id === id);
+                  if (house) { setActiveTab('houses'); setActiveHouse(house); return; }
+                  if (id === 'inventory' || id === 'businesses') { setActiveTab('treasury'); setActiveHouse(null); return; }
+                  setActiveTab(id as TabId);
+                  setActiveHouse(null);
+                }}
               />
             )}
             {activeTab === 'houses' && !activeHouse && (
