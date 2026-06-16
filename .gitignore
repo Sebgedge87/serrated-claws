@@ -14,3 +14,4 @@ dist-ssr
 vite.config.d.ts
 vite.config.js
 ignore: .claude/worktrees/
+.claude/
