@@ -327,7 +327,7 @@ export function Layout() {
               </button>
             </>
           )}
-          <button onClick={() => lance.reload(true)} className="btn btn-ghost" title="Refresh data" disabled={lance.loading}>
+          <button onClick={() => lance.reload(false)} className="btn btn-ghost" title="Refresh data" disabled={lance.loading}>
             <Icons.Refresh size={16} className={lance.loading ? 'animate-spin' : ''} />
           </button>
           <button onClick={exportCsv} className="btn btn-ghost" title="Export CSV">
