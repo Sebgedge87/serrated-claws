@@ -18,7 +18,7 @@ returns boolean language sql security definer stable set search_path = public as
     join public.lance_memberships lm_target on lm_target.lance_id = m.lance_id
     join public.lance_memberships lm_viewer on lm_viewer.lance_id = lm_target.lance_id
     where m.id = target_member_id
-      and lm_viewer.user_id = auth.uid()
+      and lm_viewer.profile_id = auth.uid()
   );
 $$;
 
