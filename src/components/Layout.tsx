@@ -4,6 +4,7 @@ import { useLanceData } from '@/hooks/useLanceData';
 import { useLances } from '@/hooks/useLances';
 import { usePermissions } from '@/hooks/usePermissions';
 import { useTheme } from '@/hooks/useTheme';
+import { LanceProvider } from '@/contexts/LanceContext';
 import { Icons } from '@/components/Icons';
 import { useConfirm } from '@/components/ConfirmDialog';
 import { HeaderUserMenu } from '@/components/HeaderUserMenu';
@@ -157,7 +158,58 @@ export function Layout() {
 
   const currentMembership = lances.currentMembership;
 
+  const lanceContextValue = {
+    lanceId: lances.currentLanceId!,
+    data: lance.data,
+    memberships: lance.memberships,
+    settings: lance.settings,
+    loading: lance.loading,
+    error: lance.error,
+    isAdmin,
+    reload: lance.reload,
+    upsertHouse: lance.upsertHouse,
+    deleteHouse: lance.deleteHouse,
+    upsertMember: lance.upsertMember,
+    unassignMember: lance.unassignMember,
+    deleteMember: lance.deleteMember,
+    upsertBusiness: lance.upsertBusiness,
+    deleteBusiness: lance.deleteBusiness,
+    upsertCoven: lance.upsertCoven,
+    deleteCoven: lance.deleteCoven,
+    upsertFunction: lance.upsertFunction,
+    deleteFunction: lance.deleteFunction,
+    setInventory: lance.setInventory,
+    setInventoryPrice: lance.setInventoryPrice,
+    logInventory: lance.logInventory,
+    upsertProfile: lance.upsertProfile,
+    upsertSettings: lance.upsertSettings,
+    addMembership: lance.addMembership,
+    resetInventoryQty: lance.resetInventoryQty,
+    clearInventoryLog: lance.clearInventoryLog,
+    upsertEvent: lance.upsertEvent,
+    deleteEvent: lance.deleteEvent,
+    clearAttending: lance.clearAttending,
+    upsertCharInventory: lance.upsertCharInventory,
+    deleteCharInventory: lance.deleteCharInventory,
+    upsertCharacterSkill: lance.upsertCharacterSkill,
+    deleteCharacterSkill: lance.deleteCharacterSkill,
+    upsertCharacterRitual: lance.upsertCharacterRitual,
+    deleteCharacterRitual: lance.deleteCharacterRitual,
+    upsertCharacterSpell: lance.upsertCharacterSpell,
+    deleteCharacterSpell: lance.deleteCharacterSpell,
+    upsertMagicItemStock: lance.upsertMagicItemStock,
+    deleteMagicItemStock: lance.deleteMagicItemStock,
+    upsertCraftingQueueItem: lance.upsertCraftingQueueItem,
+    deleteCraftingQueueItem: lance.deleteCraftingQueueItem,
+    upsertCovenRitual: lance.upsertCovenRitual,
+    deleteCovenRitual: lance.deleteCovenRitual,
+    updateCovenMana: lance.updateCovenMana,
+    upsertBardWork: lance.upsertBardWork,
+    deleteBardWork: lance.deleteBardWork,
+  };
+
   return (
+    <LanceProvider value={lanceContextValue}>
     <div className="min-h-screen">
       {/* Header */}
       <header className="relative overflow-hidden border-b border-gold-500/15 bg-gradient-to-br from-ink-900/95 to-ink-800/95">
@@ -497,6 +549,7 @@ export function Layout() {
       )}
       {ConfirmDialog}
     </div>
+    </LanceProvider>
   );
 }
 
