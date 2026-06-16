@@ -24,11 +24,13 @@ export function RosterTab({ initialFilter = 'all', onViewMember }: Props) {
   const { data } = useLance();
   const [filter, setFilter] = useState<'all' | 'nobles'>(initialFilter);
   const [search, setSearch] = useState('');
+  const [page, setPage] = useState(0);
+  const PAGE_SIZE = 50;
 
   const houseById = new Map(data.houses.map(h => [h.id, h]));
 
   const q = search.trim().toLowerCase();
-  const members = data.members
+  const allFiltered = data.members
     .filter(m => filter === 'nobles' ? m.is_noble : true)
     .filter(m => {
       if (!q) return true;
@@ -38,12 +40,14 @@ export function RosterTab({ initialFilter = 'all', onViewMember }: Props) {
         .some(v => v!.toLowerCase().includes(q));
     })
     .sort((a, b) => {
-      // Nobles first, then alphabetical
       if (a.is_noble !== b.is_noble) return a.is_noble ? -1 : 1;
       return a.name.localeCompare(b.name);
     });
 
   const totalAll = data.members.length;
+  const totalPages = Math.ceil(allFiltered.length / PAGE_SIZE);
+  const safePage = Math.min(page, Math.max(0, totalPages - 1));
+  const members = allFiltered.slice(safePage * PAGE_SIZE, (safePage + 1) * PAGE_SIZE);
 
   return (
     <div>
@@ -77,7 +81,7 @@ export function RosterTab({ initialFilter = 'all', onViewMember }: Props) {
         {(['all', 'nobles'] as const).map(f => (
           <button
             key={f}
-            onClick={() => setFilter(f)}
+            onClick={() => { setFilter(f); setPage(0); }}
             style={{
               display: 'inline-flex',
               alignItems: 'center',
@@ -108,7 +112,7 @@ export function RosterTab({ initialFilter = 'all', onViewMember }: Props) {
         ))}
         <input
           value={search}
-          onChange={e => setSearch(e.target.value)}
+          onChange={e => { setSearch(e.target.value); setPage(0); }}
           placeholder="Search name, house, rank…"
           className="input"
           style={{ flex: 1, minWidth: '180px' }}
@@ -253,6 +257,24 @@ export function RosterTab({ initialFilter = 'all', onViewMember }: Props) {
           );
         })}
       </div>
+
+      {totalPages > 1 && (
+        <div className="flex items-center justify-between mt-4 text-sm text-ink-100/60">
+          <span>{allFiltered.length} members · page {safePage + 1} of {totalPages}</span>
+          <div className="flex gap-2">
+            <button
+              onClick={() => setPage(p => Math.max(0, p - 1))}
+              disabled={safePage === 0}
+              className="btn btn-ghost btn-sm"
+            >← Prev</button>
+            <button
+              onClick={() => setPage(p => Math.min(totalPages - 1, p + 1))}
+              disabled={safePage >= totalPages - 1}
+              className="btn btn-ghost btn-sm"
+            >Next →</button>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

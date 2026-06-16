@@ -193,6 +193,48 @@ export function BankTab() {
           </div>
         </div>
       )}
+
+      {/* Inventory transaction log */}
+      {data.inventoryLog.length > 0 && (
+        <div className="mb-10">
+          <div className="eyebrow mb-3" style={{ fontSize: '10px', letterSpacing: '0.12em', textTransform: 'uppercase' }}>
+            Recent Transactions
+          </div>
+          <div className="card overflow-hidden">
+            <table className="w-full">
+              <thead>
+                <tr className="border-b border-[color:var(--line)]">
+                  <th className="px-4 py-2.5 text-left text-[11px] uppercase tracking-widest font-bold text-ink-100/60">Item</th>
+                  <th className="px-4 py-2.5 text-center text-[11px] uppercase tracking-widest font-bold text-ink-100/60">Direction</th>
+                  <th className="px-4 py-2.5 text-center text-[11px] uppercase tracking-widest font-bold text-ink-100/60">Amount</th>
+                  <th className="px-4 py-2.5 text-left text-[11px] uppercase tracking-widest font-bold text-ink-100/60 hidden sm:table-cell">Notes</th>
+                  <th className="px-4 py-2.5 text-right text-[11px] uppercase tracking-widest font-bold text-ink-100/60 hidden sm:table-cell">Date</th>
+                </tr>
+              </thead>
+              <tbody>
+                {data.inventoryLog.map((entry, idx) => {
+                  const dirColor = entry.direction === 'In' ? 'var(--ok)' : entry.direction === 'Out' ? 'var(--danger)' : 'rgb(var(--ink-300))';
+                  return (
+                    <tr key={entry.id} className={idx > 0 ? 'border-t border-[color:var(--line-soft)]' : ''}>
+                      <td className="px-4 py-2 text-sm font-semibold" style={{ color: 'rgb(var(--ink-100))' }}>{entry.item}</td>
+                      <td className="px-4 py-2 text-center">
+                        <span className="text-xs font-semibold" style={{ color: dirColor }}>{entry.direction}</span>
+                      </td>
+                      <td className="px-4 py-2 text-center">
+                        <span className="num text-sm" style={{ color: dirColor }}>{entry.direction === 'Out' ? '−' : '+'}{entry.amount}</span>
+                      </td>
+                      <td className="px-4 py-2 text-xs text-ink-100/60 hidden sm:table-cell">{entry.notes ?? '—'}</td>
+                      <td className="px-4 py-2 text-xs text-ink-100/50 text-right hidden sm:table-cell">
+                        {new Date(entry.ts).toLocaleDateString()}
+                      </td>
+                    </tr>
+                  );
+                })}
+              </tbody>
+            </table>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

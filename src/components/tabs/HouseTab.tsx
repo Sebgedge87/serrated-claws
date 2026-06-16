@@ -3,6 +3,7 @@ import type { CharInventoryItem, CharacterRitual, CharacterSkill, House, LanceDa
 import { MemberCard } from '@/components/MemberCard';
 import { MemberLedgerRow } from '@/components/MemberLedgerRow';
 import { AddPersonModal } from '@/components/modals/AddPersonModal';
+import { BardWorksSection } from '@/components/BardWorksSection';
 import { SectionHeader } from '@/components/ui/SectionHeader';
 import { useConfirm } from '@/components/ConfirmDialog';
 import { monogramOf } from '@/lib/utils';
@@ -15,6 +16,7 @@ interface Props {
   data: LanceData;
   search: string;
   isAdmin: boolean;
+  currentMemberId?: string | null;
 
   onUpsert: (m: Partial<Member> & { name: string }) => Promise<void>;
   onUnassign: (id: string) => Promise<void>;
@@ -29,7 +31,7 @@ interface Props {
   onViewMember?: (m: Member) => void;
 }
 
-export function HouseTab({ house, data, search, isAdmin, onUpsert, onUnassign, onDelete, onDeleteHouse, onUpsertCharInventory, onDeleteCharInventory, onUpsertSkill, onDeleteSkill, onUpsertRitual, onDeleteRitual, onViewMember }: Props) {
+export function HouseTab({ house, data, search, isAdmin, currentMemberId, onUpsert, onUnassign, onDelete, onDeleteHouse, onUpsertCharInventory, onDeleteCharInventory, onUpsertSkill, onDeleteSkill, onUpsertRitual, onDeleteRitual, onViewMember }: Props) {
   const { confirm, Dialog: ConfirmDialog } = useConfirm();
   const [editing, setEditing] = useState<Member | null>(null);
   const [view, setView] = useState<ViewMode>(() => {
@@ -130,6 +132,10 @@ export function HouseTab({ house, data, search, isAdmin, onUpsert, onUnassign, o
       {filtered.length === 0 && (
         <p className="text-center py-16 text-ink-100/50">No members in {house.name}</p>
       )}
+
+      <div className="mt-10">
+        <BardWorksSection houseId={house.id} currentMemberId={currentMemberId ?? null} />
+      </div>
 
       {ConfirmDialog}
 
