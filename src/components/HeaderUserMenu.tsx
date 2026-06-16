@@ -23,11 +23,12 @@ interface Props {
   wikiUrl: string;
   navTabs?: NavTab[];
   onNavigate?: (id: string) => void;
+  onShowTour?: () => void;
 }
 
 export function HeaderUserMenu({
   profile, user, currentMembership, memberships, currentLance,
-  onSwitchLance, onLeaveLance, onSignOut, wikiUrl, navTabs, onNavigate,
+  onSwitchLance, onLeaveLance, onSignOut, wikiUrl, navTabs, onNavigate, onShowTour,
 }: Props) {
   const [open, setOpen] = useState(false);
   const [switching, setSwitching] = useState(false);
@@ -144,6 +145,17 @@ export function HeaderUserMenu({
                     ))}
                   </div>
                 )}
+              </>
+            )}
+
+            {/* Help */}
+            {onShowTour && (
+              <>
+                <MenuLabel>Help</MenuLabel>
+                <MenuItem onClick={() => { setOpen(false); onShowTour(); }}>
+                  <Icons.Sparkles size={14} className="text-ink-300" />
+                  Getting started tour
+                </MenuItem>
               </>
             )}
 

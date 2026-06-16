@@ -16,6 +16,7 @@ import { CovensTab } from '@/tabs/CovensTab';
 import { AdminTab } from '@/tabs/AdminTab';
 import { BankTab } from '@/tabs/BankTab';
 import { AttendingBanner } from '@/components/AttendingBanner';
+import { WalkThrough, hasSeen } from '@/components/WalkThrough';
 import { AddHouseModal } from '@/components/modals/AddHouseModal';
 import { AddPersonModal } from '@/components/modals/AddPersonModal';
 import { CharacterSheetPage } from '@/components/CharacterSheetPage';
@@ -45,6 +46,7 @@ export function Layout() {
   const [showCreateCharacter, setShowCreateCharacter] = useState(false);
   const { Dialog: ConfirmDialog } = useConfirm();
   const { theme, toggleTheme } = useTheme();
+  const [showTour, setShowTour] = useState(() => !!profile?.id && !hasSeen(profile.id));
 
   type TabDef = { id: TabId; label: string; Icon: typeof Icons.House };
   const tabs: TabDef[] = [
@@ -246,6 +248,7 @@ export function Layout() {
               wikiUrl={WIKI_URL}
               navTabs={tabs.map(t => ({ id: t.id, label: t.label, active: activeTab === t.id }))}
               onNavigate={id => { setActiveTab(id as TabId); setSelectedMember(null); setActiveHouse(null); }}
+              onShowTour={() => setShowTour(true)}
             />
             <button onClick={toggleTheme} className="btn btn-ghost btn-sm" title={theme === 'dark' ? 'Switch to light mode' : 'Switch to dark mode'}>
               {theme === 'dark' ? <Icons.Sun size={14} /> : <Icons.Moon size={14} />}
@@ -519,6 +522,13 @@ export function Layout() {
         </div>
       )}
       {ConfirmDialog}
+      {showTour && profile?.id && (
+        <WalkThrough
+          profileId={profile.id}
+          lanceName={lance.settings?.name}
+          onDone={() => setShowTour(false)}
+        />
+      )}
     </div>
     </LanceProvider>
   );

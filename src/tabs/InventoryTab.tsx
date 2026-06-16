@@ -220,6 +220,16 @@ function InventoryView({
 
   const invMap = useMemo(() => Object.fromEntries(data.inventory.map(i => [i.item, i])), [data.inventory]);
 
+  // Resource Source quantities are derived from member.resource field
+  const resourceCounts = useMemo(() => {
+    const counts: Record<string, number> = {};
+    for (const m of data.members) {
+      if (m.resource) counts[m.resource] = (counts[m.resource] ?? 0) + 1;
+    }
+    return counts;
+  }, [data.members]);
+
+
   const totalStockValue = useMemo(() =>
     data.inventory.reduce((sum, i) => sum + (i.unit_value ?? 0) * i.current_qty, 0),
   [data.inventory]);
@@ -304,12 +314,14 @@ function InventoryView({
                     </thead>
                     <tbody>
                       {group.map(item => {
+                        const isResourceSource = item.type === 'Resource Source';
                         const stock = invMap[item.item] ?? { item: item.item, current_qty: 0, required_qty: 0, unit_value: 0 };
-                        const shortfall = stock.required_qty > 0 ? stock.required_qty - stock.current_qty : 0;
+                        const currentQty = isResourceSource ? (resourceCounts[item.item] ?? 0) : stock.current_qty;
+                        const shortfall = stock.required_qty > 0 ? stock.required_qty - currentQty : 0;
                         const musterMet = stock.required_qty > 0 && shortfall <= 0;
                         const musterShort = stock.required_qty > 0 && shortfall > 0;
                         const unitPrice = stock.unit_value ?? 0;
-                        const stockVal = unitPrice * stock.current_qty;
+                        const stockVal = unitPrice * currentQty;
                         return (
                           <tr key={item.item} className="border-b border-[color:var(--line-soft)] last:border-b-0">
                             <td className="px-3 py-2.5 align-middle">
@@ -322,7 +334,9 @@ function InventoryView({
                               </div>
                             </td>
                             <td className="px-3 py-2.5 text-center">
-                              {isAdmin ? (
+                              {isResourceSource ? (
+                                <span className="font-bold text-sm" title="Counted from member resources">{currentQty}</span>
+                              ) : isAdmin ? (
                                 <input
                                   key={`cur-${item.item}-${stock.current_qty}`}
                                   type="number"
@@ -372,10 +386,14 @@ function InventoryView({
                             </td>
                             {isAdmin && (
                               <td className="px-3 py-2.5 text-center">
-                                <div className="inline-flex gap-1">
-                                  <button onClick={() => onLogInventory(item.item, 1, 'In')} className="px-2 py-1 bg-sage-500/15 text-sage-500 border border-sage-500/30 rounded font-bold text-sm">+</button>
-                                  <button onClick={() => onLogInventory(item.item, 1, 'Out')} disabled={stock.current_qty <= 0} className="px-2 py-1 bg-red-500/15 text-red-300 border border-red-500/30 rounded font-bold text-sm disabled:opacity-30">−</button>
-                                </div>
+                                {isResourceSource ? (
+                                  <span className="text-[10px] text-ink-300/50 italic">auto</span>
+                                ) : (
+                                  <div className="inline-flex gap-1">
+                                    <button onClick={() => onLogInventory(item.item, 1, 'In')} className="px-2 py-1 bg-sage-500/15 text-sage-500 border border-sage-500/30 rounded font-bold text-sm">+</button>
+                                    <button onClick={() => onLogInventory(item.item, 1, 'Out')} disabled={stock.current_qty <= 0} className="px-2 py-1 bg-red-500/15 text-red-300 border border-red-500/30 rounded font-bold text-sm disabled:opacity-30">−</button>
+                                  </div>
+                                )}
                               </td>
                             )}
                             <td className="px-3 py-2.5 text-center">
