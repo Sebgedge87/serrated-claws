@@ -42,16 +42,29 @@ export function AdminTab({ currentUserId, inviteCode, onRegenerateInviteCode, on
         </div>
       </div>
 
-      <UnassignedSection data={data} isAdmin onDelete={onDeleteMember} onViewMember={onViewMember} />
-      <EventsSection events={data.events} data={data} onUpsert={onUpsertEvent} onDelete={onDeleteEvent} onClearAttending={onClearAttending} />
+      {/* Top row — Settings + Events side by side on wide screens */}
+      <div className="grid grid-cols-1 lg:grid-cols-[minmax(0,1fr)_minmax(0,2fr)] gap-8">
+        <SettingsSection settings={settings} onSave={onUpsertSettings} />
+        <EventsSection events={data.events} data={data} onUpsert={onUpsertEvent} onDelete={onDeleteEvent} onClearAttending={onClearAttending} />
+      </div>
+
+      {/* Full-width sections */}
+      {data.members.some(m => !m.house_id) && (
+        <UnassignedSection data={data} isAdmin onDelete={onDeleteMember} onViewMember={onViewMember} />
+      )}
       <section>
         <SectionHeading icon={<Icons.Swords size={16} />} title="Functions" />
         <FunctionsTab canManageFunction={canManageFunction} />
       </section>
-      <SettingsSection settings={settings} onSave={onUpsertSettings} />
       <RolesSection memberships={memberships} data={data} currentUserId={currentUserId} currentRole={currentRole} inviteCode={inviteCode} onUpdateProfile={onUpdateProfile} onRegenerateInviteCode={onRegenerateInviteCode} />
-      {isSuperAdmin && <ExportSection data={data} memberships={memberships} />}
-      {isSuperAdmin && <DangerZone onResetInventoryQty={onResetInventoryQty} onClearInventoryLog={onClearInventoryLog} logCount={data.inventoryLog.length} />}
+
+      {/* Super-admin row — Export + Danger Zone side by side */}
+      {isSuperAdmin && (
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
+          <ExportSection data={data} memberships={memberships} />
+          <DangerZone onResetInventoryQty={onResetInventoryQty} onClearInventoryLog={onClearInventoryLog} logCount={data.inventoryLog.length} />
+        </div>
+      )}
     </div>
   );
 }
