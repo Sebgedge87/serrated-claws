@@ -148,6 +148,31 @@ export function useLanceData(lanceId: string | null) {
       return;
     }
     reload();
+
+    // Realtime: re-fetch silently whenever any lance-scoped table changes
+    const TABLES = ['houses', 'members', 'covens', 'functions', 'businesses', 'business_owners', 'inventory', 'events', 'bard_works'];
+    const channel = supabase
+      .channel(`lance:${lanceId}`)
+      .on('postgres_changes', { event: '*', schema: 'public', filter: `lance_id=eq.${lanceId}` }, () => reload(true));
+
+    // Tables without lance_id use broader subscription (scoped by member/coven in reload)
+    const charChannel = supabase
+      .channel(`lance-chars:${lanceId}`)
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'character_inventory' }, () => reload(true))
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'character_skills' }, () => reload(true))
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'character_rituals' }, () => reload(true))
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'character_spells' }, () => reload(true))
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'coven_rituals' }, () => reload(true));
+
+    // Suppress unused variable warning — tables listed for documentation
+    void TABLES;
+    channel.subscribe();
+    charChannel.subscribe();
+
+    return () => {
+      supabase.removeChannel(channel);
+      supabase.removeChannel(charChannel);
+    };
   }, [lanceId, reload]);
 
   // ---- Houses ----
