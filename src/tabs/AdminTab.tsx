@@ -42,29 +42,29 @@ export function AdminTab({ currentUserId, inviteCode, onRegenerateInviteCode, on
         </div>
       </div>
 
-      {/* Top row — Settings + Events side by side on wide screens */}
-      <div className="grid grid-cols-1 lg:grid-cols-[minmax(0,1fr)_minmax(0,2fr)] gap-8">
-        <SettingsSection settings={settings} onSave={onUpsertSettings} />
-        <EventsSection events={data.events} data={data} onUpsert={onUpsertEvent} onDelete={onDeleteEvent} onClearAttending={onClearAttending} />
-      </div>
+      {/* 1. Events — most time-sensitive */}
+      <EventsSection events={data.events} data={data} onUpsert={onUpsertEvent} onDelete={onDeleteEvent} onClearAttending={onClearAttending} />
 
-      {/* Full-width sections */}
-      {data.members.some(m => !m.house_id) && (
-        <UnassignedSection data={data} isAdmin onDelete={onDeleteMember} onViewMember={onViewMember} />
-      )}
+      {/* 2. Unassigned members — action items needing resolution */}
+      <UnassignedSection data={data} isAdmin onDelete={onDeleteMember} onViewMember={onViewMember} />
+
+      {/* 3. Roles & Access — who's in, invite code */}
+      <RolesSection memberships={memberships} data={data} currentUserId={currentUserId} currentRole={currentRole} inviteCode={inviteCode} onUpdateProfile={onUpdateProfile} onRegenerateInviteCode={onRegenerateInviteCode} />
+
+      {/* 4. Functions — org structure */}
       <section>
         <SectionHeading icon={<Icons.Swords size={16} />} title="Functions" />
         <FunctionsTab canManageFunction={canManageFunction} />
       </section>
-      <RolesSection memberships={memberships} data={data} currentUserId={currentUserId} currentRole={currentRole} inviteCode={inviteCode} onUpdateProfile={onUpdateProfile} onRegenerateInviteCode={onRegenerateInviteCode} />
 
-      {/* Super-admin row — Export + Danger Zone side by side */}
-      {isSuperAdmin && (
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
-          <ExportSection data={data} memberships={memberships} />
-          <DangerZone onResetInventoryQty={onResetInventoryQty} onClearInventoryLog={onClearInventoryLog} logCount={data.inventoryLog.length} />
-        </div>
-      )}
+      {/* 5. Settings + Export — config, side by side on wide screens */}
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-8 items-start">
+        <SettingsSection settings={settings} onSave={onUpsertSettings} />
+        {isSuperAdmin && <ExportSection data={data} memberships={memberships} />}
+      </div>
+
+      {/* 6. Danger Zone — bottom, super admin only */}
+      {isSuperAdmin && <DangerZone onResetInventoryQty={onResetInventoryQty} onClearInventoryLog={onClearInventoryLog} logCount={data.inventoryLog.length} />}
     </div>
   );
 }
