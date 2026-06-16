@@ -155,12 +155,20 @@ function EventModal({ initial, onClose, onSave, onDelete }: { initial: Partial<L
   const [endDate, setEndDate] = useState(initial.end_date ? initial.end_date.slice(0, 10) : '');
   const [order, setOrder] = useState(initial.sort_order ?? 0);
   const [busy, setBusy] = useState(false);
+  const [err, setErr] = useState<string | null>(null);
   const { confirm, Dialog: ConfirmDialog } = useConfirm();
 
   async function save() {
     if (!name.trim() || !startDate || busy) return;
     setBusy(true);
-    try { await onSave({ ...initial, name: name.trim(), start_date: startDate, end_date: endDate || null, sort_order: order }); } finally { setBusy(false); }
+    setErr(null);
+    try {
+      await onSave({ ...initial, name: name.trim(), start_date: startDate, end_date: endDate || null, sort_order: order });
+    } catch (e) {
+      setErr(e instanceof Error ? e.message : 'Failed to save event');
+    } finally {
+      setBusy(false);
+    }
   }
 
   return (
@@ -168,6 +176,7 @@ function EventModal({ initial, onClose, onSave, onDelete }: { initial: Partial<L
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm" onClick={onClose}>
       <div className="card p-6 w-full max-w-sm space-y-4" onClick={e => e.stopPropagation()}>
         <h3 className="font-display font-bold text-lg text-gold-300">{initial.id ? 'Edit Event' : 'New Event'}</h3>
+        {err && <p className="text-xs text-red-400 bg-red-500/10 rounded px-3 py-2">{err}</p>}
         <div>
           <label className="block text-xs text-ink-100/50 uppercase tracking-widest mb-1">Name</label>
           <input className="input w-full" value={name} onChange={e => setName(e.target.value)} placeholder="E1 — Spring Gathering" autoFocus />

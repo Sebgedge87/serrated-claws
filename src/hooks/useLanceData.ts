@@ -321,7 +321,7 @@ export function useLanceData(lanceId: string | null) {
 
   // ---- Events ----
   const upsertEvent = useCallback(async (ev: Partial<LanceEvent> & { name: string; start_date: string }) => {
-    const { error: err } = await supabase.from('events').upsert({ ...ev, cleared: ev.cleared ?? false, lance_id: lanceId });
+    const { error: err } = await supabase.from('events').upsert({ ...ev, date: ev.start_date, cleared: ev.cleared ?? false, lance_id: lanceId });
     if (err) throw new Error(err.message);
     await reload(true);
   }, [lanceId, reload]);
