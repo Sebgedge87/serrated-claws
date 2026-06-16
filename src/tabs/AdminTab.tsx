@@ -7,20 +7,11 @@ import { MemberCard } from '@/components/MemberCard';
 import { initials } from '@/lib/utils';
 import { exportRosterPdf, exportResourcesPdf } from '@/lib/parchmentPdf';
 import { CustomSelect } from '@/components/ui/CustomSelect';
+import { useLance } from '@/contexts/LanceContext';
 
 interface Props {
-  data: LanceData;
-  memberships: LanceMembership[];
-  settings: LanceSettings | null;
   currentUserId: string;
   inviteCode: string | null;
-  onUpdateProfile: (id: string, updates: { role?: UserRole; member_id?: string | null; display_name?: string | null }) => Promise<void>;
-  onUpsertSettings: (updates: { name?: string; motto?: string | null; description?: string | null }) => Promise<void>;
-  onResetInventoryQty: () => Promise<void>;
-  onClearInventoryLog: () => Promise<void>;
-  onUpsertEvent: (ev: Partial<LanceEvent> & { name: string; start_date: string }) => Promise<void>;
-  onDeleteEvent: (id: string) => Promise<void>;
-  onClearAttending: () => Promise<void>;
   onRegenerateInviteCode: () => Promise<string>;
   onDeleteMember?: (id: string) => Promise<void>;
   onViewMember?: (m: Member) => void;
@@ -35,7 +26,8 @@ interface Props {
 const A = '#d4b46d';
 const ROLE_COLORS: Record<UserRole, string> = { super_admin: '#f0a040', admin: '#d4b46d', member: '#7eb0d4', viewer: '#9ca3af' };
 
-export function AdminTab({ data, memberships, settings, currentUserId, inviteCode, onUpdateProfile, onUpsertSettings, onResetInventoryQty, onClearInventoryLog, onUpsertEvent, onDeleteEvent, onClearAttending, onRegenerateInviteCode, onDeleteMember, onViewMember }: Props) {
+export function AdminTab({ currentUserId, inviteCode, onRegenerateInviteCode, onDeleteMember, onViewMember }: Props) {
+  const { data, memberships, settings, isAdmin: _isAdmin, upsertProfile: onUpdateProfile, upsertSettings: onUpsertSettings, resetInventoryQty: onResetInventoryQty, clearInventoryLog: onClearInventoryLog, upsertEvent: onUpsertEvent, deleteEvent: onDeleteEvent, clearAttending: onClearAttending } = useLance();
   const currentRole = memberships.find(m => m.profile_id === currentUserId)?.role ?? 'admin';
   const isSuperAdmin = currentRole === 'super_admin';
 
@@ -162,7 +154,7 @@ function StatCard({ label, value, sub, color }: { label: string; value: string |
 
 // ── Events ────────────────────────────────────────────────────────────────────
 
-function EventsSection({ events, data, onUpsert, onDelete, onClearAttending }: { events: LanceEvent[]; data: LanceData; onUpsert: Props['onUpsertEvent']; onDelete: Props['onDeleteEvent']; onClearAttending: Props['onClearAttending'] }) {
+function EventsSection({ events, data, onUpsert, onDelete, onClearAttending }: { events: LanceEvent[]; data: LanceData; onUpsert: (ev: Partial<LanceEvent> & { name: string; start_date: string }) => Promise<void>; onDelete: (id: string) => Promise<void>; onClearAttending: () => Promise<void> }) {
   const [editing, setEditing] = useState<Partial<LanceEvent> | null>(null);
   const { confirm, Dialog: ConfirmDialog } = useConfirm();
   const today = new Date(); today.setHours(0, 0, 0, 0);
@@ -296,7 +288,7 @@ alter table public.lance_settings enable row level security;
 create policy settings_read on public.lance_settings for select using (auth.role() = 'authenticated');
 create policy settings_admin_write on public.lance_settings for all using (public.is_admin()) with check (public.is_admin());`;
 
-function SettingsSection({ settings, onSave }: { settings: LanceSettings | null; onSave: Props['onUpsertSettings'] }) {
+function SettingsSection({ settings, onSave }: { settings: LanceSettings | null; onSave: (updates: Partial<Omit<LanceSettings, 'id'>>) => Promise<void> }) {
   const [form, setForm] = useState({ name: settings?.name ?? '', motto: settings?.motto ?? '', description: settings?.description ?? '' });
   const [busy, setBusy] = useState(false);
 
@@ -355,7 +347,7 @@ function SettingsSection({ settings, onSave }: { settings: LanceSettings | null;
 
 // ── Roles ─────────────────────────────────────────────────────────────────────
 
-function RolesSection({ memberships, data, currentUserId, currentRole, inviteCode, onUpdateProfile, onRegenerateInviteCode }: { memberships: LanceMembership[]; data: LanceData; currentUserId: string; currentRole: UserRole; inviteCode: string | null; onUpdateProfile: Props['onUpdateProfile']; onRegenerateInviteCode: Props['onRegenerateInviteCode'] }) {
+function RolesSection({ memberships, data, currentUserId, currentRole, inviteCode, onUpdateProfile, onRegenerateInviteCode }: { memberships: LanceMembership[]; data: LanceData; currentUserId: string; currentRole: UserRole; inviteCode: string | null; onUpdateProfile: (id: string, updates: { role?: UserRole; member_id?: string | null; display_name?: string | null }) => Promise<void>; onRegenerateInviteCode: () => Promise<string> }) {
   const [busy, setBusy] = useState<string | null>(null);
   const [localCode, setLocalCode] = useState<string | null>(inviteCode);
   const [regenBusy, setRegenBusy] = useState(false);

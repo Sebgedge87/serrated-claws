@@ -391,7 +391,7 @@ export function Layout() {
         {!lance.loading && !lance.error && !selectedMember && (
           <>
             {activeTab === 'overview' && <OverviewTab data={lance.data} filteredMembers={search.trim() ? lance.data.members.filter(m => [m.name, m.player_name, m.rank, m.function, m.military_function].filter(Boolean).some(v => v!.toLowerCase().includes(search.trim().toLowerCase()))) : lance.data.members} isAdmin={isAdmin} onNavigate={setActiveTab} />}
-            {activeTab === 'roster' && <RosterTab data={lance.data} isAdmin={isAdmin} onViewMember={setSelectedMember} />}
+            {activeTab === 'roster' && <RosterTab onViewMember={setSelectedMember} />}
             {activeHouse && (
               <HouseTab
                 house={activeHouse}
@@ -409,62 +409,18 @@ export function Layout() {
                 onUpsertRitual={lance.upsertCharacterRitual}
                 onDeleteRitual={lance.deleteCharacterRitual}
                 onViewMember={setSelectedMember}
-                {...(canAccessBards ? {
-                  lanceId: lances.currentLanceId ?? '',
-                  currentMemberIdForBard: profile?.member_id ?? null,
-                  onUpsertBardWork: lance.upsertBardWork,
-                  onDeleteBardWork: lance.deleteBardWork,
-                } : {})}
               />
             )}
-            {activeTab === 'covens' && <CovensTab data={lance.data} isAdmin={isAdmin} canManageCoven={perms.canManageCoven} onUpsert={lance.upsertCoven} onDelete={lance.deleteCoven} onUpsertRitual={lance.upsertCovenRitual} onDeleteRitual={lance.deleteCovenRitual} />}
-            {activeTab === 'functions' && <FunctionsTab data={lance.data} isAdmin={isAdmin} canManageFunction={perms.canManageFunction} onUpsert={lance.upsertFunction} onDelete={lance.deleteFunction} />}
-            {activeTab === 'businesses' && <BusinessesTab data={lance.data} isAdmin={isAdmin} canManageBusiness={perms.canManageBusiness} onUpsert={lance.upsertBusiness} onDelete={lance.deleteBusiness} />}
-            {activeTab === 'inventory' && (
-              <InventoryTab
-                data={lance.data}
-                isAdmin={isAdmin}
-                onSetInventory={lance.setInventory}
-                onSetInventoryPrice={lance.setInventoryPrice}
-                onLogInventory={lance.logInventory}
-                onUpsertStock={lance.upsertMagicItemStock}
-                onDeleteStock={lance.deleteMagicItemStock}
-                onUpsertQueue={lance.upsertCraftingQueueItem}
-                onDeleteQueue={lance.deleteCraftingQueueItem}
-              />
-            )}
-            {activeTab === 'treasury' && (
-              <BankTab
-                data={lance.data}
-                isAdmin={isAdmin}
-                lanceName={lance.settings?.name ?? lances.currentLance?.name}
-                onUpsertInventory={lance.setInventory}
-              />
-            )}
-            {activeTab === 'bards' && (
-              <BardTab
-                data={lance.data}
-                lanceId={lances.currentLanceId ?? ''}
-                currentMemberId={profile?.member_id ?? null}
-                isAdmin={isAdmin}
-                onUpsert={lance.upsertBardWork}
-                onDelete={lance.deleteBardWork}
-              />
-            )}
+            {activeTab === 'covens' && <CovensTab canManageCoven={perms.canManageCoven} />}
+            {activeTab === 'functions' && <FunctionsTab canManageFunction={perms.canManageFunction} />}
+            {activeTab === 'businesses' && <BusinessesTab canManageBusiness={perms.canManageBusiness} />}
+            {activeTab === 'inventory' && <InventoryTab />}
+            {activeTab === 'treasury' && <BankTab />}
+            {activeTab === 'bards' && <BardTab currentMemberId={profile?.member_id ?? null} />}
             {activeTab === 'admin' && isAdmin && (
               <AdminTab
-                data={lance.data}
-                memberships={lance.memberships}
-                settings={lance.settings}
                 currentUserId={user!.id}
                 inviteCode={lances.currentLance?.invite_code ?? null}
-                onUpdateProfile={lance.upsertProfile}
-                onUpsertSettings={lance.upsertSettings}
-                onResetInventoryQty={lance.resetInventoryQty}
-                onClearInventoryLog={lance.clearInventoryLog}
-                onUpsertEvent={lance.upsertEvent}
-                onDeleteEvent={lance.deleteEvent}
-                onClearAttending={lance.clearAttending}
                 onRegenerateInviteCode={() => lances.regenerateInviteCode(lances.currentLanceId!)}
                 onDeleteMember={lance.deleteMember}
                 onViewMember={setSelectedMember}

@@ -1,5 +1,6 @@
 import { useState } from 'react';
 import type { BardWork, LanceData } from '@/lib/types';
+import { useLance } from '@/contexts/LanceContext';
 import { Icons } from '@/components/Icons';
 import { BardWorkEditor, renderMarkdown } from '@/components/BardWorkEditor';
 import { WorkTypePill, WORK_TYPE_STYLES } from '@/components/BardWorksSection';
@@ -117,15 +118,11 @@ function BardWorkCard({ work, data, currentMemberId, isAdmin, onEdit, onDelete }
 // ── BardTab ────────────────────────────────────────────────────────────────────
 
 interface Props {
-  data: LanceData;
-  lanceId: string;
   currentMemberId: string | null;
-  isAdmin: boolean;
-  onUpsert: (work: Omit<BardWork, 'id' | 'created_at' | 'updated_at'> & { id?: string }) => Promise<void>;
-  onDelete: (id: string) => Promise<void>;
 }
 
-export function BardTab({ data, lanceId, currentMemberId, isAdmin, onUpsert, onDelete }: Props) {
+export function BardTab({ currentMemberId }: Props) {
+  const { data, lanceId, isAdmin, upsertBardWork: onUpsert, deleteBardWork: onDelete } = useLance();
   const [filterType, setFilterType] = useState<FilterType>('all');
   const [filterHouse, setFilterHouse] = useState<string>('all');
   const [groupByHouse, setGroupByHouse] = useState(false);

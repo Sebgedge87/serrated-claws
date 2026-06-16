@@ -10,15 +10,10 @@ import { initials } from '@/lib/utils';
 import { SectionHeader } from '@/components/ui/SectionHeader';
 import { DataRow } from '@/components/ui/DataRow';
 import { CustomSelect } from '@/components/ui/CustomSelect';
+import { useLance } from '@/contexts/LanceContext';
 
 interface Props {
-  data: LanceData;
-  isAdmin: boolean;
   canManageCoven: (id: string) => boolean;
-  onUpsert: (c: Partial<Coven> & { id: string; name: string }) => Promise<void>;
-  onDelete: (id: string) => Promise<void>;
-  onUpsertRitual: (r: Omit<CovenRitual, 'id'> & { id?: string }) => Promise<void>;
-  onDeleteRitual: (id: string) => Promise<void>;
 }
 
 const A = '#b56eb5';
@@ -36,7 +31,8 @@ const REALM_HUE: Record<RitualRealm, string> = {
 };
 
 
-export function CovensTab({ data, isAdmin, canManageCoven, onUpsert, onDelete, onUpsertRitual, onDeleteRitual }: Props) {
+export function CovensTab({ canManageCoven }: Props) {
+  const { data, isAdmin, upsertCoven: onUpsert, deleteCoven: onDelete, upsertCovenRitual: onUpsertRitual, deleteCovenRitual: onDeleteRitual } = useLance();
   const [selected, setSelected] = useState<string | null>(null);
   const [editing, setEditing] = useState<Partial<Coven> | null>(null);
   const { confirm, Dialog: ConfirmDialog } = useConfirm();

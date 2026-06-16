@@ -1,10 +1,9 @@
 import { useState } from 'react';
-import type { LanceData, Member } from '@/lib/types';
+import type { Member } from '@/lib/types';
 import { SectionHeader } from '@/components/ui/SectionHeader';
+import { useLance } from '@/contexts/LanceContext';
 
 interface Props {
-  data: LanceData;
-  isAdmin: boolean;
   initialFilter?: 'all' | 'nobles';
   onViewMember: (m: Member) => void;
 }
@@ -21,7 +20,8 @@ function statusLabel(status: Member['status']) {
   return 'Inactive';
 }
 
-export function RosterTab({ data, isAdmin: _isAdmin, initialFilter = 'all', onViewMember }: Props) {
+export function RosterTab({ initialFilter = 'all', onViewMember }: Props) {
+  const { data } = useLance();
   const [filter, setFilter] = useState<'all' | 'nobles'>(initialFilter);
   const [search, setSearch] = useState('');
 

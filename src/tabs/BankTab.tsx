@@ -1,15 +1,10 @@
 import { useState } from 'react';
-import type { LanceData } from '@/lib/types';
 import { memberIncomeRings } from '@/lib/utils';
+import { useLance } from '@/contexts/LanceContext';
 
-interface Props {
-  data: LanceData;
-  isAdmin: boolean;
-  lanceName?: string;
-  onUpsertInventory?: (item: string, current: number, required: number) => Promise<void>;
-}
-
-export function BankTab({ data, isAdmin, lanceName, onUpsertInventory }: Props) {
+export function BankTab() {
+  const { data, isAdmin, settings, setInventory: onUpsertInventory } = useLance();
+  const lanceName = settings?.name;
   const inv = Object.fromEntries(data.inventory.map(i => [i.item, i]));
   const rings   = inv['Ring']?.current_qty   ?? 0;
   const crowns  = inv['Crown']?.current_qty  ?? 0;

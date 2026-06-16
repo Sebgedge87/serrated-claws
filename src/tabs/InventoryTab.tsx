@@ -1,6 +1,7 @@
 import { useMemo, useState } from 'react';
 import { useConfirm } from '@/components/ConfirmDialog';
 import type { CraftingQueueItem, LanceData, MagicItemStock } from '@/lib/types';
+import { useLance } from '@/contexts/LanceContext';
 import { EMPIRE_CATALOGUE, INVENTORY_TYPES, TYPE_COLORS } from '@/lib/catalogue';
 import type { CatalogueEntry, CatalogueType } from '@/lib/types';
 import {
@@ -89,24 +90,8 @@ const SUB_TABS: { id: SubView; label: string; Icon: typeof Icons.Package }[] = [
   { id: 'magic',     label: 'Magic',     Icon: Icons.Wand },
 ];
 
-interface Props {
-  data: LanceData;
-  isAdmin: boolean;
-  onSetInventory: (item: string, current: number, required: number) => Promise<void>;
-  onSetInventoryPrice: (item: string, unit_value: number) => Promise<void>;
-  onLogInventory: (item: string, amount: number, direction: 'In' | 'Out' | 'Adjustment', notes?: string) => Promise<void>;
-  onUpsertStock: (item: Partial<MagicItemStock> & { item_name: string; tier: string; form: string }) => Promise<void>;
-  onDeleteStock: (id: string) => Promise<void>;
-  onUpsertQueue: (item: Partial<CraftingQueueItem> & { item_name: string; tier: string }) => Promise<void>;
-  onDeleteQueue: (id: string) => Promise<void>;
-}
-
-export function InventoryTab({
-  data, isAdmin,
-  onSetInventory, onSetInventoryPrice, onLogInventory,
-  onUpsertStock, onDeleteStock,
-  onUpsertQueue, onDeleteQueue
-}: Props) {
+export function InventoryTab() {
+  const { data, isAdmin, setInventory: onSetInventory, setInventoryPrice: onSetInventoryPrice, logInventory: onLogInventory, upsertMagicItemStock: onUpsertStock, deleteMagicItemStock: onDeleteStock, upsertCraftingQueueItem: onUpsertQueue, deleteCraftingQueueItem: onDeleteQueue } = useLance();
   const [subView, setSubView] = useState<SubView>('inventory');
   const [stockModal, setStockModal] = useState<{ open: boolean; initial?: Partial<MagicItemStock>; prefill?: CatalogueItem }>({ open: false });
   const [queueModal, setQueueModal] = useState<{ open: boolean; initial?: Partial<CraftingQueueItem>; prefill?: CatalogueItem }>({ open: false });

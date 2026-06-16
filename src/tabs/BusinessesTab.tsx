@@ -7,20 +7,18 @@ import { initials } from '@/lib/utils';
 import { SectionHeader } from '@/components/ui/SectionHeader';
 import { DataRow } from '@/components/ui/DataRow';
 import { CustomSelect } from '@/components/ui/CustomSelect';
+import { useLance } from '@/contexts/LanceContext';
 
 interface Props {
-  data: LanceData;
-  isAdmin: boolean;
   canManageBusiness: (id: string) => boolean;
-  onUpsert: (b: Partial<Business> & { id: string; name: string }) => Promise<void>;
-  onDelete: (id: string) => Promise<void>;
 }
 
 const A = '#7eb0d4';
 
 type DetailForm = Partial<Business> & { owners: string[] };
 
-export function BusinessesTab({ data, isAdmin, canManageBusiness, onUpsert, onDelete }: Props) {
+export function BusinessesTab({ canManageBusiness }: Props) {
+  const { data, isAdmin, upsertBusiness: onUpsert, deleteBusiness: onDelete } = useLance();
   const [selected, setSelected] = useState<string | null>(null);
   const [creating, setCreating] = useState(false);
   const [detailForm, setDetailForm] = useState<DetailForm>({ owners: [] });
