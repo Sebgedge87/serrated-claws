@@ -108,15 +108,18 @@ export function useLanceData(lanceId: string | null) {
       });
       setMemberships((ms.data ?? []) as LanceMembership[]);
 
-      // Auto-clear attending_event flags the day after each event ends
-      const today = new Date(); today.setHours(0, 0, 0, 0);
-      for (const ev of (evts.data ?? []) as LanceEvent[]) {
-        if (!ev.cleared) {
-          const clearAfter = new Date(ev.end_date ?? ev.start_date);
-          clearAfter.setDate(clearAfter.getDate() + 1);
-          if (today >= clearAfter) {
-            await supabase.from('members').update({ attending_event: false }).eq('attending_event', true).eq('lance_id', lanceId);
-            await supabase.from('events').update({ cleared: true }).eq('id', ev.id);
+      // Auto-clear attending_event flags the day after each event ends.
+      // Only run on the first (non-silent) load to avoid race conditions across tabs.
+      if (!silent) {
+        const today = new Date(); today.setHours(0, 0, 0, 0);
+        for (const ev of (evts.data ?? []) as LanceEvent[]) {
+          if (!ev.cleared) {
+            const clearAfter = new Date(ev.end_date ?? ev.start_date);
+            clearAfter.setDate(clearAfter.getDate() + 1);
+            if (today >= clearAfter) {
+              await supabase.from('members').update({ attending_event: false }).eq('attending_event', true).eq('lance_id', lanceId);
+              await supabase.from('events').update({ cleared: true }).eq('id', ev.id);
+            }
           }
         }
       }
@@ -162,8 +165,13 @@ export function useLanceData(lanceId: string | null) {
 
   // ---- Members ----
   const upsertMember = useCallback(async (member: Partial<Member> & { name: string }) => {
-    const oldMember = member.id ? data.members.find(m => m.id === member.id) : null;
-    const oldResource = oldMember?.resource ?? null;
+    // Read fresh inventory/members from DB to avoid stale closure values
+    const [freshMembers, freshInventory] = await Promise.all([
+      supabase.from('members').select('id,resource').eq('lance_id', lanceId!),
+      supabase.from('inventory').select('item,current_qty,required_qty').eq('lance_id', lanceId!),
+    ]);
+    const oldMember = member.id ? (freshMembers.data ?? []).find((m: { id: string }) => m.id === member.id) : null;
+    const oldResource = (oldMember as { resource?: string | null } | null)?.resource ?? null;
     const newResource = member.resource ?? null;
 
     // Strip attending_event on new inserts — let the DB default handle it
@@ -176,15 +184,16 @@ export function useLanceData(lanceId: string | null) {
 
     // Sync inventory when resource changes
     if (oldResource !== newResource) {
+      const inv = (freshInventory.data ?? []) as { item: string; current_qty: number; required_qty: number }[];
       if (oldResource) {
-        const existing = data.inventory.find(i => i.item === oldResource);
+        const existing = inv.find(i => i.item === oldResource);
         await supabase.from('inventory').upsert(
           { lance_id: lanceId, item: oldResource, current_qty: Math.max(0, (existing?.current_qty ?? 0) - 1), required_qty: existing?.required_qty ?? 0 },
           { onConflict: 'lance_id,item' }
         );
       }
       if (newResource) {
-        const existing = data.inventory.find(i => i.item === newResource);
+        const existing = inv.find(i => i.item === newResource);
         await supabase.from('inventory').upsert(
           { lance_id: lanceId, item: newResource, current_qty: (existing?.current_qty ?? 0) + 1, required_qty: existing?.required_qty ?? 0 },
           { onConflict: 'lance_id,item' }
@@ -193,7 +202,7 @@ export function useLanceData(lanceId: string | null) {
     }
 
     await reload(true);
-  }, [lanceId, data.members, data.inventory, reload]);
+  }, [lanceId, reload]);
 
   /** Soft-remove: unassign from house rather than delete (admin-only delete is also available). */
   const unassignMember = useCallback(async (id: string) => {
@@ -253,6 +262,7 @@ export function useLanceData(lanceId: string | null) {
 
   // ---- Business delete ----
   const deleteBusiness = useCallback(async (id: string) => {
+    await supabase.from('business_owners').delete().eq('business_id', id);
     const { error: err } = await supabase.from('businesses').delete().eq('id', id);
     if (err) throw new Error(err.message);
     await reload(true);
@@ -410,7 +420,10 @@ export function useLanceData(lanceId: string | null) {
 
   // ---- Bard Works ----
   const upsertBardWork = useCallback(async (work: Omit<BardWork, 'id' | 'created_at' | 'updated_at'> & { id?: string }) => {
-    const { error: err } = await supabase.from('bard_works').upsert({ ...work, updated_at: new Date().toISOString() }, { onConflict: 'id' });
+    const payload = { ...work, updated_at: new Date().toISOString() };
+    const { error: err } = work.id
+      ? await supabase.from('bard_works').upsert(payload, { onConflict: 'id' })
+      : await supabase.from('bard_works').insert(payload);
     if (err) throw new Error(err.message);
     await reload(true);
   }, [reload]);

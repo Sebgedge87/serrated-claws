@@ -34,7 +34,7 @@ export function Layout() {
   const lances = useLances(user?.id ?? null);
   const lance = useLanceData(lances.currentLanceId);
   const perms = usePermissions(lances.currentMembership, lance.data);
-  const isAdmin = lances.currentMembership?.role === 'admin' || lances.currentMembership?.role === 'super_admin' || profile?.role === 'super_admin';
+  const isAdmin = lances.currentMembership?.role === 'admin' || lances.currentMembership?.role === 'super_admin' || (!!lances.currentMembership && profile?.role === 'super_admin');
   const currentMember = lance.data.members.find(m => m.id === (profile?.member_id ?? null));
   const bardFunctionIds = new Set(lance.data.functions.filter(f => f.name.toLowerCase().includes('bard')).map(f => f.id));
   const isBard = !!currentMember?.function && bardFunctionIds.has(currentMember.function);
@@ -338,7 +338,7 @@ export function Layout() {
 
         {!lance.loading && !lance.error && !selectedMember && (
           <>
-            {activeTab === 'overview' && <OverviewTab data={lance.data} filteredMembers={lance.data.members} isAdmin={isAdmin} onNavigate={setActiveTab} />}
+            {activeTab === 'overview' && <OverviewTab data={lance.data} filteredMembers={search.trim() ? lance.data.members.filter(m => [m.name, m.player_name, m.rank, m.function, m.military_function].filter(Boolean).some(v => v!.toLowerCase().includes(search.trim().toLowerCase()))) : lance.data.members} isAdmin={isAdmin} onNavigate={setActiveTab} />}
             {activeTab === 'roster' && <RosterTab data={lance.data} isAdmin={isAdmin} onViewMember={setSelectedMember} />}
             {activeHouse && (
               <HouseTab
@@ -385,6 +385,7 @@ export function Layout() {
               <BankTab
                 data={lance.data}
                 isAdmin={isAdmin}
+                lanceName={lance.settings?.name ?? lances.currentLance?.name}
                 onUpsertInventory={lance.setInventory}
               />
             )}
@@ -469,7 +470,8 @@ export function Layout() {
           onSave={async house => {
             await lance.upsertHouse(house);
             setShowAddHouse(false);
-            setActiveTab(house.id);
+            // Navigate to overview; the new house tab appears after data reloads
+            setActiveTab('overview');
           }}
         />
       )}

@@ -125,10 +125,10 @@ export function RosterTab({ data, isAdmin: _isAdmin, initialFilter = 'all', onVi
           overflow: 'hidden',
         }}
       >
-        {/* Header row */}
+        {/* Header row — 2-col mobile, 6-col on sm+ */}
         <div
+          className="hidden sm:grid"
           style={{
-            display: 'grid',
             gridTemplateColumns: '3px 1fr 140px 120px 140px 90px',
             background: 'rgb(var(--ink-800))',
             borderBottom: '1px solid var(--line)',
@@ -152,6 +152,19 @@ export function RosterTab({ data, isAdmin: _isAdmin, initialFilter = 'all', onVi
             </div>
           ))}
         </div>
+        <div
+          className="grid sm:hidden"
+          style={{
+            gridTemplateColumns: '3px 1fr 90px',
+            background: 'rgb(var(--ink-800))',
+            borderBottom: '1px solid var(--line)',
+          }}
+        >
+          <div />
+          {['Character', 'Status'].map(col => (
+            <div key={col} className="eyebrow" style={{ padding: '8px 10px', fontSize: '10px', letterSpacing: '0.1em', textTransform: 'uppercase', color: 'rgb(var(--ink-400))' }}>{col}</div>
+          ))}
+        </div>
 
         {members.length === 0 && (
           <div style={{ padding: '32px', textAlign: 'center', color: 'rgb(var(--ink-400))', fontSize: '14px' }}>
@@ -169,14 +182,12 @@ export function RosterTab({ data, isAdmin: _isAdmin, initialFilter = 'all', onVi
               key={m.id}
               onClick={() => onViewMember(m)}
               style={{
-                display: 'grid',
-                gridTemplateColumns: '3px 1fr 140px 120px 140px 90px',
                 borderTop: i === 0 ? 'none' : '1px solid var(--line-soft)',
                 cursor: 'pointer',
                 background: 'transparent',
                 transition: 'background 0.1s',
               }}
-              className="hover:bg-white/[0.025]"
+              className="grid sm:grid-cols-[3px_1fr_140px_120px_140px_90px] grid-cols-[3px_1fr_90px] hover:bg-white/[0.025]"
             >
               {/* House-colour spine */}
               <div style={{ background: spineColor, alignSelf: 'stretch' }} />
@@ -202,8 +213,8 @@ export function RosterTab({ data, isAdmin: _isAdmin, initialFilter = 'all', onVi
                 )}
               </div>
 
-              {/* House */}
-              <div style={{ padding: '12px 12px', display: 'flex', alignItems: 'center' }}>
+              {/* House — hidden on mobile */}
+              <div className="hidden sm:flex" style={{ padding: '12px 12px', alignItems: 'center' }}>
                 {house ? (
                   <span style={{ fontSize: '13px', color: house.primary_color }}>
                     {house.name.replace('House ', '')}
@@ -213,13 +224,13 @@ export function RosterTab({ data, isAdmin: _isAdmin, initialFilter = 'all', onVi
                 )}
               </div>
 
-              {/* Rank */}
-              <div style={{ padding: '12px 12px', display: 'flex', alignItems: 'center' }}>
+              {/* Rank — hidden on mobile */}
+              <div className="hidden sm:flex" style={{ padding: '12px 12px', alignItems: 'center' }}>
                 <span style={{ fontSize: '13px', color: 'rgb(var(--ink-300))' }}>{m.rank ?? '—'}</span>
               </div>
 
-              {/* Role / function */}
-              <div style={{ padding: '12px 12px', display: 'flex', alignItems: 'center' }}>
+              {/* Role / function — hidden on mobile */}
+              <div className="hidden sm:flex" style={{ padding: '12px 12px', alignItems: 'center' }}>
                 <span style={{ fontSize: '13px', color: 'rgb(var(--ink-300))' }}>
                   {m.function ?? m.military_function ?? '—'}
                 </span>

@@ -4,6 +4,7 @@ import { MemberCard } from '@/components/MemberCard';
 import { MemberLedgerRow } from '@/components/MemberLedgerRow';
 import { AddPersonModal } from '@/components/modals/AddPersonModal';
 import { SectionHeader } from '@/components/ui/SectionHeader';
+import { useConfirm } from '@/components/ConfirmDialog';
 import { monogramOf } from '@/lib/utils';
 
 type ViewMode = 'ledger' | 'cards';
@@ -29,6 +30,7 @@ interface Props {
 }
 
 export function HouseTab({ house, data, search, isAdmin, onUpsert, onUnassign, onDelete, onDeleteHouse, onUpsertCharInventory, onDeleteCharInventory, onUpsertSkill, onDeleteSkill, onUpsertRitual, onDeleteRitual, onViewMember }: Props) {
+  const { confirm, Dialog: ConfirmDialog } = useConfirm();
   const [editing, setEditing] = useState<Member | null>(null);
   const [view, setView] = useState<ViewMode>(() => {
     try { return (localStorage.getItem(VIEW_KEY) as ViewMode) || 'ledger'; } catch { return 'ledger'; }
@@ -81,7 +83,13 @@ export function HouseTab({ house, data, search, isAdmin, onUpsert, onUnassign, o
 
       {isAdmin && (
         <div className="mb-3">
-          <button className="text-xs text-red-400/60 hover:text-red-400 transition-colors" onClick={onDeleteHouse}>
+          <button
+            className="text-xs text-red-400/60 hover:text-red-400 transition-colors"
+            onClick={async () => {
+              if (await confirm({ title: `Delete ${house.name}?`, body: 'All members will be unassigned. This cannot be undone.', danger: true }))
+                await onDeleteHouse?.();
+            }}
+          >
             ⚠ Delete house
           </button>
         </div>
@@ -93,11 +101,11 @@ export function HouseTab({ house, data, search, isAdmin, onUpsert, onUnassign, o
         <>
           <SectionHeader title="Nobility" count={nobles.length} />
           {view === 'ledger' ? (
-            <LedgerTable members={nobles} isAdmin={isAdmin} houseColor={c} onView={onViewMember} onUnassign={onUnassign} onDelete={onDelete} />
+            <LedgerTable members={nobles} isAdmin={isAdmin} houseColor={c} data={data} onView={onViewMember} onUnassign={onUnassign} onDelete={onDelete} />
           ) : (
             <div className="grid sm:grid-cols-2 gap-3.5 mb-8">
               {nobles.map(m => (
-                <MemberCard key={m.id} member={m} isAdmin={isAdmin} onUnassign={isAdmin ? onUnassign : undefined} onDelete={isAdmin ? onDelete : undefined} onViewSheet={onViewMember} />
+                <MemberCard key={m.id} member={m} isAdmin={isAdmin} covens={data.covens} functions={data.functions} onUnassign={isAdmin ? onUnassign : undefined} onDelete={isAdmin ? onDelete : undefined} onViewSheet={onViewMember} />
               ))}
             </div>
           )}
@@ -108,11 +116,11 @@ export function HouseTab({ house, data, search, isAdmin, onUpsert, onUnassign, o
         <div className={nobles.length > 0 ? 'mt-8' : ''}>
           <SectionHeader title="Members" count={regulars.length} />
           {view === 'ledger' ? (
-            <LedgerTable members={regulars} isAdmin={isAdmin} houseColor={c} onView={onViewMember} onUnassign={onUnassign} onDelete={onDelete} />
+            <LedgerTable members={regulars} isAdmin={isAdmin} houseColor={c} data={data} onView={onViewMember} onUnassign={onUnassign} onDelete={onDelete} />
           ) : (
             <div className="grid sm:grid-cols-2 gap-3.5">
               {regulars.map(m => (
-                <MemberCard key={m.id} member={m} isAdmin={isAdmin} onUnassign={isAdmin ? onUnassign : undefined} onDelete={isAdmin ? onDelete : undefined} onViewSheet={onViewMember} />
+                <MemberCard key={m.id} member={m} isAdmin={isAdmin} covens={data.covens} functions={data.functions} onUnassign={isAdmin ? onUnassign : undefined} onDelete={isAdmin ? onDelete : undefined} onViewSheet={onViewMember} />
               ))}
             </div>
           )}
@@ -122,6 +130,8 @@ export function HouseTab({ house, data, search, isAdmin, onUpsert, onUnassign, o
       {filtered.length === 0 && (
         <p className="text-center py-16 text-ink-100/50">No members in {house.name}</p>
       )}
+
+      {ConfirmDialog}
 
       {editing && (
         <AddPersonModal
@@ -144,10 +154,11 @@ export function HouseTab({ house, data, search, isAdmin, onUpsert, onUnassign, o
   );
 }
 
-function LedgerTable({ members, isAdmin, houseColor, onView, onUnassign, onDelete }: {
+function LedgerTable({ members, isAdmin, houseColor, data, onView, onUnassign, onDelete }: {
   members: Member[];
   isAdmin: boolean;
   houseColor: string;
+  data: LanceData;
   onView?: (m: Member) => void;
   onUnassign: (id: string) => Promise<void>;
   onDelete: (id: string) => Promise<void>;
@@ -203,6 +214,7 @@ function LedgerTable({ members, isAdmin, houseColor, onView, onUnassign, onDelet
           member={m}
           isAdmin={isAdmin}
           houseColor={houseColor}
+          functionName={data.functions.find(f => f.id === m.function)?.name}
           onView={() => onView?.(m)}
           onUnassign={isAdmin ? () => onUnassign(m.id) : undefined}
           onDelete={isAdmin ? () => onDelete(m.id) : undefined}

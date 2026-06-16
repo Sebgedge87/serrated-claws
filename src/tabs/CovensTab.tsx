@@ -195,7 +195,7 @@ function CovenDetail({
               Edit
             </button>
           )}
-          {isAdmin && canManage && (
+          {isAdmin && (
             <button onClick={onDelete} className="text-xs text-red-400/60 hover:text-red-400 border border-red-400/20 rounded px-2 py-1 transition-colors">
               Delete
             </button>
@@ -454,7 +454,7 @@ function RitualModal({ covenId, domain, initial, onClose, onSave }: {
   const [busy, setBusy] = useState(false);
 
   const allowed = useMemo(() =>
-    RITUALS_CATALOGUE.filter(r => !domain || r.realm === domain),
+    RITUALS_CATALOGUE.filter(r => !domain || r.realm === domain || r.realm === 'Special'),
     [domain]
   );
 

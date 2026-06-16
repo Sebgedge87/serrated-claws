@@ -1,4 +1,4 @@
-import type { Member } from '@/lib/types';
+import type { Coven, Func, Member } from '@/lib/types';
 import { Icons } from '@/components/Icons';
 import { StatField } from '@/components/StatField';
 import { useConfirm } from '@/components/ConfirmDialog';
@@ -7,12 +7,16 @@ import { initials, cx, formatIncome } from '@/lib/utils';
 interface Props {
   member: Member;
   isAdmin: boolean;
+  covens?: Pick<Coven, 'id' | 'name'>[];
+  functions?: Pick<Func, 'id' | 'name'>[];
   onUnassign?: (id: string) => void;
   onDelete?: (id: string) => void;
   onViewSheet?: (m: Member) => void;
 }
 
-export function MemberCard({ member, isAdmin, onUnassign, onDelete, onViewSheet }: Props) {
+export function MemberCard({ member, isAdmin, covens, functions, onUnassign, onDelete, onViewSheet }: Props) {
+  const functionName = member.function ? (functions?.find(f => f.id === member.function)?.name ?? member.function) : null;
+  const covenName = member.coven ? (covens?.find(c => c.id === member.coven)?.name ?? member.coven) : null;
   const accent = member.is_noble ? '#d4b46d' : member.status === 'active' ? '#6dd47e' : member.status === 'KIA' ? '#ff7a7a' : '#999';
   const { confirm, Dialog: ConfirmDialog } = useConfirm();
 
@@ -80,9 +84,9 @@ export function MemberCard({ member, isAdmin, onUnassign, onDelete, onViewSheet 
 
       <div className="px-5 py-4">
         <div className="grid grid-cols-[repeat(auto-fit,minmax(140px,1fr))] gap-3.5">
-          {member.function && <StatField icon={Icons.Swords} label="Claw" value={member.function} color="#d4b46d" />}
+          {functionName && <StatField icon={Icons.Swords} label="Claw" value={functionName} color="#d4b46d" />}
           {member.military_function && <StatField icon={Icons.Shield} label="Military Role" value={member.military_function} />}
-          {member.coven && <StatField icon={Icons.Sparkles} label="Coven" value={member.coven} color="#b56eb5" />}
+          {covenName && <StatField icon={Icons.Sparkles} label="Coven" value={covenName} color="#b56eb5" />}
           {member.hp != null && <StatField icon={Icons.Heart} label="HP" value={member.hp} color="#ff7a7a" />}
           {member.mp != null && <StatField icon={Icons.Zap} label="MP" value={member.mp} color="#7eb0ff" />}
           {member.resource && <StatField icon={Icons.Gem} label="Resource" value={member.resource} color="#7ed4ae" />}

@@ -75,7 +75,7 @@ function UnassignedSection({ data, isAdmin, onDelete, onViewMember }: { data: La
       <SectionHeading icon={<Icons.Question size={16} />} title={`Unassigned Members · ${unassigned.length}`} color="#9ca3af" />
       <div className="grid sm:grid-cols-2 gap-3.5">
         {unassigned.map(m => (
-          <MemberCard key={m.id} member={m} isAdmin={isAdmin} onDelete={onDelete} onViewSheet={onViewMember} />
+          <MemberCard key={m.id} member={m} isAdmin={isAdmin} covens={data.covens} functions={data.functions} onDelete={onDelete} onViewSheet={onViewMember} />
         ))}
       </div>
     </section>
@@ -178,7 +178,7 @@ function EventsSection({ events, data, onUpsert, onDelete, onClearAttending }: {
 
   return (
     <section>
-      <SectionHeading icon={<Icons.Package size={16} />} title="Events" />
+      <SectionHeading icon={<Icons.Scroll size={16} />} title="Events" />
       <div className="flex items-center gap-3 mb-4 flex-wrap">
         <span className="text-sm text-ink-100/60">{attendingMembers.length} member{attendingMembers.length !== 1 ? 's' : ''} attending next event</span>
         {attendingMembers.length > 0 && <>
@@ -299,6 +299,11 @@ create policy settings_admin_write on public.lance_settings for all using (publi
 function SettingsSection({ settings, onSave }: { settings: LanceSettings | null; onSave: Props['onUpsertSettings'] }) {
   const [form, setForm] = useState({ name: settings?.name ?? '', motto: settings?.motto ?? '', description: settings?.description ?? '' });
   const [busy, setBusy] = useState(false);
+
+  // Populate form once settings load (they may arrive after initial render)
+  useEffect(() => {
+    if (settings) setForm({ name: settings.name ?? '', motto: settings.motto ?? '', description: settings.description ?? '' });
+  }, [settings?.id]);
   const [saved, setSaved] = useState(false);
 
   async function save() {

@@ -339,6 +339,7 @@ function InventoryView({
                             <td className="px-3 py-2.5 text-center">
                               {isAdmin ? (
                                 <input
+                                  key={`cur-${item.item}-${stock.current_qty}`}
                                   type="number"
                                   defaultValue={stock.current_qty}
                                   onBlur={e => {
@@ -354,6 +355,7 @@ function InventoryView({
                             <td className="px-3 py-2.5 text-center">
                               {isAdmin ? (
                                 <input
+                                  key={`req-${item.item}-${stock.required_qty}`}
                                   type="number"
                                   defaultValue={stock.required_qty}
                                   onBlur={e => {
