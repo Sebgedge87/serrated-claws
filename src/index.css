@@ -55,98 +55,183 @@
     --danger:      #97312c;
   }
 
-  /* ── Nation themes — override accent tokens only ──────────────────────
-     Applied via data-nation attribute on <html>. Works with both
-     dark and light data-theme values. Dawn = default (no override).     */
+  /* ══════════════════════════════════════════════════════════════════════
+     NATION THEMES
+     Each nation gets:
+       [data-nation="X"]              — accent tokens (both dark + light)
+       [data-theme="dark"][data-nation="X"] — full ink ramp for dark mode
+     Dawn = default (no overrides needed).
+     ══════════════════════════════════════════════════════════════════════ */
 
-  /* Highguard — silver and black */
+  /* ── Highguard — stark black & silver ─────────────────────────────── */
   [data-nation="highguard"] {
     --gold:        #b8b8c8;
     --gold-bright: #dcdce8;
-    --gold-deep:   #8888a0;
-    --line:        rgba(180, 180, 200, 0.16);
-    --line-soft:   rgba(180, 180, 200, 0.09);
-    --line-strong: rgba(180, 180, 200, 0.34);
+    --gold-deep:   #8080a0;
+    --line:        rgba(180,180,200,0.16);
+    --line-soft:   rgba(180,180,200,0.09);
+    --line-strong: rgba(180,180,200,0.34);
+  }
+  [data-theme="dark"][data-nation="highguard"] {
+    --ink-950: 8 8 10;
+    --ink-900: 13 13 16;
+    --ink-800: 19 19 24;
+    --ink-700: 42 42 52;
+    --ink-300: 155 155 175;
+    --ink-100: 228 228 238;
+    --inset:   rgba(0,0,0,0.36);
   }
 
-  /* The Marches — earthy sage green */
+  /* ── The Marches — earthy green & brown ───────────────────────────── */
   [data-nation="the-marches"] {
     --gold:        #7aaa5a;
     --gold-bright: #9acc7a;
     --gold-deep:   #527a38;
-    --line:        rgba(100, 160, 80, 0.16);
-    --line-soft:   rgba(100, 160, 80, 0.09);
-    --line-strong: rgba(100, 160, 80, 0.34);
+    --line:        rgba(100,160,80,0.16);
+    --line-soft:   rgba(100,160,80,0.09);
+    --line-strong: rgba(100,160,80,0.34);
+  }
+  [data-theme="dark"][data-nation="the-marches"] {
+    --ink-950: 9 10 6;
+    --ink-900: 14 16 9;
+    --ink-800: 21 24 14;
+    --ink-700: 44 52 28;
+    --ink-300: 140 162 110;
+    --ink-100: 215 228 190;
+    --inset:   rgba(0,0,0,0.30);
   }
 
-  /* Wintermark — ice blue */
+  /* ── Wintermark — ice blue & grey ─────────────────────────────────── */
   [data-nation="wintermark"] {
     --gold:        #6aaad8;
     --gold-bright: #90c4ec;
     --gold-deep:   #4a80b0;
-    --line:        rgba(80, 140, 200, 0.16);
-    --line-soft:   rgba(80, 140, 200, 0.09);
-    --line-strong: rgba(80, 140, 200, 0.34);
+    --line:        rgba(80,140,200,0.16);
+    --line-soft:   rgba(80,140,200,0.09);
+    --line-strong: rgba(80,140,200,0.34);
+  }
+  [data-theme="dark"][data-nation="wintermark"] {
+    --ink-950: 7 10 16;
+    --ink-900: 11 16 26;
+    --ink-800: 16 23 38;
+    --ink-700: 34 50 78;
+    --ink-300: 120 155 200;
+    --ink-100: 205 220 240;
+    --inset:   rgba(0,0,0,0.32);
   }
 
-  /* Navarr — deep forest green */
+  /* ── Navarr — deep forest green ───────────────────────────────────── */
   [data-nation="navarr"] {
     --gold:        #5aaa48;
     --gold-bright: #7acc66;
     --gold-deep:   #3a7830;
-    --line:        rgba(70, 150, 60, 0.16);
-    --line-soft:   rgba(70, 150, 60, 0.09);
-    --line-strong: rgba(70, 150, 60, 0.34);
+    --line:        rgba(70,150,60,0.16);
+    --line-soft:   rgba(70,150,60,0.09);
+    --line-strong: rgba(70,150,60,0.34);
+  }
+  [data-theme="dark"][data-nation="navarr"] {
+    --ink-950: 5 10 5;
+    --ink-900: 8 15 8;
+    --ink-800: 13 22 13;
+    --ink-700: 28 48 26;
+    --ink-300: 100 150 95;
+    --ink-100: 185 220 180;
+    --inset:   rgba(0,0,0,0.35);
   }
 
-  /* The League — rich purple */
+  /* ── The League — rich jewel purple & gold ────────────────────────── */
   [data-nation="the-league"] {
     --gold:        #a868d8;
     --gold-bright: #c890f0;
     --gold-deep:   #7840a8;
-    --line:        rgba(150, 80, 200, 0.16);
-    --line-soft:   rgba(150, 80, 200, 0.09);
-    --line-strong: rgba(150, 80, 200, 0.34);
+    --line:        rgba(150,80,200,0.16);
+    --line-soft:   rgba(150,80,200,0.09);
+    --line-strong: rgba(150,80,200,0.34);
+  }
+  [data-theme="dark"][data-nation="the-league"] {
+    --ink-950: 11 7 18;
+    --ink-900: 16 11 26;
+    --ink-800: 23 16 38;
+    --ink-700: 48 32 78;
+    --ink-300: 150 120 195;
+    --ink-100: 225 210 245;
+    --inset:   rgba(0,0,0,0.34);
   }
 
-  /* Varushka — blood red */
+  /* ── Varushka — blood red & dark brown ───────────────────────────── */
   [data-nation="varushka"] {
     --gold:        #c84848;
     --gold-bright: #e87070;
     --gold-deep:   #982828;
-    --line:        rgba(180, 50, 50, 0.16);
-    --line-soft:   rgba(180, 50, 50, 0.09);
-    --line-strong: rgba(180, 50, 50, 0.34);
+    --line:        rgba(180,50,50,0.16);
+    --line-soft:   rgba(180,50,50,0.09);
+    --line-strong: rgba(180,50,50,0.34);
+  }
+  [data-theme="dark"][data-nation="varushka"] {
+    --ink-950: 13 7 7;
+    --ink-900: 20 10 10;
+    --ink-800: 28 15 15;
+    --ink-700: 58 28 28;
+    --ink-300: 178 120 120;
+    --ink-100: 238 215 215;
+    --inset:   rgba(0,0,0,0.36);
   }
 
-  /* Urizen — lavender */
+  /* ── Urizen — ethereal lavender & silver ─────────────────────────── */
   [data-nation="urizen"] {
     --gold:        #9888e0;
     --gold-bright: #baaef8;
     --gold-deep:   #6858b0;
-    --line:        rgba(130, 110, 210, 0.16);
-    --line-soft:   rgba(130, 110, 210, 0.09);
-    --line-strong: rgba(130, 110, 210, 0.34);
+    --line:        rgba(130,110,210,0.16);
+    --line-soft:   rgba(130,110,210,0.09);
+    --line-strong: rgba(130,110,210,0.34);
+  }
+  [data-theme="dark"][data-nation="urizen"] {
+    --ink-950: 9 8 17;
+    --ink-900: 13 12 25;
+    --ink-800: 19 17 36;
+    --ink-700: 40 36 74;
+    --ink-300: 145 135 200;
+    --ink-100: 220 215 248;
+    --inset:   rgba(0,0,0,0.34);
   }
 
-  /* The Brass Coast — bright brass orange */
+  /* ── The Brass Coast — warm brass, orange & red ──────────────────── */
   [data-nation="the-brass-coast"] {
     --gold:        #d87030;
     --gold-bright: #f09050;
     --gold-deep:   #a85018;
-    --line:        rgba(200, 100, 40, 0.16);
-    --line-soft:   rgba(200, 100, 40, 0.09);
-    --line-strong: rgba(200, 100, 40, 0.34);
+    --line:        rgba(200,100,40,0.16);
+    --line-soft:   rgba(200,100,40,0.09);
+    --line-strong: rgba(200,100,40,0.34);
+  }
+  [data-theme="dark"][data-nation="the-brass-coast"] {
+    --ink-950: 16 9 5;
+    --ink-900: 24 13 7;
+    --ink-800: 34 19 10;
+    --ink-700: 70 36 18;
+    --ink-300: 192 140 105;
+    --ink-100: 245 222 200;
+    --inset:   rgba(0,0,0,0.32);
   }
 
-  /* Imperial Orcs — military olive */
+  /* ── Imperial Orcs — military olive & dark earth ─────────────────── */
   [data-nation="imperial-orcs"] {
     --gold:        #88aa40;
     --gold-bright: #aace60;
     --gold-deep:   #607828;
-    --line:        rgba(110, 150, 50, 0.16);
-    --line-soft:   rgba(110, 150, 50, 0.09);
-    --line-strong: rgba(110, 150, 50, 0.34);
+    --line:        rgba(110,150,50,0.16);
+    --line-soft:   rgba(110,150,50,0.09);
+    --line-strong: rgba(110,150,50,0.34);
+  }
+  [data-theme="dark"][data-nation="imperial-orcs"] {
+    --ink-950: 8 10 6;
+    --ink-900: 12 15 9;
+    --ink-800: 18 22 13;
+    --ink-700: 36 46 26;
+    --ink-300: 125 148 98;
+    --ink-100: 198 215 175;
+    --inset:   rgba(0,0,0,0.34);
   }
 
   html, body, #root { min-height: 100vh; }
