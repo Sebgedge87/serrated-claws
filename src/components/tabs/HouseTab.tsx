@@ -7,6 +7,7 @@ import { BardWorksSection } from '@/components/BardWorksSection';
 import { SectionHeader } from '@/components/ui/SectionHeader';
 import { useConfirm } from '@/components/ConfirmDialog';
 import { monogramOf } from '@/lib/utils';
+import { nationConfig } from '@/lib/nations';
 
 type ViewMode = 'ledger' | 'cards';
 const VIEW_KEY = 'serrated.viewMode';
@@ -40,7 +41,8 @@ export function HouseTab({ house, data, search, isAdmin, currentMemberId, onUpse
   });
   const setMode = (m: ViewMode) => { setView(m); try { localStorage.setItem(VIEW_KEY, m); } catch { /* ignore */ } };
 
-  const c = house.primary_color ?? '#d4b46d';
+  const cfg = nationConfig(house.nation);
+  const c = house.primary_color ?? cfg.colors[0];
   const houseMembers = data.members.filter(m => m.house_id === house.id);
   const q = search.trim().toLowerCase();
   const filtered = q
@@ -57,7 +59,7 @@ export function HouseTab({ house, data, search, isAdmin, currentMemberId, onUpse
 
       {onBack && (
         <button onClick={onBack} className="btn btn-ghost btn-sm mb-3 mt-2">
-          ← Houses
+          ← {cfg.groupTermPlural}
         </button>
       )}
 
@@ -70,7 +72,15 @@ export function HouseTab({ house, data, search, isAdmin, currentMemberId, onUpse
           {monogramOf(house.name)}
         </div>
         <div className="flex-1 min-w-0">
-          <h2 className="font-display text-2xl sm:text-4xl font-bold text-ink-100 m-0">{house.name}</h2>
+          <div className="flex items-center gap-2 flex-wrap">
+            <h2 className="font-display text-2xl sm:text-4xl font-bold text-ink-100 m-0">{house.name}</h2>
+            <span
+              className="text-[9px] font-semibold uppercase tracking-widest px-1.5 py-0.5 rounded"
+              style={{ background: `${c}20`, color: c, border: `1px solid ${c}40` }}
+            >
+              {cfg.icon} {cfg.groupTerm}
+            </span>
+          </div>
           <p className="text-sm text-ink-100/60 m-0 tracking-wider">
             {houseMembers.length} sworn · {houseMembers.filter(m => m.is_noble).length} noble
             {house.motto && <span className="italic"> · "{house.motto}"</span>}
