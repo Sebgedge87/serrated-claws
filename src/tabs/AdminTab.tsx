@@ -8,6 +8,7 @@ import { initials } from '@/lib/utils';
 import { exportRosterPdf, exportResourcesPdf } from '@/lib/parchmentPdf';
 import { CustomSelect } from '@/components/ui/CustomSelect';
 import { useLance } from '@/contexts/LanceContext';
+import { NATIONS, nationConfig, type Nation } from '@/lib/nations';
 import { FunctionsTab } from '@/tabs/FunctionsTab';
 
 interface Props {
@@ -237,20 +238,31 @@ create policy settings_read on public.lance_settings for select using (auth.role
 create policy settings_admin_write on public.lance_settings for all using (public.is_admin()) with check (public.is_admin());`;
 
 function SettingsSection({ settings, onSave }: { settings: LanceSettings | null; onSave: (updates: Partial<Omit<LanceSettings, 'id'>>) => Promise<void> }) {
-  const [form, setForm] = useState({ name: settings?.name ?? '', motto: settings?.motto ?? '', description: settings?.description ?? '' });
+  const [form, setForm] = useState({
+    name: settings?.name ?? '',
+    motto: settings?.motto ?? '',
+    description: settings?.description ?? '',
+    nation: (settings?.nation ?? 'Dawn') as Nation,
+  });
   const [busy, setBusy] = useState(false);
-
-  // Populate form once settings load (they may arrive after initial render)
-  useEffect(() => {
-    if (settings) setForm({ name: settings.name ?? '', motto: settings.motto ?? '', description: settings.description ?? '' });
-  }, [settings?.id]);
   const [saved, setSaved] = useState(false);
+
+  useEffect(() => {
+    if (settings) setForm({
+      name: settings.name ?? '',
+      motto: settings.motto ?? '',
+      description: settings.description ?? '',
+      nation: (settings.nation ?? 'Dawn') as Nation,
+    });
+  }, [settings?.id]);
+
+  const cfg = nationConfig(form.nation);
 
   async function save() {
     if (!form.name.trim() || busy) return;
     setBusy(true);
     try {
-      await onSave({ name: form.name.trim(), motto: form.motto || null, description: form.description || null });
+      await onSave({ name: form.name.trim(), motto: form.motto || null, description: form.description || null, nation: form.nation });
       setSaved(true);
       setTimeout(() => setSaved(false), 2000);
     } finally {
@@ -268,18 +280,50 @@ function SettingsSection({ settings, onSave }: { settings: LanceSettings | null;
           <p className="text-xs text-ink-100/50 mt-3">After running, reload the page and this form will appear.</p>
         </div>
       ) : (
-        <div className="card p-6 space-y-4 max-w-xl">
+        <div className="card p-6 space-y-5 max-w-xl">
+          {/* Nation */}
           <div>
-            <label className="block text-xs uppercase tracking-widest text-ink-100/50 font-semibold mb-1.5">Lance Name</label>
+            <label className="block text-xs uppercase tracking-widest text-ink-100/50 font-semibold mb-2">Nation</label>
+            <div className="grid grid-cols-2 gap-1.5 mb-2">
+              {NATIONS.map(n => {
+                const active = form.nation === n.nation;
+                return (
+                  <button
+                    key={n.nation}
+                    type="button"
+                    onClick={() => setForm(f => ({ ...f, nation: n.nation as Nation }))}
+                    className="flex items-center gap-2 px-3 py-2 rounded-lg text-left text-sm transition-all"
+                    style={{
+                      background: active ? `${n.colors[0]}22` : 'rgba(255,255,255,0.03)',
+                      border: `1px solid ${active ? n.colors[0] + '80' : 'rgba(201,169,97,0.12)'}`,
+                      color: active ? n.colors[0] : 'rgb(var(--ink-300))',
+                      fontWeight: active ? 600 : 400,
+                    }}
+                  >
+                    <span style={{ fontSize: '16px', lineHeight: 1 }}>{n.icon}</span>
+                    <span className="truncate">{n.nation}</span>
+                  </button>
+                );
+              })}
+            </div>
+            <p className="text-xs text-ink-100/40">
+              Changes the app terminology — {cfg.groupTermPlural.toLowerCase()}, {cfg.memberTerm.toLowerCase()}s, colours.
+            </p>
+          </div>
+
+          <div>
+            <label className="block text-xs uppercase tracking-widest text-ink-100/50 font-semibold mb-1.5">
+              {cfg.groupTermPlural === 'Houses' ? 'Lance' : cfg.groupTermPlural === 'Legions' ? 'Legion' : cfg.groupTerm} Name
+            </label>
             <input className="input" value={form.name} onChange={e => setForm(f => ({ ...f, name: e.target.value }))} placeholder="The Serrated Claws" />
           </div>
           <div>
             <label className="block text-xs uppercase tracking-widest text-ink-100/50 font-semibold mb-1.5">Motto <span className="normal-case font-normal text-ink-100/40">(optional)</span></label>
-            <input className="input" value={form.motto} onChange={e => setForm(f => ({ ...f, motto: e.target.value }))} placeholder="Your lance motto…" />
+            <input className="input" value={form.motto} onChange={e => setForm(f => ({ ...f, motto: e.target.value }))} placeholder="Your motto…" />
           </div>
           <div>
             <label className="block text-xs uppercase tracking-widest text-ink-100/50 font-semibold mb-1.5">Description <span className="normal-case font-normal text-ink-100/40">(optional)</span></label>
-            <textarea rows={2} className="input resize-y" value={form.description} onChange={e => setForm(f => ({ ...f, description: e.target.value }))} placeholder="A short description of the lance…" />
+            <textarea rows={2} className="input resize-y" value={form.description} onChange={e => setForm(f => ({ ...f, description: e.target.value }))} placeholder="A short description…" />
           </div>
           <div className="flex items-center gap-3">
             <button onClick={save} disabled={busy || !form.name.trim()} className="btn btn-primary">

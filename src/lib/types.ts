@@ -50,6 +50,7 @@ export interface LanceSettings {
   name: string;
   motto: string | null;
   description: string | null;
+  nation: string | null;
 }
 export type UserRole = 'super_admin' | 'admin' | 'member' | 'viewer';
 

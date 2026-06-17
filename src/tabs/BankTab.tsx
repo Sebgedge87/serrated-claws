@@ -1,8 +1,9 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { memberIncomeRings } from '@/lib/utils';
 import { useLance } from '@/contexts/LanceContext';
 import { InventoryTab } from '@/tabs/InventoryTab';
 import { BusinessesTab } from '@/tabs/BusinessesTab';
+import { EMPIRE_CATALOGUE } from '@/lib/catalogue';
 
 type TreasuryView = 'holdings' | 'stock' | 'ventures';
 
@@ -68,6 +69,29 @@ export function BankTab({ canManageBusiness, initialView }: { canManageBusiness:
       setCollectBusy(false);
     }
   }
+
+  // Resource Source catalogue names (for normalised lookup)
+  const resourceCatalogueNames = useMemo(() =>
+    Object.fromEntries(
+      EMPIRE_CATALOGUE.filter(i => i.type === 'Resource Source').map(i => [i.item.toLowerCase(), i.item])
+    ), []);
+
+  // Aggregate member resources keyed by catalogue name
+  const resourceGroups = useMemo(() => {
+    const map: Record<string, Array<{ name: string; sub: string | null }>> = {};
+    for (const m of data.members) {
+      if (!m.resource) continue;
+      const colonIdx = m.resource.indexOf(':');
+      const baseType = (colonIdx >= 0 ? m.resource.slice(0, colonIdx) : m.resource).trim().toLowerCase();
+      const sub = colonIdx >= 0 ? m.resource.slice(colonIdx + 1).trim() : null;
+      const catalogueName = resourceCatalogueNames[baseType];
+      if (catalogueName) {
+        if (!map[catalogueName]) map[catalogueName] = [];
+        map[catalogueName].push({ name: m.name, sub });
+      }
+    }
+    return map;
+  }, [data.members, resourceCatalogueNames]);
 
   const incomeMembers = data.members
     .filter(m => memberIncomeRings(m.rings_per_event, m.crowns_per_event, m.thrones_per_event) > 0)
@@ -213,6 +237,20 @@ export function BankTab({ canManageBusiness, initialView }: { canManageBusiness:
       </div>
 
       {/* Businesses */}
+      {/* Member Resources */}
+      {Object.keys(resourceGroups).length > 0 && (
+        <div className="mb-10">
+          <div className="eyebrow mb-3" style={{ fontSize: '10px', letterSpacing: '0.12em', textTransform: 'uppercase' }}>
+            Member Resources
+          </div>
+          <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-3">
+            {Object.entries(resourceGroups).sort((a, b) => b[1].length - a[1].length).map(([resource, members]) => (
+              <ResourceCard key={resource} resource={resource} members={members} />
+            ))}
+          </div>
+        </div>
+      )}
+
       {data.businesses.length > 0 && (
         <div className="mb-10">
           <div className="eyebrow mb-3" style={{ fontSize: '10px', letterSpacing: '0.12em', textTransform: 'uppercase' }}>
@@ -341,6 +379,34 @@ export function BankTab({ canManageBusiness, initialView }: { canManageBusiness:
         </div>
       )}
       </>)}
+    </div>
+  );
+}
+
+function ResourceCard({ resource, members }: { resource: string; members: Array<{ name: string; sub: string | null }> }) {
+  const [open, setOpen] = useState(false);
+  return (
+    <div
+      className="card p-4 cursor-pointer select-none"
+      style={{ borderLeft: '2px solid var(--gold)' }}
+      onClick={() => setOpen(v => !v)}
+    >
+      <div style={{ fontSize: '10px', letterSpacing: '0.1em', textTransform: 'uppercase', color: 'rgb(var(--ink-300))', marginBottom: '4px' }}>{resource}</div>
+      <div style={{ display: 'flex', alignItems: 'baseline', gap: '6px' }}>
+        <span className="num" style={{ fontSize: '28px', color: 'var(--gold)', lineHeight: 1 }}>{members.length}</span>
+        <span style={{ fontSize: '11px', color: 'rgb(var(--ink-400))' }}>member{members.length !== 1 ? 's' : ''}</span>
+        <span style={{ marginLeft: 'auto', fontSize: '11px', color: 'rgb(var(--ink-400))' }}>{open ? '▲' : '▼'}</span>
+      </div>
+      {open && (
+        <div style={{ marginTop: '8px', borderTop: '1px solid var(--line-soft)', paddingTop: '8px' }}>
+          {members.map((m, i) => (
+            <div key={i} style={{ fontSize: '12px', color: 'rgb(var(--ink-200))', paddingBottom: '2px' }}>
+              {m.name}
+              {m.sub && <span style={{ color: 'rgb(var(--ink-400))', marginLeft: '4px' }}>· {m.sub}</span>}
+            </div>
+          ))}
+        </div>
+      )}
     </div>
   );
 }
