@@ -23,6 +23,7 @@ import { CharacterSheetPage } from '@/components/CharacterSheetPage';
 import { CreateCharacterScreen } from '@/components/CreateCharacterScreen';
 import { cx } from '@/lib/utils';
 import type { House, Member } from '@/lib/types';
+import { nationConfig } from '@/lib/nations';
 
 const WIKI_URL = 'https://www.profounddecisions.co.uk/empire-wiki/Skills';
 
@@ -48,13 +49,15 @@ export function Layout() {
   const { theme, toggleTheme } = useTheme();
   const [showTour, setShowTour] = useState(() => !!profile?.id && !hasSeen(profile.id));
 
+  const lanceNation = nationConfig(lance.settings?.nation);
+
   type TabDef = { id: TabId; label: string; Icon: typeof Icons.House };
   const tabs: TabDef[] = [
-    { id: 'overview', label: 'Overview', Icon: Icons.House },
-    { id: 'houses',   label: 'Houses',   Icon: Icons.Shield },
-    { id: 'covens',   label: 'Covens',   Icon: Icons.Sparkles },
-    { id: 'treasury', label: 'Treasury', Icon: Icons.Coins },
-    ...(isAdmin ? [{ id: 'admin' as TabId, label: 'Admin', Icon: Icons.Shield }] : []),
+    { id: 'overview', label: 'Overview',                      Icon: Icons.House },
+    { id: 'houses',   label: lanceNation.groupTermPlural,     Icon: Icons.Shield },
+    { id: 'covens',   label: 'Covens',                        Icon: Icons.Sparkles },
+    { id: 'treasury', label: 'Treasury',                      Icon: Icons.Coins },
+    ...(isAdmin ? [{ id: 'admin' as TabId, label: 'Admin',   Icon: Icons.Shield }] : []),
   ];
 
   // Global search results
@@ -197,7 +200,7 @@ export function Layout() {
     <LanceProvider value={lanceContextValue}>
     <div className="min-h-screen">
       {/* Header */}
-      <header className="relative overflow-hidden border-b border-gold-500/15 bg-gradient-to-br from-ink-900/95 to-ink-800/95">
+      <header className="relative z-50 overflow-hidden border-b border-gold-500/15 bg-gradient-to-br from-ink-900/95 to-ink-800/95">
         <div
           className="absolute -top-10 -right-10 w-72 h-72 opacity-[0.04] pointer-events-none text-gold-300"
           style={{ background: 'radial-gradient(circle, currentColor 1px, transparent 1px)', backgroundSize: '24px 24px' }}
@@ -292,7 +295,7 @@ export function Layout() {
               )}
               {searchResults.houses.length > 0 && (
                 <>
-                  <div className="px-3 py-1.5 text-[10px] uppercase tracking-widest text-ink-100/40 font-semibold border-b border-gold-500/10">Houses</div>
+                  <div className="px-3 py-1.5 text-[10px] uppercase tracking-widest text-ink-100/40 font-semibold border-b border-gold-500/10">{lanceNation.groupTermPlural}</div>
                   {searchResults.houses.map(h => (
                     <button key={h.id} className="w-full text-left px-3 py-2.5 hover:bg-white/5 flex items-center gap-2.5 border-b border-gold-500/8 last:border-0 transition-colors"
                       onMouseDown={() => { setActiveTab('houses'); setActiveHouse(h); setSearch(''); setSearchOpen(false); setSelectedMember(null); }}>
@@ -325,9 +328,9 @@ export function Layout() {
                 <Icons.Users size={16} />
                 <span className="hidden sm:inline">Add Person</span>
               </button>
-              <button onClick={() => setShowAddHouse(true)} className="btn btn-secondary" title="Add house">
+              <button onClick={() => setShowAddHouse(true)} className="btn btn-secondary" title={`Add ${lanceNation.groupTerm}`}>
                 <Icons.Shield size={16} />
-                <span className="hidden sm:inline">House</span>
+                <span className="hidden sm:inline">{lanceNation.groupTerm}</span>
               </button>
             </>
           )}

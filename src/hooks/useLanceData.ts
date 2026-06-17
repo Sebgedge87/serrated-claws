@@ -128,7 +128,7 @@ export function useLanceData(lanceId: string | null) {
       try {
         const { data: lanceData } = await supabase.from('lances').select('*').eq('id', lanceId).single();
         if (lanceData) {
-          setSettings({ id: lanceData.id, name: lanceData.name, motto: lanceData.motto ?? null, description: lanceData.description ?? null });
+          setSettings({ id: lanceData.id, name: lanceData.name, motto: lanceData.motto ?? null, description: lanceData.description ?? null, nation: lanceData.nation ?? null });
         } else {
           setSettings(null);
         }
