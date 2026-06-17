@@ -11,11 +11,12 @@ import { useLance } from '@/contexts/LanceContext';
 
 interface Props {
   canManageFunction: (id: string) => boolean;
+  sortAlpha?: boolean;
 }
 
 const A = '#d4b46d';
 
-export function FunctionsTab({ canManageFunction }: Props) {
+export function FunctionsTab({ canManageFunction, sortAlpha }: Props) {
   const { data, isAdmin, upsertFunction: onUpsert, deleteFunction: onDelete } = useLance();
   const [selected, setSelected] = useState<string | null>(null);
   const [creating, setCreating] = useState(false);
@@ -170,7 +171,7 @@ export function FunctionsTab({ canManageFunction }: Props) {
           <span className="flex-1 hidden md:block">Description</span>
         </div>
 
-        {data.functions.map(f => {
+        {(sortAlpha ? [...data.functions].sort((a, b) => a.name.localeCompare(b.name)) : data.functions).map(f => {
           const members = data.members.filter(m => m.function === f.id);
           const leader = f.leader ? data.members.find(m => m.id === f.leader) : null;
           return (
