@@ -1,5 +1,6 @@
 import { useLance } from '@/contexts/LanceContext';
 import { monogramOf } from '@/lib/utils';
+import { nationConfig, NATIONS } from '@/lib/nations';
 import type { House } from '@/lib/types';
 
 interface Props {
@@ -9,33 +10,36 @@ interface Props {
 export function HousesTab({ onSelect }: Props) {
   const { data, isAdmin } = useLance();
 
+  // Count houses per nation for the subtitle
+  const nationCounts = Object.fromEntries(
+    NATIONS.map(n => [n.nation, data.houses.filter(h => (h.nation ?? 'Dawn') === n.nation).length])
+  );
+  const nationSummary = NATIONS
+    .filter(n => nationCounts[n.nation] > 0)
+    .map(n => `${nationCounts[n.nation]} ${nationCounts[n.nation] === 1 ? n.groupTerm : n.groupTermPlural}`)
+    .join(' · ');
+
   return (
     <div className="animate-fade-in">
       <h2
-        style={{
-          fontFamily: "'Cormorant Garamond', serif",
-          fontSize: '38px',
-          fontWeight: 600,
-          lineHeight: 1.1,
-          color: 'var(--gold)',
-          marginBottom: '4px',
-        }}
+        style={{ fontFamily: "'Cormorant Garamond', serif", fontSize: '38px', fontWeight: 600, lineHeight: 1.1, color: 'var(--gold)', marginBottom: '4px' }}
       >
-        Houses
+        Houses & Halls
       </h2>
       <p style={{ fontFamily: "'Spectral', serif", fontStyle: 'italic', fontSize: '14px', color: 'rgb(var(--ink-300))', marginBottom: '32px' }}>
-        {data.houses.length} house{data.houses.length !== 1 ? 's' : ''} · {data.members.length} sworn
+        {nationSummary || `${data.houses.length} group${data.houses.length !== 1 ? 's' : ''}`} · {data.members.length} sworn
       </p>
 
       {data.houses.length === 0 && (
         <p className="text-ink-100/40 text-sm py-16 text-center">
-          No houses yet.{isAdmin ? ' Use "House" in the toolbar to create one.' : ''}
+          No groups yet.{isAdmin ? ' Use "House" in the toolbar to create one.' : ''}
         </p>
       )}
 
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
         {data.houses.map(h => {
-          const c = h.primary_color ?? '#d4b46d';
+          const cfg = nationConfig(h.nation);
+          const c = h.primary_color ?? cfg.colors[0];
           const members = data.members.filter(m => m.house_id === h.id);
           const nobles = members.filter(m => m.is_noble);
           const active = members.filter(m => m.status === 'active');
@@ -55,7 +59,15 @@ export function HousesTab({ onSelect }: Props) {
                   {monogramOf(h.name)}
                 </div>
                 <div className="min-w-0 flex-1">
-                  <h3 className="font-display font-bold text-xl text-ink-100 m-0 leading-tight truncate">{h.name}</h3>
+                  <div className="flex items-center gap-2 flex-wrap">
+                    <h3 className="font-display font-bold text-xl text-ink-100 m-0 leading-tight truncate">{h.name}</h3>
+                    <span
+                      className="text-[9px] font-semibold uppercase tracking-widest px-1.5 py-0.5 rounded flex-shrink-0"
+                      style={{ background: `${c}20`, color: c, border: `1px solid ${c}40` }}
+                    >
+                      {cfg.icon} {cfg.groupTerm}
+                    </span>
+                  </div>
                   {h.motto && (
                     <p className="text-xs italic text-ink-100/50 mt-0.5 truncate">"{h.motto}"</p>
                   )}

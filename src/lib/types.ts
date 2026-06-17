@@ -68,6 +68,7 @@ export interface House {
   description: string | null;
   primary_color: string;
   sort_order: number;
+  nation: string | null;
 }
 
 export interface Coven {
