@@ -263,14 +263,11 @@ function InventoryView({
     data.inventory.reduce((sum, i) => sum + (i.unit_value ?? 0) * i.current_qty, 0),
   [data.inventory]);
 
-  const NON_CURRENCY = EMPIRE_CATALOGUE.filter(i => i.type !== 'Currency');
+  // Resource Sources are shown in Treasury Holdings, not here
+  const NON_CURRENCY = EMPIRE_CATALOGUE.filter(i => i.type !== 'Currency' && i.type !== 'Resource Source');
   const items = showAll
     ? NON_CURRENCY
-    : NON_CURRENCY.filter(i => {
-        if (i.type === 'Resource Source') return (resourceCounts[i.item] ?? 0) > 0;
-        const s = invMap[i.item];
-        return !!(s && (s.current_qty > 0 || s.required_qty > 0));
-      });
+    : NON_CURRENCY.filter(i => { const s = invMap[i.item]; return !!(s && (s.current_qty > 0 || s.required_qty > 0)); });
 
   const filtered = items.filter(i => {
     if (search) {
