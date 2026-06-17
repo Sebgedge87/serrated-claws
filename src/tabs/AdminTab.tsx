@@ -43,28 +43,31 @@ export function AdminTab({ currentUserId, inviteCode, onRegenerateInviteCode, on
         </div>
       </div>
 
-      {/* 1. Events — most time-sensitive */}
-      <EventsSection events={data.events} data={data} onUpsert={onUpsertEvent} onDelete={onDeleteEvent} onClearAttending={onClearAttending} />
-
-      {/* 2. Unassigned members — action items needing resolution */}
-      <UnassignedSection data={data} isAdmin onDelete={onDeleteMember} onViewMember={onViewMember} />
-
-      {/* 3. Roles & Access — who's in, invite code */}
-      <RolesSection memberships={memberships} data={data} currentUserId={currentUserId} currentRole={currentRole} inviteCode={inviteCode} onUpdateProfile={onUpdateProfile} onRegenerateInviteCode={onRegenerateInviteCode} />
-
-      {/* 4. Functions — org structure */}
-      <section>
-        <SectionHeading icon={<Icons.Swords size={16} />} title="Functions" />
-        <FunctionsTab canManageFunction={canManageFunction} />
-      </section>
-
-      {/* 5. Settings + Export — config, side by side on wide screens */}
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-8 items-start">
+      {/* 1. Settings + Join Code — top, two columns */}
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 items-start">
         <SettingsSection settings={settings} onSave={onUpsertSettings} />
-        {isSuperAdmin && <ExportSection data={data} memberships={memberships} />}
+        <InviteCodeSection inviteCode={inviteCode} currentRole={currentRole} onRegenerateInviteCode={onRegenerateInviteCode} />
       </div>
 
-      {/* 6. Danger Zone — bottom, super admin only */}
+      {/* 2. Events */}
+      <EventsSection events={data.events} data={data} onUpsert={onUpsertEvent} onDelete={onDeleteEvent} onClearAttending={onClearAttending} />
+
+      {/* 3. Roles & Access */}
+      <RolesSection memberships={memberships} data={data} currentUserId={currentUserId} currentRole={currentRole} onUpdateProfile={onUpdateProfile} />
+
+      {/* 4. Unassigned members */}
+      <UnassignedSection data={data} isAdmin onDelete={onDeleteMember} onViewMember={onViewMember} />
+
+      {/* 5. Functions — a-z */}
+      <section>
+        <SectionHeading icon={<Icons.Swords size={16} />} title="Functions" />
+        <FunctionsTab canManageFunction={canManageFunction} sortAlpha />
+      </section>
+
+      {/* 6. Export */}
+      {isSuperAdmin && <ExportSection data={data} memberships={memberships} />}
+
+      {/* 7. Danger Zone */}
       {isSuperAdmin && <DangerZone onResetInventoryQty={onResetInventoryQty} onClearInventoryLog={onClearInventoryLog} logCount={data.inventoryLog.length} />}
     </div>
   );
@@ -339,15 +342,69 @@ function SettingsSection({ settings, onSave }: { settings: LanceSettings | null;
 
 // ── Roles ─────────────────────────────────────────────────────────────────────
 
-function RolesSection({ memberships, data, currentUserId, currentRole, inviteCode, onUpdateProfile, onRegenerateInviteCode }: { memberships: LanceMembership[]; data: LanceData; currentUserId: string; currentRole: UserRole; inviteCode: string | null; onUpdateProfile: (id: string, updates: { role?: UserRole; member_id?: string | null; display_name?: string | null }) => Promise<void>; onRegenerateInviteCode: () => Promise<string> }) {
-  const [busy, setBusy] = useState<string | null>(null);
+// ── Invite Code ───────────────────────────────────────────────────────────────
+
+function InviteCodeSection({ inviteCode, currentRole, onRegenerateInviteCode }: { inviteCode: string | null; currentRole: UserRole; onRegenerateInviteCode: () => Promise<string> }) {
   const [localCode, setLocalCode] = useState<string | null>(inviteCode);
   const [regenBusy, setRegenBusy] = useState(false);
   const [copied, setCopied] = useState(false);
+  const displayCode = localCode ?? inviteCode;
+
+  async function handleRegen() {
+    setRegenBusy(true);
+    try { const c = await onRegenerateInviteCode(); setLocalCode(c); } finally { setRegenBusy(false); }
+  }
+
+  function handleCopy() {
+    if (!displayCode) return;
+    navigator.clipboard.writeText(displayCode).then(() => { setCopied(true); setTimeout(() => setCopied(false), 2000); });
+  }
+
+  return (
+    <section>
+      <SectionHeading icon={<Icons.Copy size={16} />} title="Join Code" />
+      <div className="card p-5 flex items-center gap-4 flex-wrap" style={{ borderLeft: `3px solid ${A}` }}>
+        <div className="flex-1 min-w-0">
+          <div className="font-mono text-2xl font-bold tracking-widest text-ink-100 select-all mb-1">
+            {displayCode ?? '—'}
+          </div>
+          <div className="text-xs text-ink-100/50">Share this code with new members so they can join from the "No Lance Yet" screen.</div>
+        </div>
+        <div className="flex gap-2 flex-shrink-0">
+          <button onClick={handleCopy} className="btn btn-ghost btn-sm" disabled={!displayCode}>
+            <Icons.Copy size={13} />{copied ? 'Copied!' : 'Copy'}
+          </button>
+          {(currentRole === 'super_admin' || currentRole === 'admin') && (
+            <button onClick={handleRegen} disabled={regenBusy} className="btn btn-ghost btn-sm text-red-400/70 hover:text-red-400">
+              <Icons.Refresh size={13} />{regenBusy ? 'Regenerating…' : 'Regenerate'}
+            </button>
+          )}
+        </div>
+      </div>
+    </section>
+  );
+}
+
+// ── Roles ─────────────────────────────────────────────────────────────────────
+
+const PAGE_SIZE = 6;
+
+function RolesSection({ memberships, data, currentUserId, currentRole, onUpdateProfile }: { memberships: LanceMembership[]; data: LanceData; currentUserId: string; currentRole: UserRole; onUpdateProfile: (id: string, updates: { role?: UserRole; member_id?: string | null; display_name?: string | null }) => Promise<void> }) {
+  const [busy, setBusy] = useState<string | null>(null);
+  const [page, setPage] = useState(0);
+  const [permOpen, setPermOpen] = useState(false);
   const isSuperAdmin = currentRole === 'super_admin';
   const adminCount = memberships.filter(m => m.role === 'admin' || m.role === 'super_admin').length;
   const availableRoles: UserRole[] = isSuperAdmin ? ['super_admin', 'admin', 'member', 'viewer'] : ['admin', 'member', 'viewer'];
   const claimedMemberIds = new Set(memberships.filter(m => m.member_id).map(m => m.member_id!));
+
+  const sorted = [...memberships].sort((a, b) => {
+    const nameA = (a.profile?.display_name ?? a.profile?.email ?? '').toLowerCase();
+    const nameB = (b.profile?.display_name ?? b.profile?.email ?? '').toLowerCase();
+    return nameA.localeCompare(nameB);
+  });
+  const totalPages = Math.ceil(sorted.length / PAGE_SIZE);
+  const paged = sorted.slice(page * PAGE_SIZE, page * PAGE_SIZE + PAGE_SIZE);
 
   async function setRole(id: string, role: UserRole) {
     setBusy(id);
@@ -358,87 +415,11 @@ function RolesSection({ memberships, data, currentUserId, currentRole, inviteCod
     try { await onUpdateProfile(id, { member_id }); } finally { setBusy(null); }
   }
 
-  const displayCode = localCode ?? inviteCode;
-
-  async function handleRegen() {
-    setRegenBusy(true);
-    try {
-      const newCode = await onRegenerateInviteCode();
-      setLocalCode(newCode);
-    } finally {
-      setRegenBusy(false);
-    }
-  }
-
-  function handleCopy() {
-    if (!displayCode) return;
-    navigator.clipboard.writeText(displayCode).then(() => {
-      setCopied(true);
-      setTimeout(() => setCopied(false), 2000);
-    });
-  }
-
   return (
     <section>
       <SectionHeading icon={<Icons.Users size={16} />} title={`Roles & Access · ${memberships.length} users`} />
 
-      {/* Invite code */}
-      <div className="card p-4 mb-4 flex items-center gap-4 flex-wrap" style={{ borderLeft: `3px solid ${A}` }}>
-        <div className="flex-1 min-w-0">
-          <div className="text-[10px] uppercase tracking-widest font-bold text-gold-300/70 mb-1">Invite Code</div>
-          <div className="font-mono text-lg font-bold tracking-widest text-ink-100 select-all">
-            {displayCode ?? '—'}
-          </div>
-          <div className="text-xs text-ink-100/50 mt-0.5">Share this code with new members so they can join from the "No Lance Yet" screen.</div>
-        </div>
-        <div className="flex gap-2 flex-shrink-0">
-          <button onClick={handleCopy} className="btn btn-ghost btn-sm" disabled={!displayCode}>
-            <Icons.Copy size={13} />
-            {copied ? 'Copied!' : 'Copy'}
-          </button>
-          <button onClick={handleRegen} disabled={regenBusy} className="btn btn-ghost btn-sm text-red-400/70 hover:text-red-400">
-            <Icons.Refresh size={13} />
-            {regenBusy ? 'Regenerating…' : 'Regenerate'}
-          </button>
-        </div>
-      </div>
-
       <div className="card overflow-hidden mb-4">
-        <table className="w-full text-sm">
-          <thead className="bg-gold-500/10">
-            <tr>
-              <th className="px-4 py-2.5 text-[11px] uppercase tracking-widest font-bold text-left text-ink-100">Permission</th>
-              {(['super_admin', 'admin', 'member', 'viewer'] as UserRole[]).map(r => (
-                <th key={r} className="px-4 py-2.5 text-center"><RolePill role={r} /></th>
-              ))}
-            </tr>
-          </thead>
-          <tbody>
-            {[
-              ['View all data (members, houses, inventory…)', true, true, true, true],
-              ['Edit own linked character', true, true, true, false],
-              ['Add / edit / delete members', true, true, false, false],
-              ['Manage houses, covens, functions, businesses', true, true, false, false],
-              ['Edit inventory quantities & log transactions', true, true, false, false],
-              ['Access admin page (roles)', true, true, false, false],
-              ['Danger zone (bulk resets)', true, false, false, false],
-              ['Assign super_admin role', true, false, false, false],
-            ].map(([label, superAdmin, admin, member, viewer], i) => (
-              <tr key={i} className={i > 0 ? 'border-t border-gold-500/10' : ''}>
-                <td className="px-4 py-2.5 text-ink-100/70">{label as string}</td>
-                {[superAdmin, admin, member, viewer].map((allowed, j) => (
-                  <td key={j} className="px-4 py-2.5 text-center">
-                    {allowed
-                      ? <span className="text-green-400 font-bold">✓</span>
-                      : <span className="text-ink-100/25">—</span>}
-                  </td>
-                ))}
-              </tr>
-            ))}
-          </tbody>
-        </table>
-      </div>
-      <div className="card overflow-hidden">
         <table className="w-full">
           <thead className="bg-gold-500/10">
             <tr>
@@ -448,7 +429,7 @@ function RolesSection({ memberships, data, currentUserId, currentRole, inviteCod
             </tr>
           </thead>
           <tbody>
-            {memberships.map((m, idx) => {
+            {paged.map((m, idx) => {
               const isSelf = m.profile_id === currentUserId;
               const displayName = m.profile?.display_name ?? null;
               const email = m.profile?.email ?? null;
@@ -502,6 +483,62 @@ function RolesSection({ memberships, data, currentUserId, currentRole, inviteCod
             )}
           </tbody>
         </table>
+        {totalPages > 1 && (
+          <div className="flex items-center justify-between px-4 py-2.5 border-t border-gold-500/10 bg-gold-500/5">
+            <span className="text-xs text-ink-100/40">Page {page + 1} of {totalPages}</span>
+            <div className="flex gap-1.5">
+              <button disabled={page === 0} onClick={() => setPage(p => p - 1)} className="btn btn-ghost btn-sm py-1">← Prev</button>
+              <button disabled={page >= totalPages - 1} onClick={() => setPage(p => p + 1)} className="btn btn-ghost btn-sm py-1">Next →</button>
+            </div>
+          </div>
+        )}
+      </div>
+
+      {/* Collapsible permission matrix */}
+      <div className="card overflow-hidden">
+        <button
+          type="button"
+          onClick={() => setPermOpen(o => !o)}
+          className="w-full flex items-center justify-between px-4 py-3 text-left hover:bg-white/3 transition-colors"
+        >
+          <span className="text-xs uppercase tracking-widest font-bold text-ink-100/50">Permission Reference</span>
+          <span className="text-ink-100/40 text-sm">{permOpen ? '▲' : '▼'}</span>
+        </button>
+        {permOpen && (
+          <div className="border-t border-gold-500/10">
+            <table className="w-full text-sm">
+              <thead className="bg-gold-500/10">
+                <tr>
+                  <th className="px-4 py-2.5 text-[11px] uppercase tracking-widest font-bold text-left text-ink-100">Permission</th>
+                  {(['super_admin', 'admin', 'member', 'viewer'] as UserRole[]).map(r => (
+                    <th key={r} className="px-4 py-2.5 text-center"><RolePill role={r} /></th>
+                  ))}
+                </tr>
+              </thead>
+              <tbody>
+                {[
+                  ['View all data (members, houses, inventory…)', true, true, true, true],
+                  ['Edit own linked character', true, true, true, false],
+                  ['Add / edit / delete members', true, true, false, false],
+                  ['Manage houses, covens, functions, businesses', true, true, false, false],
+                  ['Edit inventory quantities & log transactions', true, true, false, false],
+                  ['Access admin page (roles)', true, true, false, false],
+                  ['Danger zone (bulk resets)', true, false, false, false],
+                  ['Assign super_admin role', true, false, false, false],
+                ].map(([label, superAdmin, admin, member, viewer], i) => (
+                  <tr key={i} className={i > 0 ? 'border-t border-gold-500/10' : ''}>
+                    <td className="px-4 py-2.5 text-ink-100/70">{label as string}</td>
+                    {[superAdmin, admin, member, viewer].map((allowed, j) => (
+                      <td key={j} className="px-4 py-2.5 text-center">
+                        {allowed ? <span className="text-green-400 font-bold">✓</span> : <span className="text-ink-100/25">—</span>}
+                      </td>
+                    ))}
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        )}
       </div>
     </section>
   );
