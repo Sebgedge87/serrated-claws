@@ -55,6 +55,100 @@
     --danger:      #97312c;
   }
 
+  /* ── Nation themes — override accent tokens only ──────────────────────
+     Applied via data-nation attribute on <html>. Works with both
+     dark and light data-theme values. Dawn = default (no override).     */
+
+  /* Highguard — silver and black */
+  [data-nation="highguard"] {
+    --gold:        #b8b8c8;
+    --gold-bright: #dcdce8;
+    --gold-deep:   #8888a0;
+    --line:        rgba(180, 180, 200, 0.16);
+    --line-soft:   rgba(180, 180, 200, 0.09);
+    --line-strong: rgba(180, 180, 200, 0.34);
+  }
+
+  /* The Marches — earthy sage green */
+  [data-nation="the-marches"] {
+    --gold:        #7aaa5a;
+    --gold-bright: #9acc7a;
+    --gold-deep:   #527a38;
+    --line:        rgba(100, 160, 80, 0.16);
+    --line-soft:   rgba(100, 160, 80, 0.09);
+    --line-strong: rgba(100, 160, 80, 0.34);
+  }
+
+  /* Wintermark — ice blue */
+  [data-nation="wintermark"] {
+    --gold:        #6aaad8;
+    --gold-bright: #90c4ec;
+    --gold-deep:   #4a80b0;
+    --line:        rgba(80, 140, 200, 0.16);
+    --line-soft:   rgba(80, 140, 200, 0.09);
+    --line-strong: rgba(80, 140, 200, 0.34);
+  }
+
+  /* Navarr — deep forest green */
+  [data-nation="navarr"] {
+    --gold:        #5aaa48;
+    --gold-bright: #7acc66;
+    --gold-deep:   #3a7830;
+    --line:        rgba(70, 150, 60, 0.16);
+    --line-soft:   rgba(70, 150, 60, 0.09);
+    --line-strong: rgba(70, 150, 60, 0.34);
+  }
+
+  /* The League — rich purple */
+  [data-nation="the-league"] {
+    --gold:        #a868d8;
+    --gold-bright: #c890f0;
+    --gold-deep:   #7840a8;
+    --line:        rgba(150, 80, 200, 0.16);
+    --line-soft:   rgba(150, 80, 200, 0.09);
+    --line-strong: rgba(150, 80, 200, 0.34);
+  }
+
+  /* Varushka — blood red */
+  [data-nation="varushka"] {
+    --gold:        #c84848;
+    --gold-bright: #e87070;
+    --gold-deep:   #982828;
+    --line:        rgba(180, 50, 50, 0.16);
+    --line-soft:   rgba(180, 50, 50, 0.09);
+    --line-strong: rgba(180, 50, 50, 0.34);
+  }
+
+  /* Urizen — lavender */
+  [data-nation="urizen"] {
+    --gold:        #9888e0;
+    --gold-bright: #baaef8;
+    --gold-deep:   #6858b0;
+    --line:        rgba(130, 110, 210, 0.16);
+    --line-soft:   rgba(130, 110, 210, 0.09);
+    --line-strong: rgba(130, 110, 210, 0.34);
+  }
+
+  /* The Brass Coast — bright brass orange */
+  [data-nation="the-brass-coast"] {
+    --gold:        #d87030;
+    --gold-bright: #f09050;
+    --gold-deep:   #a85018;
+    --line:        rgba(200, 100, 40, 0.16);
+    --line-soft:   rgba(200, 100, 40, 0.09);
+    --line-strong: rgba(200, 100, 40, 0.34);
+  }
+
+  /* Imperial Orcs — military olive */
+  [data-nation="imperial-orcs"] {
+    --gold:        #88aa40;
+    --gold-bright: #aace60;
+    --gold-deep:   #607828;
+    --line:        rgba(110, 150, 50, 0.16);
+    --line-soft:   rgba(110, 150, 50, 0.09);
+    --line-strong: rgba(110, 150, 50, 0.34);
+  }
+
   html, body, #root { min-height: 100vh; }
 
   /* flat warm ink — the radial-gradient glows are gone */

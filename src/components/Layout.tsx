@@ -1,4 +1,4 @@
-import { useRef, useState } from 'react';
+import { useRef, useState, useEffect } from 'react';
 import { useAuth } from '@/hooks/useAuth';
 import { useLanceData } from '@/hooks/useLanceData';
 import { useLances } from '@/hooks/useLances';
@@ -50,6 +50,14 @@ export function Layout() {
   const [showTour, setShowTour] = useState(() => !!profile?.id && !hasSeen(profile.id));
 
   const lanceNation = nationConfig(lance.settings?.nation);
+
+  // Apply nation theme to <html> via data-nation attribute
+  useEffect(() => {
+    const slug = lanceNation.slug === 'dawn' ? null : lanceNation.slug;
+    if (slug) document.documentElement.setAttribute('data-nation', slug);
+    else document.documentElement.removeAttribute('data-nation');
+    return () => document.documentElement.removeAttribute('data-nation');
+  }, [lanceNation.slug]);
 
   type TabDef = { id: TabId; label: string; Icon: typeof Icons.House };
   const tabs: TabDef[] = [
