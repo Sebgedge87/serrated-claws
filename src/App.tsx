@@ -8,7 +8,7 @@ import { CreateCharacterScreen } from '@/components/CreateCharacterScreen';
 import { UpdatePrompt } from '@/components/UpdatePrompt';
 
 function Gate() {
-  const { loading, session, profile, user } = useAuth();
+  const { loading, session, profile, user, refreshProfile } = useAuth();
   const lances = useLances(user?.id ?? null);
 
   if (loading || lances.loading) {
@@ -26,7 +26,7 @@ function Gate() {
       <CreateCharacterScreen
         userId={user.id}
         lanceId={lances.currentLanceId}
-        onCreated={() => lances.reloadMemberships()}
+        onCreated={async () => { await Promise.all([refreshProfile(), lances.reloadMemberships()]); }}
       />
     );
   }

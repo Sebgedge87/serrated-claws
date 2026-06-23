@@ -166,8 +166,8 @@ export function useLanceData(lanceId: string | null) {
 
     // Suppress unused variable warning — tables listed for documentation
     void TABLES;
-    channel.subscribe();
-    charChannel.subscribe();
+    channel.subscribe((status, err) => { if (err) console.error('Realtime channel error:', err, status); });
+    charChannel.subscribe((status, err) => { if (err) console.error('Realtime charChannel error:', err, status); });
 
     return () => {
       supabase.removeChannel(channel);
