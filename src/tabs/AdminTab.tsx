@@ -1,12 +1,9 @@
-import { useState, useRef, useEffect } from 'react';
-import { createPortal } from 'react-dom';
+import { useState, useEffect } from 'react';
 import type { LanceData, LanceEvent, LanceMembership, LanceSettings, Member, UserRole } from '@/lib/types';
 import { useConfirm } from '@/components/ConfirmDialog';
 import { Icons } from '@/components/Icons';
 import { MemberCard } from '@/components/MemberCard';
-import { initials } from '@/lib/utils';
 import { exportRosterPdf, exportResourcesPdf } from '@/lib/parchmentPdf';
-import { CustomSelect } from '@/components/ui/CustomSelect';
 import { useLance } from '@/contexts/LanceContext';
 import { NATIONS, nationConfig, type Nation } from '@/lib/nations';
 import { FunctionsTab } from '@/tabs/FunctionsTab';
@@ -21,10 +18,10 @@ interface Props {
 }
 
 const A = '#d4b46d';
-const ROLE_COLORS: Record<UserRole, string> = { super_admin: '#f0a040', admin: '#d4b46d', support: '#a78bfa', member: '#7eb0d4', viewer: '#9ca3af' };
+export const ROLE_COLORS: Record<UserRole, string> = { super_admin: '#f0a040', admin: '#d4b46d', support: '#a78bfa', member: '#7eb0d4', viewer: '#9ca3af' };
 
 export function AdminTab({ currentUserId, inviteCode, onRegenerateInviteCode, onDeleteMember, onViewMember, canManageFunction }: Props) {
-  const { data, memberships, settings, isAdmin: _isAdmin, upsertProfile: onUpdateProfile, upsertSettings: onUpsertSettings, resetInventoryQty: onResetInventoryQty, clearInventoryLog: onClearInventoryLog, upsertEvent: onUpsertEvent, deleteEvent: onDeleteEvent, clearAttending: onClearAttending } = useLance();
+  const { data, memberships, settings, isAdmin: _isAdmin, upsertSettings: onUpsertSettings, resetInventoryQty: onResetInventoryQty, clearInventoryLog: onClearInventoryLog, upsertEvent: onUpsertEvent, deleteEvent: onDeleteEvent, clearAttending: onClearAttending } = useLance();
   const currentRole = memberships.find(m => m.profile_id === currentUserId)?.role ?? 'admin';
   const isSuperAdmin = currentRole === 'super_admin';
 
@@ -53,7 +50,6 @@ export function AdminTab({ currentUserId, inviteCode, onRegenerateInviteCode, on
       <EventsSection events={data.events} data={data} onUpsert={onUpsertEvent} onDelete={onDeleteEvent} onClearAttending={onClearAttending} />
 
       {/* 3. Roles & Access */}
-      <RolesSection memberships={memberships} data={data} currentUserId={currentUserId} currentRole={currentRole} onUpdateProfile={onUpdateProfile} />
 
       {/* 4. Unassigned members */}
       <UnassignedSection data={data} isAdmin onDelete={onDeleteMember} onViewMember={onViewMember} />
@@ -387,118 +383,6 @@ function InviteCodeSection({ inviteCode, currentRole, onRegenerateInviteCode }: 
 
 // ── Roles ─────────────────────────────────────────────────────────────────────
 
-const PAGE_SIZE = 6;
-
-function RolesSection({ memberships, data, currentUserId, currentRole, onUpdateProfile }: { memberships: LanceMembership[]; data: LanceData; currentUserId: string; currentRole: UserRole; onUpdateProfile: (id: string, updates: { role?: UserRole; member_id?: string | null; display_name?: string | null }) => Promise<void> }) {
-  const [busy, setBusy] = useState<string | null>(null);
-  const [page, setPage] = useState(0);
-  const isSuperAdmin = currentRole === 'super_admin';
-  const adminCount = memberships.filter(m => m.role === 'admin' || m.role === 'super_admin').length;
-  const availableRoles: UserRole[] = isSuperAdmin ? ['super_admin', 'admin', 'support', 'member', 'viewer'] : ['admin', 'support', 'member', 'viewer'];
-  const claimedMemberIds = new Set(memberships.filter(m => m.member_id).map(m => m.member_id!));
-
-  const sorted = [...memberships].sort((a, b) => {
-    const nameA = (a.profile?.display_name ?? a.profile?.email ?? '').toLowerCase();
-    const nameB = (b.profile?.display_name ?? b.profile?.email ?? '').toLowerCase();
-    return nameA.localeCompare(nameB);
-  });
-  const totalPages = Math.ceil(sorted.length / PAGE_SIZE);
-  const paged = sorted.slice(page * PAGE_SIZE, page * PAGE_SIZE + PAGE_SIZE);
-
-  async function setRole(id: string, role: UserRole) {
-    setBusy(id);
-    try { await onUpdateProfile(id, { role }); } finally { setBusy(null); }
-  }
-  async function setMember(id: string, member_id: string | null) {
-    setBusy(id + '-m');
-    try { await onUpdateProfile(id, { member_id }); } finally { setBusy(null); }
-  }
-
-  return (
-    <section>
-      <SectionHeading icon={<Icons.Users size={16} />} title={`Roles & Access · ${memberships.length} users`} />
-
-      <div className="card overflow-hidden mb-4">
-        <table className="w-full">
-          <thead className="bg-gold-500/10">
-            <tr>
-              <Th>User</Th>
-              <Th>Role</Th>
-              <Th>Linked Character</Th>
-            </tr>
-          </thead>
-          <tbody>
-            {paged.map((m, idx) => {
-              const isSelf = m.profile_id === currentUserId;
-              const displayName = m.profile?.display_name ?? null;
-              const email = m.profile?.email ?? null;
-              const linked = m.member_id ? data.members.find(dm => dm.id === m.member_id) : null;
-              return (
-                <tr key={m.id} className={idx > 0 ? 'border-t border-gold-500/10' : ''}>
-                  <td className="px-4 py-3">
-                    <div className="flex items-center gap-3">
-                      <div className="w-9 h-9 rounded-full grid place-items-center font-display font-bold text-sm flex-shrink-0"
-                           style={{ background: `${ROLE_COLORS[m.role]}20`, border: `1px solid ${ROLE_COLORS[m.role]}40`, color: ROLE_COLORS[m.role] }}>
-                        {initials(displayName ?? email ?? '?')}
-                      </div>
-                      <div className="min-w-0">
-                        <div className="font-semibold text-ink-100 truncate">
-                          {displayName ?? email ?? '—'}
-                          {isSelf && <span className="ml-2 text-[10px] uppercase tracking-widest text-gold-300/60">(you)</span>}
-                        </div>
-                        {displayName && <div className="text-xs text-ink-100/50 truncate">{email}</div>}
-                      </div>
-                    </div>
-                  </td>
-                  <td className="px-4 py-3">
-                    <CustomSelect
-                      value={m.role}
-                      disabled={busy === m.id || (isSelf && adminCount <= 1) || (!isSuperAdmin && m.role === 'super_admin')}
-                      onChange={v => setRole(m.id, v as UserRole)}
-                      options={availableRoles.map(r => ({ value: r, label: r.replace('_', ' '), color: ROLE_COLORS[r as UserRole] }))}
-                      placeholder=""
-                    />
-                    {busy === m.id && <span className="ml-2 text-xs text-ink-100/50">Saving…</span>}
-                  </td>
-                  <td className="px-4 py-3">
-                    <MemberPicker
-                      value={m.member_id ?? ''}
-                      disabled={busy === m.id + '-m'}
-                      onChange={v => setMember(m.id, v || null)}
-                      options={data.members.filter(dm => !claimedMemberIds.has(dm.id) || dm.id === m.member_id)}
-                    />
-                    {linked && (
-                      <div className="text-xs text-ink-100/50 mt-0.5">
-                        {data.houses.find(h => h.id === linked.house_id)?.name ?? 'Unassigned'}
-                        {linked.rank ? ` · ${linked.rank}` : ''}
-                      </div>
-                    )}
-                  </td>
-                </tr>
-              );
-            })}
-            {memberships.length === 0 && (
-              <tr><td colSpan={3} className="px-4 py-12 text-center text-ink-100/40 text-sm">No users found.</td></tr>
-            )}
-          </tbody>
-        </table>
-        {totalPages > 1 && (
-          <div className="flex items-center justify-between px-4 py-2.5 border-t border-gold-500/10 bg-gold-500/5">
-            <span className="text-xs text-ink-100/40">Page {page + 1} of {totalPages}</span>
-            <div className="flex gap-1.5">
-              <button disabled={page === 0} onClick={() => setPage(p => p - 1)} className="btn btn-ghost btn-sm py-1">← Prev</button>
-              <button disabled={page >= totalPages - 1} onClick={() => setPage(p => p + 1)} className="btn btn-ghost btn-sm py-1">Next →</button>
-            </div>
-          </div>
-        )}
-      </div>
-
-    </section>
-  );
-}
-
-// ── Export ────────────────────────────────────────────────────────────────────
-
 function ExportSection({ data, memberships }: { data: LanceData; memberships: LanceMembership[] }) {
   const [busy, setBusy] = useState(false);
 
@@ -631,93 +515,3 @@ function SectionHeading({ icon, title, color = A }: { icon: React.ReactNode; tit
   );
 }
 
-function Th({ children }: { children: React.ReactNode }) {
-  return <th className="px-4 py-3 text-[11px] uppercase tracking-widest font-bold text-left text-ink-100">{children}</th>;
-}
-
-
-function MemberPicker({ value, disabled, onChange, options }: {
-  value: string;
-  disabled: boolean;
-  onChange: (v: string) => void;
-  options: Member[];
-}) {
-  const [open, setOpen] = useState(false);
-  const [rect, setRect] = useState<DOMRect | null>(null);
-  const btnRef = useRef<HTMLButtonElement>(null);
-  const dropRef = useRef<HTMLDivElement | null>(null);
-  const selected = options.find(m => m.id === value);
-  const label = selected ? `${selected.name}${selected.player_name ? ` (${selected.player_name})` : ''}` : '— Unlinked —';
-
-  function toggle() {
-    if (open) { setOpen(false); return; }
-    setRect(btnRef.current?.getBoundingClientRect() ?? null);
-    setOpen(true);
-  }
-
-  useEffect(() => {
-    if (!open) return;
-    const close = (e: MouseEvent) => {
-      if (btnRef.current?.contains(e.target as Node)) return;
-      if (dropRef.current?.contains(e.target as Node)) return;
-      setOpen(false);
-    };
-    document.addEventListener('mousedown', close);
-    return () => document.removeEventListener('mousedown', close);
-  }, [open]);
-
-  const dropdown = open && rect ? createPortal(
-    <div
-      ref={dropRef}
-      style={{
-        position: 'fixed',
-        top: rect.bottom + 4,
-        left: rect.left,
-        width: Math.max(rect.width, 224),
-        zIndex: 9999,
-        background: 'rgb(20,18,14)',
-        border: '1px solid var(--line-strong)',
-        borderRadius: '6px',
-        boxShadow: '0 8px 24px rgba(0,0,0,0.8)',
-        overflow: 'hidden',
-        maxHeight: 280,
-        overflowY: 'auto',
-      }}
-    >
-      <button
-        type="button"
-        className="w-full text-left px-3 py-2 text-sm transition-colors hover:bg-white/5"
-        style={{ color: 'rgb(var(--ink-300))' }}
-        onClick={() => { onChange(''); setOpen(false); }}
-      >— Unlinked —</button>
-      {options.map(m => (
-        <button
-          key={m.id}
-          type="button"
-          className="w-full text-left px-3 py-2 text-sm transition-colors hover:bg-white/5"
-          style={{ color: m.id === value ? 'var(--gold)' : 'rgb(var(--ink-100))', background: m.id === value ? 'rgba(203,171,104,0.1)' : undefined }}
-          onClick={() => { onChange(m.id); setOpen(false); }}
-        >
-          {m.name}{m.player_name ? <span style={{ color: 'rgb(var(--ink-300))' }}> ({m.player_name})</span> : null}
-        </button>
-      ))}
-    </div>,
-    document.body
-  ) : null;
-
-  return (
-    <div className="max-w-[220px]" style={{ opacity: disabled ? 0.5 : 1, pointerEvents: disabled ? 'none' : 'auto' }}>
-      <button
-        ref={btnRef}
-        type="button"
-        onClick={toggle}
-        className="w-full flex items-center justify-between gap-2 px-2.5 py-1.5 rounded text-sm text-left"
-        style={{ background: 'rgba(0,0,0,0.4)', border: '1px solid rgba(203,171,104,0.15)', color: value ? 'rgb(var(--ink-100))' : 'rgb(var(--ink-300))' }}
-      >
-        <span className="truncate">{label}</span>
-        <Icons.ChevronDown size={12} style={{ flexShrink: 0, color: 'rgb(var(--ink-300))' }} />
-      </button>
-      {dropdown}
-    </div>
-  );
-}
