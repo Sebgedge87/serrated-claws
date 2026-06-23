@@ -23,9 +23,11 @@ export function CreateCharacterScreen({ userId, lanceId, onCreated, onClose }: P
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
-    supabase.from('houses').select('*').eq('lance_id', lanceId).order('sort_order').then(({ data }) => {
+    Promise.resolve(
+      supabase.from('houses').select('*').eq('lance_id', lanceId).order('sort_order')
+    ).then(({ data }) => {
       if (data) setHouses(data as House[]);
-    });
+    }).catch(err => console.error('Failed to load houses:', err));
   }, [lanceId]);
 
   async function handleSubmit(e: React.FormEvent) {

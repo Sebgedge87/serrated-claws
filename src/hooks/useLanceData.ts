@@ -203,8 +203,7 @@ export function useLanceData(lanceId: string | null) {
     const rawPayload = member.id
       ? { ...member, lance_id: lanceId }
       : (({ attending_event: _ae, ...rest }) => ({ ...rest, lance_id: lanceId }))(member as Member);
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    const { error: err } = await supabase.from('members').upsert(rawPayload as any);
+    const { error: err } = await supabase.from('members').upsert(rawPayload as Partial<Member> & { lance_id: string | null });
     if (err) throw new Error(err.message);
 
     // Sync inventory when resource changes

@@ -357,7 +357,7 @@ function InviteCodeSection({ inviteCode, currentRole, onRegenerateInviteCode }: 
 
   function handleCopy() {
     if (!displayCode) return;
-    navigator.clipboard.writeText(displayCode).then(() => { setCopied(true); setTimeout(() => setCopied(false), 2000); });
+    navigator.clipboard.writeText(displayCode).then(() => { setCopied(true); setTimeout(() => setCopied(false), 2000); }).catch(() => {});
   }
 
   return (

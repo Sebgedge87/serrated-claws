@@ -15,6 +15,8 @@ export default defineConfig({
         description: 'Lance Management System',
         theme_color: '#0d0c0a',
         background_color: '#0d0c0a',
+        start_url: '/',
+        scope: '/',
         display: 'standalone',
         orientation: 'portrait',
         icons: [

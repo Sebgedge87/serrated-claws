@@ -93,7 +93,7 @@ export function SignIn() {
               <div>
                 <label className="text-[10px] uppercase tracking-widest text-ink-100/60 block mb-1.5">Password</label>
                 <input
-                  type="password" required value={password} onChange={e => setPassword(e.target.value)}
+                  type="password" required autoComplete="current-password" value={password} onChange={e => setPassword(e.target.value)}
                   className="input" placeholder="••••••••"
                 />
               </div>
