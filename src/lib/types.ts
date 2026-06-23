@@ -52,7 +52,7 @@ export interface LanceSettings {
   description: string | null;
   nation: string | null;
 }
-export type UserRole = 'super_admin' | 'admin' | 'member' | 'viewer';
+export type UserRole = 'super_admin' | 'admin' | 'support' | 'member' | 'viewer';
 
 export interface Profile {
   id: string;
@@ -126,6 +126,7 @@ export interface Member {
   total_xp: number | null;
   tithe_paid: boolean;
   tithe_notes: string | null;
+  can_edit_bard_works: boolean | null;
 }
 
 export interface Business {

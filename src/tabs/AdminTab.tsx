@@ -21,7 +21,7 @@ interface Props {
 }
 
 const A = '#d4b46d';
-const ROLE_COLORS: Record<UserRole, string> = { super_admin: '#f0a040', admin: '#d4b46d', member: '#7eb0d4', viewer: '#9ca3af' };
+const ROLE_COLORS: Record<UserRole, string> = { super_admin: '#f0a040', admin: '#d4b46d', support: '#a78bfa', member: '#7eb0d4', viewer: '#9ca3af' };
 
 export function AdminTab({ currentUserId, inviteCode, onRegenerateInviteCode, onDeleteMember, onViewMember, canManageFunction }: Props) {
   const { data, memberships, settings, isAdmin: _isAdmin, upsertProfile: onUpdateProfile, upsertSettings: onUpsertSettings, resetInventoryQty: onResetInventoryQty, clearInventoryLog: onClearInventoryLog, upsertEvent: onUpsertEvent, deleteEvent: onDeleteEvent, clearAttending: onClearAttending } = useLance();
@@ -392,10 +392,9 @@ const PAGE_SIZE = 6;
 function RolesSection({ memberships, data, currentUserId, currentRole, onUpdateProfile }: { memberships: LanceMembership[]; data: LanceData; currentUserId: string; currentRole: UserRole; onUpdateProfile: (id: string, updates: { role?: UserRole; member_id?: string | null; display_name?: string | null }) => Promise<void> }) {
   const [busy, setBusy] = useState<string | null>(null);
   const [page, setPage] = useState(0);
-  const [permOpen, setPermOpen] = useState(false);
   const isSuperAdmin = currentRole === 'super_admin';
   const adminCount = memberships.filter(m => m.role === 'admin' || m.role === 'super_admin').length;
-  const availableRoles: UserRole[] = isSuperAdmin ? ['super_admin', 'admin', 'member', 'viewer'] : ['admin', 'member', 'viewer'];
+  const availableRoles: UserRole[] = isSuperAdmin ? ['super_admin', 'admin', 'support', 'member', 'viewer'] : ['admin', 'support', 'member', 'viewer'];
   const claimedMemberIds = new Set(memberships.filter(m => m.member_id).map(m => m.member_id!));
 
   const sorted = [...memberships].sort((a, b) => {
@@ -494,52 +493,6 @@ function RolesSection({ memberships, data, currentUserId, currentRole, onUpdateP
         )}
       </div>
 
-      {/* Collapsible permission matrix */}
-      <div className="card overflow-hidden">
-        <button
-          type="button"
-          onClick={() => setPermOpen(o => !o)}
-          className="w-full flex items-center justify-between px-4 py-3 text-left hover:bg-white/3 transition-colors"
-        >
-          <span className="text-xs uppercase tracking-widest font-bold text-ink-100/50">Permission Reference</span>
-          <span className="text-ink-100/40 text-sm">{permOpen ? '▲' : '▼'}</span>
-        </button>
-        {permOpen && (
-          <div className="border-t border-gold-500/10">
-            <table className="w-full text-sm">
-              <thead className="bg-gold-500/10">
-                <tr>
-                  <th className="px-4 py-2.5 text-[11px] uppercase tracking-widest font-bold text-left text-ink-100">Permission</th>
-                  {(['super_admin', 'admin', 'member', 'viewer'] as UserRole[]).map(r => (
-                    <th key={r} className="px-4 py-2.5 text-center"><RolePill role={r} /></th>
-                  ))}
-                </tr>
-              </thead>
-              <tbody>
-                {[
-                  ['View all data (members, houses, inventory…)', true, true, true, true],
-                  ['Edit own linked character', true, true, true, false],
-                  ['Add / edit / delete members', true, true, false, false],
-                  ['Manage houses, covens, functions, businesses', true, true, false, false],
-                  ['Edit inventory quantities & log transactions', true, true, false, false],
-                  ['Access admin page (roles)', true, true, false, false],
-                  ['Danger zone (bulk resets)', true, false, false, false],
-                  ['Assign super_admin role', true, false, false, false],
-                ].map(([label, superAdmin, admin, member, viewer], i) => (
-                  <tr key={i} className={i > 0 ? 'border-t border-gold-500/10' : ''}>
-                    <td className="px-4 py-2.5 text-ink-100/70">{label as string}</td>
-                    {[superAdmin, admin, member, viewer].map((allowed, j) => (
-                      <td key={j} className="px-4 py-2.5 text-center">
-                        {allowed ? <span className="text-green-400 font-bold">✓</span> : <span className="text-ink-100/25">—</span>}
-                      </td>
-                    ))}
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
-        )}
-      </div>
     </section>
   );
 }
@@ -682,13 +635,6 @@ function Th({ children }: { children: React.ReactNode }) {
   return <th className="px-4 py-3 text-[11px] uppercase tracking-widest font-bold text-left text-ink-100">{children}</th>;
 }
 
-function RolePill({ role }: { role: UserRole }) {
-  const c = ROLE_COLORS[role];
-  return (
-    <span className="inline-block px-2.5 py-0.5 rounded-full text-xs font-semibold capitalize"
-          style={{ background: `${c}20`, border: `1px solid ${c}40`, color: c }}>{role.replace('_', ' ')}</span>
-  );
-}
 
 function MemberPicker({ value, disabled, onChange, options }: {
   value: string;

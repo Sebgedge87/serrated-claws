@@ -149,7 +149,11 @@ export function BardWorksSection({ houseId, currentMemberId }: Props) {
       )
     : false;
 
-  const canAdd = (isBardInHouse || isAdmin) && !!currentMemberId;
+  const currentMemberCanEditBardWorks = currentMemberId
+    ? (data.members.find(m => m.id === currentMemberId)?.can_edit_bard_works ?? false)
+    : false;
+
+  const canAdd = (isBardInHouse || isAdmin || currentMemberCanEditBardWorks) && !!currentMemberId;
 
   function openNew() {
     setEditingWork(null);

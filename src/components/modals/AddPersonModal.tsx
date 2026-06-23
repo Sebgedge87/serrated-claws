@@ -175,6 +175,12 @@ export function AddPersonModal({ data, initial, onClose, onSave, onUpsertCharInv
             <span className="text-sm">Member of the nobility</span>
           </label>
         </Field>
+        <Field label="Can edit Bard Works">
+          <label className="flex items-center gap-2.5 mt-2.5 cursor-pointer">
+            <input type="checkbox" checked={!!form.can_edit_bard_works} onChange={e => set('can_edit_bard_works', e.target.checked)} className="w-5 h-5 accent-gold-300" />
+            <span className="text-sm">Can edit Bard Works</span>
+          </label>
+        </Field>
         <Field label="Attending Next Event">
           <label className="flex items-center gap-2.5 mt-2.5 cursor-pointer">
             <input type="checkbox" checked={!!form.attending_event} onChange={e => set('attending_event', e.target.checked)} className="w-5 h-5 accent-gold-300" />
