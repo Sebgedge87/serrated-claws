@@ -1476,7 +1476,6 @@ function SpellsSection({
                   <div className="flex-1 min-w-0">
                     <div className="flex items-baseline gap-2">
                       <span className="font-display text-[17px] font-semibold text-ink-100">{sp.spell_name}</span>
-                      <span className="num text-xs" style={{ color: 'rgb(var(--ink-300))' }}>{sp.magnitude}m</span>
                     </div>
                     {(catalogueEntry?.effect || sp.notes) && (
                       <div className="text-[13px] leading-snug mt-0.5" style={{ color: 'rgb(var(--ink-300))' }}>
@@ -1532,15 +1531,9 @@ function SpellsSection({
             </div>
           )}
 
-          <div className="flex items-end gap-2">
-            <div className="flex-1">
-              <label className="eyebrow block mb-1">Notes</label>
-              <input className="input text-sm" placeholder="Optional" value={notes} onChange={e => setNotes(e.target.value)} />
-            </div>
-            <div>
-              <label className="eyebrow block mb-1">Mag</label>
-              <input type="number" min={1} className="input text-sm w-16" value={magnitude} onChange={e => setMagnitude(Math.max(1, parseInt(e.target.value, 10) || 1))} />
-            </div>
+          <div>
+            <label className="eyebrow block mb-1">Notes</label>
+            <input className="input text-sm" placeholder="Optional" value={notes} onChange={e => setNotes(e.target.value)} />
           </div>
 
           <div className="flex gap-2 justify-end">
