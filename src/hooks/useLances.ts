@@ -78,6 +78,19 @@ export function useLances(userId: string | null) {
     return data as string;
   }, [reloadMemberships]);
 
+  const regenerateAdminInviteCode = useCallback(async (lanceId: string) => {
+    const { data, error } = await supabase.rpc('regenerate_admin_invite_code', { p_lance_id: lanceId });
+    if (error) throw new Error(error.message);
+    await reloadMemberships();
+    return data as string;
+  }, [reloadMemberships]);
+
+  const clearAdminInviteCode = useCallback(async (lanceId: string) => {
+    const { error } = await supabase.rpc('clear_admin_invite_code', { p_lance_id: lanceId });
+    if (error) throw new Error(error.message);
+    await reloadMemberships();
+  }, [reloadMemberships]);
+
   const createLance = useCallback(async (name: string, motto?: string): Promise<string> => {
     const { data, error } = await supabase.rpc('create_lance', { p_name: name, p_motto: motto ?? null });
     if (error) throw new Error(error.message);
@@ -88,5 +101,5 @@ export function useLances(userId: string | null) {
     return lance.id;
   }, [reloadMemberships]);
 
-  return { memberships, currentLanceId, currentLance, currentMembership, setCurrentLanceId, loading, createLance, joinLance, leaveLance, moveCharacterToLance, regenerateInviteCode, reloadMemberships };
+  return { memberships, currentLanceId, currentLance, currentMembership, setCurrentLanceId, loading, createLance, joinLance, leaveLance, moveCharacterToLance, regenerateInviteCode, regenerateAdminInviteCode, clearAdminInviteCode, reloadMemberships };
 }
