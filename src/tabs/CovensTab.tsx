@@ -11,6 +11,32 @@ import { CustomSelect } from '@/components/ui/CustomSelect';
 import { useLance } from '@/contexts/LanceContext';
 import { RitualScriptEditor } from '@/components/RitualScriptEditor';
 
+function StyledCheckbox({ checked, onChange, label, color = '#a78bfa', title }: {
+  checked: boolean; onChange: () => void; label?: React.ReactNode; color?: string; title?: string;
+}) {
+  return (
+    <label className="flex items-center gap-1.5 cursor-pointer select-none group" title={title}>
+      <span
+        onClick={onChange}
+        style={{
+          display: 'inline-flex', alignItems: 'center', justifyContent: 'center',
+          width: 16, height: 16, borderRadius: 4, flexShrink: 0,
+          border: `1.5px solid ${checked ? color : 'rgba(232,230,227,0.2)'}`,
+          background: checked ? `${color}22` : 'transparent',
+          transition: 'all 0.15s',
+        }}
+      >
+        {checked && (
+          <svg width="10" height="8" viewBox="0 0 10 8" fill="none">
+            <path d="M1 4L3.5 6.5L9 1" stroke={color} strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"/>
+          </svg>
+        )}
+      </span>
+      {label && <span style={{ color: checked ? 'rgb(var(--ink-100))' : 'rgba(232,230,227,0.45)', fontSize: 12, transition: 'color 0.15s' }}>{label}</span>}
+    </label>
+  );
+}
+
 interface Props {
   canManageCoven: (id: string) => boolean;
 }
@@ -409,15 +435,13 @@ function CovenDetail({
                       </td>
                       <td className="px-4 py-3">{shortfallNode}</td>
                       <td className="px-4 py-3 text-center">
-                        <label className="flex items-center justify-center cursor-pointer">
-                          <input
-                            type="checkbox"
+                        <div className="flex justify-center">
+                          <StyledCheckbox
                             checked={regioRituals.has(r.name)}
                             onChange={() => toggleRegio(r.name)}
-                            className="accent-purple-400 w-4 h-4"
                             title="+1 lore rank to each caster"
                           />
-                        </label>
+                        </div>
                       </td>
                       <td className="px-4 py-3">
                         {r.memberEntries.length === 1 ? (
@@ -432,18 +456,12 @@ function CovenDetail({
                               const allIds = r.memberEntries.map(e => e.member_id);
                               const isActive = r.casting.has(entry.member_id);
                               return (
-                                <label key={entry.member_id} className="flex items-center gap-1.5 cursor-pointer text-xs">
-                                  <input
-                                    type="checkbox"
-                                    checked={isActive}
-                                    onChange={() => toggleCaster(r.name, entry.member_id, allIds)}
-                                    className="accent-purple-400"
-                                  />
-                                  <span style={{ color: isActive ? 'rgb(var(--ink-100))' : 'rgba(232,230,227,0.35)' }}>
-                                    {name}
-                                    {entry.mastered && <span className="ml-1 text-[10px] text-purple-400">★</span>}
-                                  </span>
-                                </label>
+                                <StyledCheckbox
+                                  key={entry.member_id}
+                                  checked={isActive}
+                                  onChange={() => toggleCaster(r.name, entry.member_id, allIds)}
+                                  label={<>{name}{entry.mastered && <span className="ml-1 text-[10px] text-purple-400">★</span>}</>}
+                                />
                               );
                             })}
                           </div>
