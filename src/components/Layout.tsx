@@ -223,7 +223,7 @@ export function Layout() {
             </div>
             <div>
               <h1 className="text-2xl sm:text-4xl font-display font-bold m-0 text-gold-300 select-none">
-                {lance.settings?.name ?? lances.currentLance?.name ?? 'The Serrated Claws'}
+                {lance.settings?.name ?? lances.currentLance?.name ?? 'Empire LARP'}
               </h1>
               <p className="text-xs uppercase tracking-[0.15em] text-ink-100/50 mt-1">Group Management System</p>
             </div>

@@ -71,7 +71,7 @@ export function OverviewTab({ data, filteredMembers, isAdmin, onNavigate }: Prop
         Lance Overview
       </h2>
       <p style={{ fontFamily: "'Spectral', serif", fontStyle: 'italic', fontSize: '14px', color: 'rgb(var(--ink-300))', marginBottom: '32px' }}>
-        At a glance: rosters, nobility, and holdings of the Serrated Claws
+        At a glance: rosters, nobility, and holdings of your group
       </p>
 
       {/* Stat strip — ONE bordered row */}
