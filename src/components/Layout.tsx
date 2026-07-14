@@ -531,7 +531,12 @@ export function Layout() {
           <CreateCharacterScreen
             userId={user.id}
             lanceId={lances.currentLanceId ?? ""}
-            onCreated={() => { lances.reloadMemberships(); setShowCreateCharacter(false); }}
+            onCreated={member => {
+              lances.reloadMemberships();
+              setShowCreateCharacter(false);
+              setSelectedMember(member);
+              setActiveTab('overview');
+            }}
             onClose={() => setShowCreateCharacter(false)}
           />
         </div>
