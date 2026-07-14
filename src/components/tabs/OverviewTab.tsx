@@ -74,7 +74,7 @@ export function OverviewTab({ data, filteredMembers, isAdmin, nation, onNavigate
         {cfg.groupTerm} Overview
       </h2>
       <p style={{ fontFamily: "'Spectral', serif", fontStyle: 'italic', fontSize: '14px', color: 'rgb(var(--ink-300))', marginBottom: '32px' }}>
-        At a glance: rosters, nobility, and holdings of your group
+        At a glance: members, {cfg.memberTerm.toLowerCase()}s, and holdings of your {cfg.groupTerm.toLowerCase()}
       </p>
 
       {/* Stat strip — ONE bordered row */}
@@ -89,8 +89,8 @@ export function OverviewTab({ data, filteredMembers, isAdmin, nation, onNavigate
         }}
       >
         {[
-          { label: 'Members',        value: totalMembers,        tab: 'roster' as string | null },
-          { label: 'Nobles',         value: nobles.length,       tab: 'roster' as string | null },
+          { label: 'Members',                    value: totalMembers,   tab: 'roster' as string | null },
+          { label: `${cfg.memberTerm}s`,         value: nobles.length,  tab: 'roster' as string | null },
           { label: 'Coven Members',  value: coven,               tab: 'covens' as string | null },
           { label: 'Covens',         value: data.members.filter(m => m.coven).length, tab: 'covens' as string | null },
           { label: 'Businesses',     value: data.businesses.length, tab: 'businesses' as string | null },
