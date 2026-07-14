@@ -5,7 +5,7 @@ import { nationConfig } from '@/lib/nations';
 
 interface Props {
   data: LanceData;
-  filteredMembers: Member[];
+  filteredMembers?: Member[];
   isAdmin: boolean;
   nation?: string | null;
   onNavigate?: (tab: string) => void;
