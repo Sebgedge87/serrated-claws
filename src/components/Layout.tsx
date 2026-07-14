@@ -526,7 +526,7 @@ export function Layout() {
           data={lance.data}
           onClose={() => setShowAddPerson(false)}
           onSave={async member => {
-            await lance.upsertMember(member);
+            await lance.upsertMember({ claimed_by: user?.id ?? null, ...member });
             setShowAddPerson(false);
           }}
         />
