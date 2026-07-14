@@ -343,10 +343,21 @@ function CovenDetail({
                   } else if (shortfall === 0) {
                     shortfallNode = <span className="text-[11px] font-bold" style={{ color: 'var(--ok)' }}>✓ Ready</span>;
                   } else {
+                    // vis = 3 mana each; crystals = 1 mana each
+                    const visNeeded = Math.ceil(shortfall / 3);
+                    // Best mix: max vis without overshooting, then top up with crystals
+                    const visMix = Math.floor(shortfall / 3);
+                    const crystalMix = shortfall - visMix * 3;
+                    const mixLabel = visMix > 0 && crystalMix > 0
+                      ? `${visMix} vis + ${crystalMix} crystal${crystalMix !== 1 ? 's' : ''}`
+                      : null;
                     shortfallNode = (
                       <div className="text-xs leading-snug">
-                        <span style={{ color: 'var(--danger)' }} className="font-semibold">−{shortfall} mana needed</span>
-                        <div className="text-ink-100/40 mt-0.5">{shortfall} crystal{shortfall !== 1 ? 's' : ''} or vis</div>
+                        <span style={{ color: 'var(--danger)' }} className="font-semibold">−{shortfall} mana short</span>
+                        <div className="text-ink-100/40 mt-0.5">
+                          {shortfall} crystal{shortfall !== 1 ? 's' : ''} · or {visNeeded} vis
+                          {mixLabel && <> · or {mixLabel}</>}
+                        </div>
                       </div>
                     );
                   }
