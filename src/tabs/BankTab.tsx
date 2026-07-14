@@ -108,10 +108,10 @@ export function BankTab({ canManageBusiness, initialView }: { canManageBusiness:
     <div>
       {/* Title */}
       <h2 style={{ fontFamily: "'Cormorant Garamond', serif", fontSize: '38px', fontWeight: 600, lineHeight: 1.1, color: 'var(--gold)', marginBottom: '4px' }}>
-        Treasury
+        Quartermaster
       </h2>
       <p style={{ fontFamily: "'Spectral', serif", fontStyle: 'italic', fontSize: '14px', color: 'rgb(var(--ink-300))', marginBottom: '20px' }}>
-        House funds and income{lanceName ? ` — ${lanceName}` : ''}
+        Funds, stock, and ventures{lanceName ? ` — ${lanceName}` : ''}
       </p>
 
       {/* Sub-tab nav */}

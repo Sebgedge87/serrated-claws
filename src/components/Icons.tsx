@@ -182,6 +182,13 @@ export const Icons = {
       <path d="M22 3h-6a4 4 0 0 0-4 4v14a3 3 0 0 1 3-3h7z" />
     </>
   ),
+  FlaskConical: base(
+    <>
+      <path d="M10 2v7.527a2 2 0 0 1-.211.896L4.72 18.523a1 1 0 0 0 .9 1.477h12.76a1 1 0 0 0 .9-1.477l-5.069-8.1A2 2 0 0 1 14 9.527V2" />
+      <path d="M8.5 2h7" />
+      <path d="M7 16h10" />
+    </>
+  ),
   ArrowLeft: base(
     <>
       <path d="m12 19-7-7 7-7" />

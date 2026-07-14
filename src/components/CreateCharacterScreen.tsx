@@ -17,7 +17,7 @@ export function CreateCharacterScreen({ userId, lanceId, onCreated, onClose }: P
     player_name: '',
     pid: '',
     house_id: '',
-    total_xp: 8,
+    total_xp: '8',
   });
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -46,7 +46,7 @@ export function CreateCharacterScreen({ userId, lanceId, onCreated, onClose }: P
           rank: 'Member',
           is_noble: false,
           status: 'active',
-          total_xp: form.total_xp,
+          total_xp: parseInt(form.total_xp, 10) || 8,
           claimed_by: userId,
           lance_id: lanceId,
         })
@@ -134,7 +134,7 @@ export function CreateCharacterScreen({ userId, lanceId, onCreated, onClose }: P
                 min={0}
                 className="input"
                 value={form.total_xp}
-                onChange={e => setForm(f => ({ ...f, total_xp: parseInt(e.target.value, 10) || 8 }))}
+                onChange={e => setForm(f => ({ ...f, total_xp: e.target.value }))}
               />
               <p className="text-[11px] text-ink-100/40 mt-1">Starting characters begin at 8 XP</p>
             </div>

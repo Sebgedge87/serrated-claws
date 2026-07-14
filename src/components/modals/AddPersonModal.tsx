@@ -104,6 +104,9 @@ export function AddPersonModal({ data, initial, onClose, onSave, onUpsertCharInv
         <Field label="Rank">
           <input className="input" value={form.rank ?? ''} onChange={e => set('rank', e.target.value || null)} />
         </Field>
+        <Field label="Total XP">
+          <input type="number" min={0} className="input" value={form.total_xp ?? 8} onChange={e => set('total_xp', e.target.value ? parseInt(e.target.value, 10) : null)} />
+        </Field>
         <Field label="Claw">
           <CustomSelect
             value={form.function ?? ''}
