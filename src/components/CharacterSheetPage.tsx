@@ -2,7 +2,7 @@ import { useMemo, useState } from 'react';
 import type { CharInventoryItem, CharacterRitual, CharacterSkill, CharacterSpell, CraftingQueueItem, LanceData, LanceMembership, Member } from '@/lib/types';
 import { RITUALS_CATALOGUE, REALM_COLORS, RITUAL_REALM_ORDER, type RitualRealm } from '@/lib/ritualsCatalogue';
 import { Icons } from '@/components/Icons';
-import { SKILLS_CATALOGUE, SKILL_CATEGORY_COLORS, SKILL_CATEGORY_ORDER, skillXpCost } from '@/lib/skillsCatalogue';
+import { SKILLS_CATALOGUE, SKILL_CATEGORY_COLORS, SKILL_CATEGORY_ORDER, SKILL_CATEGORY_LABELS, skillXpCost } from '@/lib/skillsCatalogue';
 import type { SkillCategory } from '@/lib/skillsCatalogue';
 import { RESOURCE_TYPES, resourceSubOptions, territoriesForResource, buildResourceString, parseResourceString } from '@/lib/personalResource';
 import type { ResourceType } from '@/lib/personalResource';
@@ -1031,13 +1031,13 @@ function SkillsSection({
       {/* Existing skills grouped by category */}
       {orderedCategories.map(cat => {
         const catSkills = grouped.get(cat)!;
-        const colors = SKILL_CATEGORY_COLORS[(cat as SkillCategory)] ?? SKILL_CATEGORY_COLORS.Other;
+        const colors = SKILL_CATEGORY_COLORS[(cat as SkillCategory)] ?? { bg: 'rgba(120,120,140,0.18)', text: '#a0a0b8', border: 'rgba(120,120,140,0.4)' };
         return (
           <div key={cat} className="mb-4">
             {/* Category eyebrow with swatch dot */}
             <div className="flex items-center gap-2 mb-1">
               <span className="swatch-dot" style={{ ['--c' as string]: colors.text }} />
-              <span className="eyebrow" style={{ color: colors.text }}>{cat}</span>
+              <span className="eyebrow" style={{ color: colors.text }}>{SKILL_CATEGORY_LABELS[cat as SkillCategory] ?? cat}</span>
             </div>
             {catSkills.map(sk => {
               const catalogueEntry = SKILLS_CATALOGUE.find(c => c.name === sk.skill_name);
@@ -1271,7 +1271,7 @@ function SkillPicker({
             return (
               <div key={cat} className="mb-2">
                 <div className="px-2 py-1 text-[10px] uppercase tracking-widest font-semibold sticky top-0" style={{ color: cc.text, background: 'rgb(var(--ink-800))' }}>
-                  {cat}
+                  {SKILL_CATEGORY_LABELS[cat] ?? cat}
                 </div>
                 {catSkills.map(s => {
                   const cost = skillXpCost(s, 1);
@@ -1306,7 +1306,7 @@ function SkillPicker({
         {selected ? (
           <>
             <div className="rounded-lg p-3" style={{ background: catColors?.bg, border: `1px solid ${catColors?.border}` }}>
-              <div className="text-[10px] uppercase tracking-widest mb-1" style={{ color: catColors?.text }}>{selected.category}</div>
+              <div className="text-[10px] uppercase tracking-widest mb-1" style={{ color: catColors?.text }}>{SKILL_CATEGORY_LABELS[selected.category] ?? selected.category}</div>
               <div className="font-semibold text-sm text-ink-100 mb-1">{selected.name}</div>
               {selected.description && <p className="text-xs text-ink-100/60 leading-snug">{selected.description}</p>}
               {selected.requires?.length && (

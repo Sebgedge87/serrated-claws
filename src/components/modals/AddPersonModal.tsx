@@ -1,6 +1,6 @@
 import { useMemo, useState } from 'react';
 import type { CharInventoryItem, CharacterRitual, CharacterSkill, CraftingQueueItem, Member, LanceData } from '@/lib/types';
-import { SKILLS_CATALOGUE, SKILL_CATEGORY_COLORS, SKILL_CATEGORY_ORDER } from '@/lib/skillsCatalogue';
+import { SKILLS_CATALOGUE, SKILL_CATEGORY_COLORS, SKILL_CATEGORY_ORDER, SKILL_CATEGORY_LABELS } from '@/lib/skillsCatalogue';
 import type { SkillCategory } from '@/lib/skillsCatalogue';
 import { RITUALS_CATALOGUE, REALM_COLORS, RITUAL_REALM_ORDER } from '@/lib/ritualsCatalogue';
 import type { RitualRealm } from '@/lib/ritualsCatalogue';
@@ -317,10 +317,10 @@ function CharacterSkillsSection({
 
       {orderedCategories.map(cat => {
         const catSkills = grouped.get(cat)!;
-        const colors = SKILL_CATEGORY_COLORS[(cat as SkillCategory)] ?? SKILL_CATEGORY_COLORS.Other;
+        const colors = SKILL_CATEGORY_COLORS[(cat as SkillCategory)] ?? { bg: 'rgba(120,120,140,0.18)', text: '#a0a0b8', border: 'rgba(120,120,140,0.4)' };
         return (
           <div key={cat} className="mb-3">
-            <div className="text-[10px] uppercase tracking-widest text-ink-100/40 mb-1.5">{cat}</div>
+            <div className="text-[10px] uppercase tracking-widest text-ink-100/40 mb-1.5">{SKILL_CATEGORY_LABELS[cat as SkillCategory] ?? cat}</div>
             <div className="flex flex-wrap gap-1.5">
               {catSkills.map(sk => (
                 <div
@@ -378,7 +378,7 @@ function CharacterSkillsSection({
                     >
                       <span>{s.name}</span>
                       <span className="text-[10px] px-1.5 py-0.5 rounded-full border" style={{ background: colors.bg, color: colors.text, borderColor: colors.border }}>
-                        {s.category}
+                        {SKILL_CATEGORY_LABELS[s.category] ?? s.category}
                       </span>
                     </button>
                   );
