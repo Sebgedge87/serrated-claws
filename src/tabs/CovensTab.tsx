@@ -1,4 +1,4 @@
-import { useMemo, useState } from 'react';
+import React, { useMemo, useState } from 'react';
 import type { Coven, CovenRitual, LanceData } from '@/lib/types';
 import { RITUALS_CATALOGUE, REALM_COLORS } from '@/lib/ritualsCatalogue';
 import type { RitualRealm } from '@/lib/ritualsCatalogue';
@@ -156,13 +156,44 @@ function CovenDetail({
   const memberMap = Object.fromEntries(members.map(m => [m.id, m.name]));
   const covenHue = coven.domain ? (REALM_HUE[coven.domain as RitualRealm] ?? A) : A;
   const leaderName = coven.leader ? data.members.find(m => m.id === coven.leader)?.name : null;
-  const manaAvailable = coven.mana_available ?? 0;
-
   // Map lore skill name → realm
   const LORE_REALM: Record<string, string> = {
     'Spring Lore': 'Spring', 'Summer Lore': 'Summer', 'Autumn Lore': 'Autumn',
     'Winter Lore': 'Winter', 'Day Lore': 'Day', 'Night Lore': 'Night',
   };
+
+  // Realm-specific vis item names
+  const VIS_NAMES: Record<string, string[]> = {
+    Spring: ['vital honey', 'spring vis'],
+    Summer: ['golden apple', 'golden apples', 'sun apple', 'summer vis'],
+    Autumn: ['warm ashes', 'ashes of estavus', 'autumn vis'],
+    Winter: ["heart's blood", 'hearts blood', 'winter vis'],
+    Day: ['prismatic ink', 'day vis'],
+    Night: ['crystal fire', 'night vis'],
+  };
+
+  // Mana crystal names (any realm)
+  const CRYSTAL_NAMES = ['mana crystal', 'mana crystals'];
+
+  // Sum crystals and realm vis from all coven member inventories
+  const covenResources = useMemo(() => {
+    let crystals = 0;
+    const vis: Record<string, number> = {};
+    for (const item of data.characterInventory) {
+      if (!memberIds.has(item.member_id)) continue;
+      const name = item.item.toLowerCase().trim();
+      if (CRYSTAL_NAMES.some(n => name.includes(n))) {
+        crystals += item.qty;
+      } else {
+        for (const [realm, names] of Object.entries(VIS_NAMES)) {
+          if (names.some(n => name.includes(n))) {
+            vis[realm] = (vis[realm] ?? 0) + item.qty;
+          }
+        }
+      }
+    }
+    return { crystals, vis };
+  }, [data.characterInventory, memberIds]);
 
   // Per-member lore rank per realm
   const memberLore = useMemo(() => {
@@ -220,8 +251,16 @@ function CovenDetail({
     [memberRituals, realmFilter]
   );
 
-  // "Can cast" = coven mana contribution meets ritual magnitude
+  // "Can cast unaided" = coven mana contribution meets ritual magnitude
   const castableCount = memberRituals.filter(r => r.covenMana >= (r.ritual?.magnitude ?? 0)).length;
+  // "Can cast with resources" = shortfall covered by crystals + realm vis
+  const castableWithResourcesCount = memberRituals.filter(r => {
+    const mag = r.ritual?.magnitude ?? 0;
+    const shortfall = Math.max(0, mag - r.covenMana);
+    if (shortfall === 0) return false; // already counted in castableCount
+    const realmVis = covenResources.vis[r.realm] ?? 0;
+    return realmVis + covenResources.crystals >= shortfall;
+  }).length;
   const realmsPresent = useMemo(() => {
     const s = new Set(memberRituals.map(r => r.realm as RitualRealm));
     return (['Spring','Summer','Autumn','Winter','Day','Night','Special'] as RitualRealm[]).filter(r => s.has(r));
@@ -272,10 +311,10 @@ function CovenDetail({
       {/* Mana strip */}
       <div className="mb-8" style={{ border: '1px solid var(--line)', borderRadius: '8px', display: 'flex', overflow: 'hidden', background: 'rgb(var(--ink-800))' }}>
         {[
-          { label: 'Mana Pool', value: manaAvailable, color: covenHue },
-          { label: 'Rituals Known',  value: memberRituals.length, color: 'rgb(var(--ink-300))' },
-          { label: 'Can Cast',       value: castableCount, color: castableCount > 0 ? 'var(--ok)' : 'rgb(var(--ink-300))' },
-          { label: 'Cannot Cast',    value: memberRituals.length - castableCount, color: (memberRituals.length - castableCount) > 0 ? 'var(--danger)' : 'rgb(var(--ink-300))' },
+          { label: 'Rituals Known',     value: memberRituals.length, color: 'rgb(var(--ink-300))' },
+          { label: 'Cast Unaided',      value: castableCount, color: castableCount > 0 ? 'var(--ok)' : 'rgb(var(--ink-300))' },
+          { label: 'With Resources',    value: castableWithResourcesCount, color: castableWithResourcesCount > 0 ? covenHue : 'rgb(var(--ink-300))' },
+          { label: 'Cannot Cast',       value: memberRituals.length - castableCount - castableWithResourcesCount, color: (memberRituals.length - castableCount - castableWithResourcesCount) > 0 ? 'var(--danger)' : 'rgb(var(--ink-300))' },
         ].map((s, i) => (
           <div key={s.label} style={{ flex: 1, padding: '18px 16px', borderLeft: i > 0 ? '1px solid var(--line)' : 'none', textAlign: 'center' }}>
             <div className="num" style={{ fontSize: '28px', color: s.color, lineHeight: 1, marginBottom: '5px' }}>{s.value}</div>
@@ -325,8 +364,8 @@ function CovenDetail({
                   <th className="px-4 py-3 text-[11px] uppercase tracking-widest font-bold text-left text-ink-100/60">Ritual</th>
                   <th className="px-4 py-3 text-[11px] uppercase tracking-widest font-bold text-left text-ink-100/60">Realm</th>
                   <th className="px-4 py-3 text-[11px] uppercase tracking-widest font-bold text-center text-ink-100/60">Mag</th>
-                  <th className="px-4 py-3 text-[11px] uppercase tracking-widest font-bold text-center text-ink-100/60">Mana</th>
-                  <th className="px-4 py-3 text-[11px] uppercase tracking-widest font-bold text-center text-ink-100/60">Cast?</th>
+                  <th className="px-4 py-3 text-[11px] uppercase tracking-widest font-bold text-center text-ink-100/60">Coven Mana</th>
+                  <th className="px-4 py-3 text-[11px] uppercase tracking-widest font-bold text-left text-ink-100/60">Shortfall / Resources</th>
                   <th className="px-4 py-3 text-[11px] uppercase tracking-widest font-bold text-left text-ink-100/60">Mastered By</th>
                   <th className="px-4 py-3 text-[11px] uppercase tracking-widest font-bold text-left text-ink-100/60">Effect</th>
                 </tr>
@@ -334,13 +373,48 @@ function CovenDetail({
               <tbody>
                 {filteredRituals.map((r, idx) => {
                   const mag = r.ritual?.magnitude ?? 0;
-                  const canCast = r.covenMana >= mag;
+                  const shortfall = Math.max(0, mag - r.covenMana);
                   const rh = REALM_HUE[r.realm as RitualRealm] ?? covenHue;
                   const rc = REALM_COLORS[r.realm as RitualRealm];
                   const isExpanded = expandedRitual === r.name;
                   const effect = r.ritual?.effect ?? '';
+
+                  // Resources available to cover shortfall
+                  const realmVis = covenResources.vis[r.realm] ?? 0;
+                  const crystals = covenResources.crystals;
+                  const totalResources = realmVis + crystals;
+                  const canCoverWithResources = shortfall > 0 && totalResources >= shortfall;
+                  const canCast = shortfall === 0;
+                  const canCastWithResources = canCast || canCoverWithResources;
+
+                  // Shortfall cell content
+                  let shortfallNode: React.ReactNode;
+                  if (mag === 0) {
+                    shortfallNode = <span className="text-ink-100/30 text-xs">—</span>;
+                  } else if (canCast) {
+                    shortfallNode = <span className="text-[11px] font-bold" style={{ color: 'var(--ok)' }}>✓ Ready</span>;
+                  } else {
+                    // Show shortfall and what's available
+                    const parts: string[] = [];
+                    if (realmVis > 0) parts.push(`${realmVis} vis`);
+                    if (crystals > 0) parts.push(`${crystals} crystal${crystals !== 1 ? 's' : ''}`);
+                    const available = parts.length ? parts.join(' + ') : 'none';
+                    shortfallNode = (
+                      <div className="text-xs leading-snug">
+                        <span style={{ color: 'var(--danger)' }} className="font-semibold">−{shortfall} short</span>
+                        <div className="text-ink-100/50 mt-0.5">
+                          {canCastWithResources
+                            ? <span style={{ color: 'var(--ok)' }}>✓ {available} available</span>
+                            : <span style={{ color: 'var(--danger)' }}>Have: {available}</span>
+                          }
+                        </div>
+                      </div>
+                    );
+                  }
+
                   return (
-                    <tr key={r.name} className={idx > 0 ? 'border-t border-gold-500/10' : ''}>
+                    <tr key={r.name} className={idx > 0 ? 'border-t border-gold-500/10' : ''}
+                      style={canCastWithResources && !canCast ? { background: 'rgba(201,169,97,0.04)' } : undefined}>
                       <td className="px-4 py-3 font-semibold text-sm text-ink-100 whitespace-nowrap">{r.name}</td>
                       <td className="px-4 py-3 whitespace-nowrap">
                         {rc ? (
@@ -354,15 +428,7 @@ function CovenDetail({
                       <td className="px-4 py-3 text-center">
                         <span className="num text-sm" style={{ color: r.covenMana >= mag ? 'var(--ok)' : 'var(--danger)' }}>{r.covenMana}</span>
                       </td>
-                      <td className="px-4 py-3 text-center">
-                        {mag === 0 ? (
-                          <span className="text-ink-100/30 text-xs">—</span>
-                        ) : canCast ? (
-                          <span className="text-[11px] font-bold uppercase tracking-widest" style={{ color: 'var(--ok)' }}>✓</span>
-                        ) : (
-                          <span className="text-[11px] font-bold uppercase tracking-widest" style={{ color: 'var(--danger)' }}>✗</span>
-                        )}
-                      </td>
+                      <td className="px-4 py-3">{shortfallNode}</td>
                       <td className="px-4 py-3 text-sm text-ink-100/70 whitespace-nowrap">{r.masteredBy.join(', ')}</td>
                       <td className="px-4 py-3 text-sm text-ink-100/70 cursor-pointer max-w-xs"
                         onClick={() => setExpandedRitual(isExpanded ? null : r.name)}>
