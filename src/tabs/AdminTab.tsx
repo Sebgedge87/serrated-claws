@@ -227,7 +227,7 @@ function EventModal({ initial, onClose, onSave, onDelete }: { initial: Partial<L
 const SETTINGS_SQL = `-- Run this once in your Supabase SQL editor:
 create table public.lance_settings (
   id text primary key default 'default',
-  name text not null default 'The Serrated Claws',
+  name text not null default 'Empire LARP',
   motto text,
   description text
 );
@@ -314,7 +314,7 @@ function SettingsSection({ settings, onSave }: { settings: LanceSettings | null;
             <label className="block text-xs uppercase tracking-widest text-ink-100/50 font-semibold mb-1.5">
               {cfg.groupTermPlural === 'Houses' ? 'Lance' : cfg.groupTermPlural === 'Legions' ? 'Legion' : cfg.groupTerm} Name
             </label>
-            <input className="input" value={form.name} onChange={e => setForm(f => ({ ...f, name: e.target.value }))} placeholder="The Serrated Claws" />
+            <input className="input" value={form.name} onChange={e => setForm(f => ({ ...f, name: e.target.value }))} placeholder="Empire LARP" />
           </div>
           <div>
             <label className="block text-xs uppercase tracking-widest text-ink-100/50 font-semibold mb-1.5">Motto <span className="normal-case font-normal text-ink-100/40">(optional)</span></label>

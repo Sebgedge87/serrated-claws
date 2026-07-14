@@ -56,9 +56,9 @@ export function SignIn() {
           </div>
           <h1 className="text-2xl font-display font-bold mt-3.5 bg-gradient-to-b from-gold-50 to-gold-500
                          text-transparent bg-clip-text text-center">
-            The Serrated Claws
+            Empire LARP
           </h1>
-          <p className="text-[10px] text-ink-100/50 uppercase tracking-[0.18em] mt-1">Group Management</p>
+          <p className="text-[10px] text-ink-100/50 uppercase tracking-[0.18em] mt-1">Empire LARP Group Management</p>
         </div>
 
         <button
