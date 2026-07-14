@@ -5,7 +5,7 @@ import { nationConfig } from '@/lib/nations';
 
 interface Props {
   data: LanceData;
-  filteredMembers: Member[];
+  filteredMembers?: Member[];
   isAdmin: boolean;
   nation?: string | null;
   onNavigate?: (tab: string) => void;
@@ -34,7 +34,7 @@ function getResourceColor(name: string): string {
   return '#d4b46d';
 }
 
-export function OverviewTab({ data, filteredMembers, isAdmin, nation, onNavigate }: Props) {
+export function OverviewTab({ data, isAdmin, nation, onNavigate }: Props) {
   const cfg = nationConfig(nation);
   const activeMembers = data.members.filter(m => m.status === 'active');
   const totalMembers = activeMembers.length;
