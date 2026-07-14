@@ -3,6 +3,8 @@ import { useConfirm } from '@/components/ConfirmDialog';
 import type { CraftingQueueItem, LanceData, MagicItemStock } from '@/lib/types';
 import { useLance } from '@/contexts/LanceContext';
 import { EMPIRE_CATALOGUE, INVENTORY_TYPES, TYPE_COLORS } from '@/lib/catalogue';
+import { VIS_CATALOGUE } from '@/lib/visCatalogue';
+import type { VisRealm } from '@/lib/visCatalogue';
 import type { CatalogueEntry, CatalogueType } from '@/lib/types';
 import {
   MAGIC_ITEMS_CATALOGUE,
@@ -23,7 +25,7 @@ import { CustomSelect } from '@/components/ui/CustomSelect';
 
 const ACCENT = '#e76eb5';
 
-type SubView = 'inventory' | 'stock' | 'queue' | 'catalogue' | 'magic';
+type SubView = 'inventory' | 'stock' | 'queue' | 'catalogue' | 'magic' | 'vis';
 
 const TIER_PILL_COLORS: Record<ItemTier, { bg: string; text: string; border: string }> = {
   apprentice: { bg: 'rgba(212,180,109,0.15)', text: '#d4b46d', border: 'rgba(212,180,109,0.4)' },
@@ -88,6 +90,7 @@ const SUB_TABS: { id: SubView; label: string; Icon: typeof Icons.Package }[] = [
   { id: 'queue',     label: 'Queue',     Icon: Icons.Sparkles },
   { id: 'catalogue', label: 'Catalogue', Icon: Icons.BookOpen },
   { id: 'magic',     label: 'Magic',     Icon: Icons.Wand },
+  { id: 'vis',       label: 'Vis',       Icon: Icons.Sparkles },
 ];
 
 export function InventoryTab() {
@@ -166,6 +169,7 @@ export function InventoryTab() {
         />
       )}
       {subView === 'magic' && <MagicView />}
+      {subView === 'vis' && <VisView />}
 
       {stockModal.open && (
         <StockModal
@@ -1487,4 +1491,64 @@ function formatForm(form: string): string {
     'talisman-reliquary': 'Talisman · Reliquary', 'talisman-paraphernalia': 'Talisman · Paraphernalia',
   };
   return FORM_LABELS[form] ?? form;
+}
+
+// ============================================================
+// VIS VIEW
+// ============================================================
+function VisView() {
+  const [realmFilter, setRealmFilter] = useState<'all' | VisRealm>('all');
+
+  const filtered = realmFilter === 'all'
+    ? VIS_CATALOGUE
+    : VIS_CATALOGUE.filter(v => v.realm === realmFilter);
+
+  const realms: VisRealm[] = ['Spring', 'Summer', 'Autumn', 'Winter', 'Day', 'Night'];
+
+  return (
+    <div>
+      <div className="flex gap-1 flex-wrap mb-5">
+        <button
+          onClick={() => setRealmFilter('all')}
+          className="px-3 py-2 text-xs font-medium rounded-lg border transition-all"
+          style={{ background: realmFilter === 'all' ? `${ACCENT}22` : 'transparent', color: realmFilter === 'all' ? ACCENT : 'rgba(232,230,227,0.5)', borderColor: realmFilter === 'all' ? `${ACCENT}50` : 'rgba(201,169,97,0.15)' }}
+        >
+          All Realms
+        </button>
+        {realms.map(realm => {
+          const rc = REALM_COLORS[realm as RitualRealm];
+          const active = realmFilter === realm;
+          return (
+            <button key={realm} onClick={() => setRealmFilter(realm)}
+              className="px-3 py-2 text-xs font-medium rounded-lg border transition-all"
+              style={{ background: active ? rc.bg : 'transparent', color: active ? rc.text : 'rgba(232,230,227,0.5)', borderColor: active ? rc.border : 'rgba(201,169,97,0.15)' }}
+            >
+              {realm}
+            </button>
+          );
+        })}
+      </div>
+
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+        {filtered.map(vis => {
+          const rc = REALM_COLORS[vis.realm as RitualRealm];
+          return (
+            <div key={vis.name} className="card p-5" style={{ borderColor: rc.border }}>
+              <div className="flex items-start justify-between gap-2 mb-2">
+                <h3 className="font-display text-lg font-semibold text-ink-100">{vis.name}</h3>
+                <span className="px-2 py-0.5 rounded-full text-[10px] font-bold uppercase tracking-widest shrink-0"
+                  style={{ background: rc.bg, color: rc.text, border: `1px solid ${rc.border}` }}>
+                  {vis.realm}
+                </span>
+              </div>
+              <div className="flex items-center gap-2 mb-3">
+                <span className="eyebrow text-[11px]" style={{ color: rc.text }}>Vis · {vis.mana} mana</span>
+              </div>
+              <p className="text-sm text-ink-100/60 leading-relaxed">{vis.effect}</p>
+            </div>
+          );
+        })}
+      </div>
+    </div>
+  );
 }
