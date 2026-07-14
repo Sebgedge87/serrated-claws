@@ -486,6 +486,35 @@ export function useLanceData(lanceId: string | null) {
   }, [reload]);
 
   // ---- Danger Zone ----
+  const resetAllPlayerData = useCallback(async () => {
+    if (!lanceId) return;
+    // Collect member IDs scoped to this lance so we only delete our own data
+    const memberIds = data.members.map(m => m.id);
+    const covenIds  = data.covens.map(c => c.id);
+    if (memberIds.length === 0) return;
+
+    const deletes = [
+      supabase.from('character_skills').delete().in('member_id', memberIds),
+      supabase.from('character_rituals').delete().in('member_id', memberIds),
+      supabase.from('character_spells').delete().in('member_id', memberIds),
+      supabase.from('character_inventory').delete().in('member_id', memberIds),
+      supabase.from('bard_works').delete().in('author_member_id', memberIds),
+      supabase.from('magic_items_stock').delete().eq('lance_id', lanceId),
+      supabase.from('crafting_queue').delete().eq('lance_id', lanceId),
+      supabase.from('inventory').update({ current_qty: 0 }).eq('lance_id', lanceId),
+      supabase.from('inventory_log').delete().eq('lance_id', lanceId),
+      ...(covenIds.length > 0 ? [
+        supabase.from('coven_ritual_scripts').delete().in('coven_id', covenIds),
+        supabase.from('coven_script_permissions').delete().in('coven_id', covenIds),
+      ] : []),
+    ];
+
+    const results = await Promise.all(deletes);
+    const firstErr = results.find(r => r.error)?.error;
+    if (firstErr) throw new Error(firstErr.message);
+    await reload(true);
+  }, [lanceId, data.members, data.covens, reload]);
+
   const resetInventoryQty = useCallback(async () => {
     const { error: err } = await supabase.from('inventory').update({ current_qty: 0 }).eq('lance_id', lanceId).not('item', 'is', null);
     if (err) throw new Error(err.message);
@@ -580,6 +609,7 @@ export function useLanceData(lanceId: string | null) {
     upsertBardWork,
     deleteBardWork,
     upsertRitualScript,
-    upsertScriptPermission
+    upsertScriptPermission,
+    resetAllPlayerData
   };
 }

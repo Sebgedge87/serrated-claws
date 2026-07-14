@@ -21,7 +21,7 @@ const A = '#d4b46d';
 export const ROLE_COLORS: Record<UserRole, string> = { super_admin: '#f0a040', admin: '#d4b46d', support: '#a78bfa', member: '#7eb0d4', viewer: '#9ca3af' };
 
 export function AdminTab({ currentUserId, inviteCode, onRegenerateInviteCode, onDeleteMember, onViewMember, canManageFunction }: Props) {
-  const { data, memberships, settings, isAdmin: _isAdmin, upsertSettings: onUpsertSettings, resetInventoryQty: onResetInventoryQty, clearInventoryLog: onClearInventoryLog, upsertEvent: onUpsertEvent, deleteEvent: onDeleteEvent, clearAttending: onClearAttending } = useLance();
+  const { data, memberships, settings, isAdmin: _isAdmin, upsertSettings: onUpsertSettings, resetInventoryQty: onResetInventoryQty, clearInventoryLog: onClearInventoryLog, upsertEvent: onUpsertEvent, deleteEvent: onDeleteEvent, clearAttending: onClearAttending, resetAllPlayerData: onResetAllPlayerData } = useLance();
   const currentRole = memberships.find(m => m.profile_id === currentUserId)?.role ?? 'admin';
   const isSuperAdmin = currentRole === 'super_admin';
 
@@ -64,7 +64,7 @@ export function AdminTab({ currentUserId, inviteCode, onRegenerateInviteCode, on
       {isSuperAdmin && <ExportSection data={data} memberships={memberships} />}
 
       {/* 7. Danger Zone */}
-      {isSuperAdmin && <DangerZone onResetInventoryQty={onResetInventoryQty} onClearInventoryLog={onClearInventoryLog} logCount={data.inventoryLog.length} />}
+      {isSuperAdmin && <DangerZone onResetInventoryQty={onResetInventoryQty} onClearInventoryLog={onClearInventoryLog} logCount={data.inventoryLog.length} onResetAllPlayerData={onResetAllPlayerData} />}
     </div>
   );
 }
@@ -442,14 +442,22 @@ function ExportSection({ data, memberships }: { data: LanceData; memberships: La
 
 // ── Danger Zone ───────────────────────────────────────────────────────────────
 
-function DangerZone({ onResetInventoryQty, onClearInventoryLog, logCount }: { onResetInventoryQty: () => Promise<void>; onClearInventoryLog: () => Promise<void>; logCount: number }) {
+function DangerZone({ onResetInventoryQty, onClearInventoryLog, logCount, onResetAllPlayerData }: { onResetInventoryQty: () => Promise<void>; onClearInventoryLog: () => Promise<void>; logCount: number; onResetAllPlayerData: () => Promise<void> }) {
   return (
     <section>
       <SectionHeading icon={<Icons.Trash size={16} />} title="Danger Zone" color="#f87171" />
       <div className="border border-red-500/30 rounded-xl p-6 bg-red-500/5 space-y-5">
         <DangerAction
-          title="Reset all inventory quantities"
-          description="Sets every item's current quantity to 0. Useful after an event reset. The required quantities and catalogue are preserved."
+          title="Reset all player data"
+          description="Wipes all character skills, rituals, spells, personal inventory, bard works, ritual scripts, magic items, crafting queue, and resets lance inventory quantities. Members, houses, covens, and events are kept. Cannot be undone."
+          confirmWord="WIPE"
+          buttonLabel="Wipe All Data"
+          onConfirm={onResetAllPlayerData}
+        />
+        <div className="border-t border-red-500/20" />
+        <DangerAction
+          title="Reset inventory quantities"
+          description="Sets every item's current quantity to 0. The required quantities and catalogue are preserved."
           confirmWord="RESET"
           buttonLabel="Reset Quantities"
           onConfirm={onResetInventoryQty}

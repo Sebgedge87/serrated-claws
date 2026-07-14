@@ -204,6 +204,7 @@ export function Layout() {
     deleteBardWork: lance.deleteBardWork,
     upsertRitualScript: lance.upsertRitualScript,
     upsertScriptPermission: lance.upsertScriptPermission,
+    resetAllPlayerData: lance.resetAllPlayerData,
   };
 
   return (
