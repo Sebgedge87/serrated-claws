@@ -24,7 +24,7 @@ const A = '#d4b46d';
 export const ROLE_COLORS: Record<UserRole, string> = { super_admin: '#f0a040', admin: '#d4b46d', support: '#a78bfa', member: '#7eb0d4', viewer: '#9ca3af' };
 
 export function AdminTab({ currentUserId, inviteCode, adminInviteCode, onRegenerateInviteCode, onRegenerateAdminInviteCode, onClearAdminInviteCode, onDeleteMember, onViewMember, canManageFunction }: Props) {
-  const { data, memberships, settings, isAdmin: _isAdmin, upsertSettings: onUpsertSettings, resetInventoryQty: onResetInventoryQty, clearInventoryLog: onClearInventoryLog, upsertEvent: onUpsertEvent, deleteEvent: onDeleteEvent, clearAttending: onClearAttending, resetAllPlayerData: onResetAllPlayerData, upsertProfile: onUpsertProfile } = useLance();
+  const { data, memberships, settings, isAdmin: _isAdmin, upsertSettings: onUpsertSettings, resetInventoryQty: onResetInventoryQty, clearInventoryLog: onClearInventoryLog, upsertEvent: onUpsertEvent, deleteEvent: onDeleteEvent, clearAttending: onClearAttending, resetAllPlayerData: onResetAllPlayerData, upsertProfile: onUpsertProfile, removeUser: onRemoveUser } = useLance();
   const currentRole = memberships.find(m => m.profile_id === currentUserId)?.role ?? 'admin';
   const isSuperAdmin = currentRole === 'super_admin';
 
@@ -60,7 +60,7 @@ export function AdminTab({ currentUserId, inviteCode, adminInviteCode, onRegener
       <EventsSection events={data.events} data={data} onUpsert={onUpsertEvent} onDelete={onDeleteEvent} onClearAttending={onClearAttending} />
 
       {/* 3. Roles & Access */}
-      {isSuperAdmin && <RolesSection memberships={memberships} currentUserId={currentUserId} onUpsertProfile={onUpsertProfile} />}
+      {isSuperAdmin && <RolesSection memberships={memberships} currentUserId={currentUserId} onUpsertProfile={onUpsertProfile} onRemoveUser={onRemoveUser} />}
 
       {/* 4. Unassigned members */}
       <UnassignedSection data={data} isAdmin onDelete={onDeleteMember} onViewMember={onViewMember} />
@@ -452,16 +452,24 @@ const ROLE_OPTIONS: { value: UserRole; label: string; description: string }[] = 
   { value: 'viewer',      label: 'Viewer',      description: 'Read-only access' },
 ];
 
-function RolesSection({ memberships, currentUserId, onUpsertProfile }: {
+function RolesSection({ memberships, currentUserId, onUpsertProfile, onRemoveUser }: {
   memberships: LanceMembership[];
   currentUserId: string;
   onUpsertProfile: (id: string, updates: { role?: UserRole }) => Promise<void>;
+  onRemoveUser: (profileId: string) => Promise<void>;
 }) {
   const [busy, setBusy] = useState<string | null>(null);
+  const { confirm, Dialog } = useConfirm();
 
   async function changeRole(profileId: string, role: UserRole) {
     setBusy(profileId);
     try { await onUpsertProfile(profileId, { role }); } finally { setBusy(null); }
+  }
+
+  async function removeUser(profileId: string, label: string) {
+    if (!await confirm({ title: `Remove ${label}?`, body: 'They will lose access to this group. Their character data will remain.', danger: true, confirmLabel: 'Remove' })) return;
+    setBusy(profileId);
+    try { await onRemoveUser(profileId); } finally { setBusy(null); }
   }
 
   return (
@@ -473,6 +481,7 @@ function RolesSection({ memberships, currentUserId, onUpsertProfile }: {
             <tr>
               <th className="px-4 py-3 text-left text-[11px] uppercase tracking-widest text-ink-100/60">User</th>
               <th className="px-4 py-3 text-left text-[11px] uppercase tracking-widest text-ink-100/60">Role</th>
+              <th className="px-4 py-3 w-10" />
             </tr>
           </thead>
           <tbody>
@@ -504,12 +513,25 @@ function RolesSection({ memberships, currentUserId, onUpsertProfile }: {
                       </select>
                     )}
                   </td>
+                  <td className="px-2 py-3">
+                    {!isMe && (
+                      <button
+                        onClick={() => removeUser(m.profile_id, label)}
+                        disabled={!!busy}
+                        className="btn btn-ghost btn-sm text-red-400/50 hover:text-red-400 px-2"
+                        title="Remove from group"
+                      >
+                        <Icons.Trash size={13} />
+                      </button>
+                    )}
+                  </td>
                 </tr>
               );
             })}
           </tbody>
         </table>
       </div>
+      {Dialog}
     </section>
   );
 }

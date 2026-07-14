@@ -28,6 +28,7 @@ export interface LanceContextValue {
   setInventoryPrice: LanceDataHook['setInventoryPrice'];
   logInventory: LanceDataHook['logInventory'];
   upsertProfile: LanceDataHook['upsertProfile'];
+  removeUser: LanceDataHook['removeUser'];
   upsertSettings: LanceDataHook['upsertSettings'];
   addMembership: LanceDataHook['addMembership'];
   resetInventoryQty: LanceDataHook['resetInventoryQty'];

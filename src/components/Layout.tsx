@@ -178,6 +178,7 @@ export function Layout() {
     setInventoryPrice: lance.setInventoryPrice,
     logInventory: lance.logInventory,
     upsertProfile: lance.upsertProfile,
+    removeUser: lance.removeUser,
     upsertSettings: lance.upsertSettings,
     addMembership: lance.addMembership,
     resetInventoryQty: lance.resetInventoryQty,
@@ -211,7 +212,7 @@ export function Layout() {
     <LanceProvider value={lanceContextValue}>
     <div className="min-h-screen">
       {/* Header */}
-      <header className="relative z-50 overflow-hidden border-b border-gold-500/15 bg-gradient-to-br from-ink-900/95 to-ink-800/95">
+      <header className="relative z-50 border-b border-gold-500/15 bg-gradient-to-br from-ink-900/95 to-ink-800/95">
         <div
           className="absolute -top-10 -right-10 w-72 h-72 opacity-[0.04] pointer-events-none text-gold-300"
           style={{ background: 'radial-gradient(circle, currentColor 1px, transparent 1px)', backgroundSize: '24px 24px' }}
