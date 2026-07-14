@@ -987,8 +987,13 @@ function SkillsSection({
     ...[...grouped.keys()].filter(c => !(SKILL_CATEGORY_ORDER as string[]).includes(c)),
   ];
 
-  function queueSkill(skill: PendingSkill) {
-    setPending(p => [...p, skill]);
+  async function saveSkill(skill: PendingSkill) {
+    setBusy(true);
+    try {
+      await onUpsert({ member_id: memberId, skill_name: skill.skill_name, category: skill.category, rank: skill.rank, notes: null });
+    } finally {
+      setBusy(false);
+    }
   }
 
   async function saveAll() {
@@ -1079,14 +1084,16 @@ function SkillsSection({
           width="md"
           footer={
             <>
-              <button onClick={cancelAdding} className="btn btn-ghost">Cancel</button>
-              <button
-                onClick={saveAll}
-                disabled={!pending.length || busy || xpRemaining < 0}
-                className="btn btn-primary"
-              >
-                {busy ? 'Saving…' : pending.length > 1 ? `Save ${pending.length} Skills` : 'Save Skill'}
-              </button>
+              <button onClick={cancelAdding} className="btn btn-ghost">Close</button>
+              {pending.length > 0 && (
+                <button
+                  onClick={saveAll}
+                  disabled={!pending.length || busy || xpRemaining < 0}
+                  className="btn btn-secondary"
+                >
+                  {busy ? 'Saving…' : `Save ${pending.length} Queued`}
+                </button>
+              )}
             </>
           }
         >
@@ -1116,7 +1123,7 @@ function SkillsSection({
               </div>
             )}
 
-            <SkillPicker xpRemaining={xpRemaining} onQueue={queueSkill} />
+            <SkillPicker xpRemaining={xpRemaining} onSave={saveSkill} busy={busy} />
           </div>
         </Modal>
       )}
@@ -1206,10 +1213,12 @@ function ItemPicker({ value, onChange }: { value: string; onChange: (v: string) 
 
 function SkillPicker({
   xpRemaining,
-  onQueue,
+  onSave,
+  busy,
 }: {
   xpRemaining: number;
-  onQueue: (skill: PendingSkill) => void;
+  onSave: (skill: PendingSkill) => Promise<void>;
+  busy: boolean;
 }) {
   const [draft, setDraft] = useState({ skill_name: '', category: 'Combat' as SkillCategory, rank: 1 });
   const [query, setQuery] = useState('');
@@ -1232,9 +1241,10 @@ function SkillPicker({
     setOpen(false);
   }
 
-  function queue() {
-    if (!draft.skill_name || !canAfford) return;
-    onQueue({ skill_name: draft.skill_name, category: draft.category, rank: draft.rank, xpCost: thisCost });
+  async function addSkill() {
+    if (!draft.skill_name || !canAfford || busy) return;
+    const skill = { skill_name: draft.skill_name, category: draft.category, rank: draft.rank, xpCost: thisCost };
+    await onSave(skill);
     setDraft({ skill_name: '', category: 'Combat', rank: 1 });
   }
 
@@ -1345,12 +1355,12 @@ function SkillPicker({
           </div>
         ) : <span />}
         <button
-          onClick={queue}
-          disabled={!draft.skill_name || !canAfford}
-          className="btn btn-secondary btn-sm text-xs"
+          onClick={addSkill}
+          disabled={!draft.skill_name || !canAfford || busy}
+          className="btn btn-primary btn-sm text-xs"
         >
           <Icons.Plus size={12} />
-          Queue
+          {busy ? 'Saving…' : 'Add Skill'}
         </button>
       </div>
     </div>
@@ -1613,7 +1623,7 @@ function RitualsSection({
     if (!ritualName || busy) return;
     setBusy(true);
     try {
-      await onUpsert({ member_id: memberId, ritual_name: ritualName, realm, notes: notes.trim() || null });
+      await onUpsert({ member_id: memberId, ritual_name: ritualName, realm, mastered: false, notes: notes.trim() || null });
       setRitualName('');
       setNotes('');
       setAdding(false);
@@ -1670,11 +1680,26 @@ function RitualsSection({
                       </div>
                     )}
                   </div>
-                  {canEdit && (
-                    <button onClick={() => onDelete(rt.id)} className="shrink-0 opacity-40 hover:opacity-100 transition-opacity">
-                      <Icons.X size={13} />
-                    </button>
-                  )}
+                  <div className="flex items-center gap-2 shrink-0">
+                    {canEdit ? (
+                      <label className="flex items-center gap-1 text-[11px] text-ink-100/60 cursor-pointer select-none">
+                        <input
+                          type="checkbox"
+                          checked={rt.mastered}
+                          onChange={() => onUpsert({ ...rt, mastered: !rt.mastered })}
+                          className="accent-purple-400"
+                        />
+                        Mastered
+                      </label>
+                    ) : rt.mastered ? (
+                      <span className="text-[11px] text-purple-400 font-medium">Mastered</span>
+                    ) : null}
+                    {canEdit && (
+                      <button onClick={() => onDelete(rt.id)} className="opacity-40 hover:opacity-100 transition-opacity">
+                        <Icons.X size={13} />
+                      </button>
+                    )}
+                  </div>
                 </DataRow>
               );
             })}
