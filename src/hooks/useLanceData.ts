@@ -317,6 +317,15 @@ export function useLanceData(lanceId: string | null) {
     await reload(true);
   }, [lanceId, reload]);
 
+  const removeUser = useCallback(async (profileId: string) => {
+    const { error } = await supabase.from('lance_memberships')
+      .delete()
+      .eq('lance_id', lanceId)
+      .eq('profile_id', profileId);
+    if (error) throw new Error(error.message);
+    await reload(true);
+  }, [lanceId, reload]);
+
   const addMembership = useCallback(async (profileId: string, role: UserRole = 'member') => {
     const { error } = await supabase.from('lance_memberships').upsert(
       { lance_id: lanceId, profile_id: profileId, role },
@@ -599,6 +608,7 @@ export function useLanceData(lanceId: string | null) {
     setInventoryPrice,
     logInventory,
     upsertProfile,
+    removeUser,
     upsertSettings,
     addMembership,
     resetInventoryQty,
