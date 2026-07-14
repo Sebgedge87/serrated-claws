@@ -270,16 +270,6 @@ export function RitualScriptEditor({ covenName, ritualName, initialScript, membe
           <ToolbarBtn title="Stage direction" onClick={() => insertAt('\n**[', ']**', 'Stage')}><span style={{ fontSize: 11 }}>📢</span></ToolbarBtn>
           <ToolbarBtn title="All chant" onClick={() => insertAt('\n> **All:** ', '', 'words')}><span style={{ fontSize: 11 }}>🎵</span></ToolbarBtn>
           <ToolbarBtn title="Action" onClick={() => insertAt('\n- *Action:* ', '', 'do this')}><span style={{ fontSize: 11 }}>⚡</span></ToolbarBtn>
-          {members.length > 0 && (
-            <>
-              <div className="w-px h-4 mx-1" style={{ background: 'var(--line)' }} />
-              {members.map(m => (
-                <ToolbarBtn key={m.id} title={`Mention ${m.name}`} onClick={() => insertAt(`@${m.name} `)}>
-                  <span style={{ fontSize: 10, color: '#a78bfa', fontWeight: 600 }}>@{m.name.split(' ')[0]}</span>
-                </ToolbarBtn>
-              ))}
-            </>
-          )}
         </div>
       )}
 

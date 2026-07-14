@@ -1081,7 +1081,7 @@ function SkillsSection({
           title="Add Skills"
           icon={<Icons.Plus size={20} />}
           accent="var(--gold)"
-          width="md"
+          width="lg"
           footer={
             <>
               <button onClick={cancelAdding} className="btn btn-ghost">Close</button>
@@ -1220,148 +1220,134 @@ function SkillPicker({
   onSave: (skill: PendingSkill) => Promise<void>;
   busy: boolean;
 }) {
-  const [draft, setDraft] = useState({ skill_name: '', category: 'Combat' as SkillCategory, rank: 1 });
+  const [selected, setSelected] = useState<typeof SKILLS_CATALOGUE[number] | null>(null);
+  const [rank, setRank] = useState(1);
   const [query, setQuery] = useState('');
-  const [open, setOpen] = useState(false);
 
   const filtered = useMemo(() => {
     if (!query.trim()) return SKILLS_CATALOGUE;
     const q = query.toLowerCase();
-    return SKILLS_CATALOGUE.filter(s => s.name.toLowerCase().includes(q));
+    return SKILLS_CATALOGUE.filter(s => s.name.toLowerCase().includes(q) || s.category.toLowerCase().includes(q) || s.description?.toLowerCase().includes(q));
   }, [query]);
 
-  const selectedEntry = SKILLS_CATALOGUE.find(s => s.name === draft.skill_name);
-  const colors = selectedEntry ? SKILL_CATEGORY_COLORS[selectedEntry.category] : null;
-  const thisCost = selectedEntry ? skillXpCost(selectedEntry, draft.rank) : 0;
+  const thisCost = selected ? skillXpCost(selected, rank) : 0;
   const canAfford = xpRemaining >= thisCost;
 
   function pick(s: typeof SKILLS_CATALOGUE[number]) {
-    setDraft(d => ({ ...d, skill_name: s.name, category: s.category, rank: 1 }));
-    setQuery('');
-    setOpen(false);
+    setSelected(s);
+    setRank(1);
   }
 
   async function addSkill() {
-    if (!draft.skill_name || !canAfford || busy) return;
-    const skill = { skill_name: draft.skill_name, category: draft.category, rank: draft.rank, xpCost: thisCost };
-    await onSave(skill);
-    setDraft({ skill_name: '', category: 'Combat', rank: 1 });
+    if (!selected || !canAfford || busy) return;
+    await onSave({ skill_name: selected.name, category: selected.category, rank, xpCost: thisCost });
+    setSelected(null);
+    setRank(1);
   }
 
-  return (
-    <div className="bg-ink-800/30 rounded-lg p-3 space-y-2 border border-gold-500/10">
-      <div className="grid grid-cols-[1fr_auto] gap-2 items-end">
-        <div>
-          <label className="eyebrow block mb-1">Skill</label>
-          <div className="relative">
-            <button
-              type="button"
-              className={cx('input text-sm w-full text-left flex items-center justify-between gap-2', open && 'border-gold-300')}
-              onClick={() => setOpen(o => !o)}
-            >
-              {draft.skill_name
-                ? <span className="flex items-center gap-2">
-                    {colors && <span className="w-2 h-2 rounded-full flex-shrink-0" style={{ background: colors.text }} />}
-                    {draft.skill_name}
-                    {selectedEntry?.maxRank && <span className="text-[10px] text-ink-100/40">max {selectedEntry.maxRank}</span>}
-                  </span>
-                : <span className="text-ink-100/40">— choose skill —</span>
-              }
-              <Icons.ChevronDown size={14} className="text-ink-100/40 flex-shrink-0" />
-            </button>
+  const catColors = selected ? SKILL_CATEGORY_COLORS[selected.category] : null;
 
-            {open && (
-              <div className="absolute top-full left-0 right-0 z-20 mt-1 bg-ink-800 border border-gold-500/25 rounded-lg shadow-lift overflow-hidden">
-                <div className="p-2 border-b border-gold-500/15">
-                  <input
-                    autoFocus
-                    className="input text-sm w-full py-1.5"
-                    placeholder="Search skills…"
-                    value={query}
-                    onChange={e => setQuery(e.target.value)}
-                    onKeyDown={e => {
-                      if (e.key === 'Enter' && filtered.length === 1) pick(filtered[0]);
-                      if (e.key === 'Escape') { setOpen(false); setQuery(''); }
-                    }}
-                  />
+  return (
+    <div className="flex gap-4" style={{ minHeight: 420 }}>
+      {/* Left: full skill list */}
+      <div className="flex flex-col flex-1 min-w-0" style={{ borderRight: '1px solid var(--line-soft)' }}>
+        <div className="pb-2 pr-3">
+          <input
+            autoFocus
+            className="input text-sm w-full"
+            placeholder="Search skills…"
+            value={query}
+            onChange={e => setQuery(e.target.value)}
+          />
+        </div>
+        <div className="overflow-y-auto flex-1 pr-1" style={{ maxHeight: 380 }}>
+          {filtered.length === 0 && (
+            <div className="text-xs text-ink-100/40 text-center py-6">No skills match</div>
+          )}
+          {SKILL_CATEGORY_ORDER.map(cat => {
+            const catSkills = filtered.filter(s => s.category === cat);
+            if (!catSkills.length) return null;
+            const cc = SKILL_CATEGORY_COLORS[cat];
+            return (
+              <div key={cat} className="mb-2">
+                <div className="px-2 py-1 text-[10px] uppercase tracking-widest font-semibold sticky top-0" style={{ color: cc.text, background: 'rgb(var(--ink-800))' }}>
+                  {cat}
                 </div>
-                <div className="max-h-56 overflow-y-auto relative">
-                  {filtered.length === 0 && (
-                    <div className="px-3 py-3 text-xs text-ink-100/40 text-center">No skills match</div>
-                  )}
-                  {SKILL_CATEGORY_ORDER.map(cat => {
-                    const catSkills = filtered.filter(s => s.category === cat);
-                    if (!catSkills.length) return null;
-                    const catColors = SKILL_CATEGORY_COLORS[cat];
-                    return (
-                      <div key={cat}>
-                        <div className="px-3 py-1 text-[10px] uppercase tracking-widest font-semibold sticky top-0 z-10 bg-ink-800" style={{ color: catColors.text }}>
-                          {cat}
-                        </div>
-                        {catSkills.map(s => {
-                          const cost = skillXpCost(s, 1);
-                          const affordable = xpRemaining >= cost;
-                          return (
-                            <button
-                              key={s.name}
-                              disabled={!affordable}
-                              className={cx('w-full text-left px-3 py-2 text-sm flex items-center justify-between gap-2 transition-colors', affordable ? 'hover:bg-gold-500/10' : 'opacity-40 cursor-not-allowed')}
-                              onClick={() => affordable && pick(s)}
-                            >
-                              <span className="text-ink-100 flex items-center gap-1.5">
-                                {s.name}
-                                {s.isPrereq && <span className="text-[9px] text-amber-400/70">prereq</span>}
-                              </span>
-                              <span className="text-[10px] text-ink-100/40 flex-shrink-0">
-                                {s.xpCost}xp{s.scaling === '*' ? '+' : s.scaling === '**' ? '×' : ''}
-                              </span>
-                            </button>
-                          );
-                        })}
-                      </div>
-                    );
-                  })}
+                {catSkills.map(s => {
+                  const cost = skillXpCost(s, 1);
+                  const affordable = xpRemaining >= cost;
+                  const isSelected = selected?.name === s.name;
+                  return (
+                    <button
+                      key={s.name}
+                      onClick={() => pick(s)}
+                      className={cx('w-full text-left px-2 py-1.5 rounded text-sm flex items-center justify-between gap-2 transition-colors', isSelected ? '' : affordable ? 'hover:bg-gold-500/8' : 'opacity-35 cursor-default')}
+                      style={isSelected ? { background: cc.bg, color: cc.text } : undefined}
+                    >
+                      <span className="flex items-center gap-1.5 min-w-0">
+                        <span className="w-1.5 h-1.5 rounded-full flex-shrink-0" style={{ background: cc.text, opacity: isSelected ? 1 : 0.5 }} />
+                        <span className="truncate">{s.name}</span>
+                        {s.isPrereq && <span className="text-[9px] text-amber-400/60 flex-shrink-0">prereq</span>}
+                      </span>
+                      <span className="text-[10px] flex-shrink-0" style={{ color: isSelected ? cc.text : 'rgba(232,230,227,0.35)' }}>
+                        {cost}xp{s.scaling === '*' ? '+' : ''}
+                      </span>
+                    </button>
+                  );
+                })}
+              </div>
+            );
+          })}
+        </div>
+      </div>
+
+      {/* Right: detail + add */}
+      <div className="w-52 flex-shrink-0 flex flex-col gap-3 pt-0.5">
+        {selected ? (
+          <>
+            <div className="rounded-lg p-3" style={{ background: catColors?.bg, border: `1px solid ${catColors?.border}` }}>
+              <div className="text-[10px] uppercase tracking-widest mb-1" style={{ color: catColors?.text }}>{selected.category}</div>
+              <div className="font-semibold text-sm text-ink-100 mb-1">{selected.name}</div>
+              {selected.description && <p className="text-xs text-ink-100/60 leading-snug">{selected.description}</p>}
+              {selected.requires?.length && (
+                <p className="text-[10px] text-amber-400/70 mt-1">Requires: {selected.requires.join(', ')}</p>
+              )}
+            </div>
+
+            {selected.maxRank && selected.maxRank > 1 && (
+              <div>
+                <label className="eyebrow block mb-1">Rank</label>
+                <div className="flex items-center gap-2">
+                  <button onClick={() => setRank(r => Math.max(1, r - 1))} className="btn btn-ghost btn-sm px-2">−</button>
+                  <span className="text-sm font-semibold text-ink-100 w-6 text-center">{rank}</span>
+                  <button onClick={() => setRank(r => Math.min(selected.maxRank ?? 10, r + 1))} className="btn btn-ghost btn-sm px-2">+</button>
+                  <span className="text-[10px] text-ink-100/40">/ {selected.maxRank}</span>
                 </div>
               </div>
             )}
-          </div>
-        </div>
-        <div>
-          <label className="eyebrow block mb-1">Rank</label>
-          <input
-            type="number"
-            min={1}
-            max={selectedEntry?.maxRank ?? 10}
-            className="input text-sm w-20"
-            value={draft.rank}
-            onChange={e => setDraft(d => ({ ...d, rank: Math.max(1, parseInt(e.target.value, 10) || 1) }))}
-          />
-        </div>
-      </div>
-      <div className="flex items-center justify-between">
-        {selectedEntry ? (
-          <div className="text-xs space-y-0.5">
-            {selectedEntry.description && (
-              <p className="text-ink-100/60 leading-snug">{selectedEntry.description}</p>
-            )}
-            <div className="flex items-center gap-2">
-              <span className={cx('font-semibold', canAfford ? '' : 'text-red-400')} style={canAfford ? { color: 'var(--gold)' } : undefined}>
-                {thisCost}xp {canAfford ? '' : '— not enough XP'}
-              </span>
-              {selectedEntry.scaling === '*' && <span className="text-ink-100/40">+1xp/rank</span>}
-              {selectedEntry.scaling === '**' && <span className="text-ink-100/40">flat/rank</span>}
-              {selectedEntry.requires?.length && <span className="text-ink-100/40">req: {selectedEntry.requires.join(', ')}</span>}
+
+            <div className="mt-auto space-y-2">
+              <div className="flex items-center justify-between text-xs">
+                <span className="text-ink-100/50">Cost</span>
+                <span className={cx('font-semibold', canAfford ? '' : 'text-red-400')} style={canAfford ? { color: 'var(--gold)' } : undefined}>
+                  {thisCost}xp {!canAfford && '— not enough'}
+                </span>
+              </div>
+              <button
+                onClick={addSkill}
+                disabled={!canAfford || busy}
+                className="btn btn-primary w-full text-sm"
+              >
+                <Icons.Plus size={13} />
+                {busy ? 'Saving…' : 'Add Skill'}
+              </button>
             </div>
+          </>
+        ) : (
+          <div className="flex-1 flex items-center justify-center">
+            <p className="text-xs text-ink-100/30 text-center leading-relaxed">Select a skill<br/>from the list</p>
           </div>
-        ) : <span />}
-        <button
-          onClick={addSkill}
-          disabled={!draft.skill_name || !canAfford || busy}
-          className="btn btn-primary btn-sm text-xs"
-        >
-          <Icons.Plus size={12} />
-          {busy ? 'Saving…' : 'Add Skill'}
-        </button>
+        )}
       </div>
     </div>
   );
@@ -1490,7 +1476,6 @@ function SpellsSection({
                   <div className="flex-1 min-w-0">
                     <div className="flex items-baseline gap-2">
                       <span className="font-display text-[17px] font-semibold text-ink-100">{sp.spell_name}</span>
-                      <span className="num text-xs" style={{ color: 'rgb(var(--ink-300))' }}>{sp.magnitude}m</span>
                     </div>
                     {(catalogueEntry?.effect || sp.notes) && (
                       <div className="text-[13px] leading-snug mt-0.5" style={{ color: 'rgb(var(--ink-300))' }}>
@@ -1546,15 +1531,9 @@ function SpellsSection({
             </div>
           )}
 
-          <div className="flex items-end gap-2">
-            <div className="flex-1">
-              <label className="eyebrow block mb-1">Notes</label>
-              <input className="input text-sm" placeholder="Optional" value={notes} onChange={e => setNotes(e.target.value)} />
-            </div>
-            <div>
-              <label className="eyebrow block mb-1">Mag</label>
-              <input type="number" min={1} className="input text-sm w-16" value={magnitude} onChange={e => setMagnitude(Math.max(1, parseInt(e.target.value, 10) || 1))} />
-            </div>
+          <div>
+            <label className="eyebrow block mb-1">Notes</label>
+            <input className="input text-sm" placeholder="Optional" value={notes} onChange={e => setNotes(e.target.value)} />
           </div>
 
           <div className="flex gap-2 justify-end">
