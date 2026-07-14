@@ -12,23 +12,29 @@ alter table public.coven_ritual_scripts enable row level security;
 create policy "Lance members can read ritual scripts"
   on public.coven_ritual_scripts for select
   using (
-    coven_id in (select id from public.covens where lance_id in (
-      select lance_id from public.members where user_id = auth.uid()
-    ))
+    coven_id in (
+      select id from public.covens where lance_id in (
+        select lance_id from public.lance_memberships where profile_id = auth.uid()
+      )
+    )
   );
 
-create policy "Coven managers can upsert ritual scripts"
+create policy "Lance members can insert ritual scripts"
   on public.coven_ritual_scripts for insert
   with check (
-    coven_id in (select id from public.covens where lance_id in (
-      select lance_id from public.members where user_id = auth.uid()
-    ))
+    coven_id in (
+      select id from public.covens where lance_id in (
+        select lance_id from public.lance_memberships where profile_id = auth.uid()
+      )
+    )
   );
 
-create policy "Coven managers can update ritual scripts"
+create policy "Lance members can update ritual scripts"
   on public.coven_ritual_scripts for update
   using (
-    coven_id in (select id from public.covens where lance_id in (
-      select lance_id from public.members where user_id = auth.uid()
-    ))
+    coven_id in (
+      select id from public.covens where lance_id in (
+        select lance_id from public.lance_memberships where profile_id = auth.uid()
+      )
+    )
   );
