@@ -53,8 +53,7 @@ export function CustomSelect({ value, onChange, options, placeholder = '— None
       border: '1px solid var(--line-strong)',
       borderRadius: '6px',
       boxShadow: '0 8px 24px rgba(0,0,0,0.8)',
-      overflow: 'hidden',
-      maxHeight: 300,
+      maxHeight: Math.min(300, window.innerHeight - rect.bottom - 12),
       overflowY: 'auto',
     }}>
       {placeholder && (
