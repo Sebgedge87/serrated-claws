@@ -36,7 +36,7 @@ export function useLances(userId: string | null) {
 
   function setCurrentLanceId(id: string) {
     setCurrentLanceIdState(id);
-    try { localStorage.setItem('currentLanceId', id); } catch { /* ignore */ }
+    try { localStorage.setItem('currentLanceId', id); } catch (e) { console.warn('localStorage unavailable:', e) }
   }
 
   const currentMembership = memberships.find(m => m.lance_id === currentLanceId) ?? null;
@@ -88,5 +88,5 @@ export function useLances(userId: string | null) {
     return lance.id;
   }, [reloadMemberships]);
 
-  return { memberships, currentLanceId, currentLance, currentMembership, setCurrentLanceId, loading, createLance, joinLance, leaveLance, moveCharacterToLance, regenerateInviteCode };
+  return { memberships, currentLanceId, currentLance, currentMembership, setCurrentLanceId, loading, createLance, joinLance, leaveLance, moveCharacterToLance, regenerateInviteCode, reloadMemberships };
 }

@@ -46,6 +46,7 @@ export function AddPersonModal({ data, initial, onClose, onSave, onUpsertCharInv
     ...initial
   });
   const [busy, setBusy] = useState(false);
+  const [error, setError] = useState<string | null>(null);
 
   function set<K extends keyof Member>(key: K, value: Member[K] | null) {
     setForm(f => ({ ...f, [key]: value }));
@@ -54,8 +55,11 @@ export function AddPersonModal({ data, initial, onClose, onSave, onUpsertCharInv
   async function save() {
     if (!form.name?.trim() || busy) return;
     setBusy(true);
+    setError(null);
     try {
       await onSave({ ...form, name: form.name.trim() } as Partial<Member> & { name: string });
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Something went wrong');
     } finally {
       setBusy(false);
     }
@@ -78,6 +82,7 @@ export function AddPersonModal({ data, initial, onClose, onSave, onUpsertCharInv
         </>
       }
     >
+      {error && <p className="text-xs text-red-400 bg-red-500/10 rounded px-3 py-2">{error}</p>}
       <div className="grid grid-cols-2 gap-4">
         <Field label="Character Name (IC)" span="full">
           <input className="input font-display font-semibold" autoFocus value={form.name ?? ''} onChange={e => set('name', e.target.value)} />
@@ -168,6 +173,12 @@ export function AddPersonModal({ data, initial, onClose, onSave, onUpsertCharInv
           <label className="flex items-center gap-2.5 mt-2.5 cursor-pointer">
             <input type="checkbox" checked={!!form.is_noble} onChange={e => set('is_noble', e.target.checked)} className="w-5 h-5 accent-gold-300" />
             <span className="text-sm">Member of the nobility</span>
+          </label>
+        </Field>
+        <Field label="Can edit Bard Works">
+          <label className="flex items-center gap-2.5 mt-2.5 cursor-pointer">
+            <input type="checkbox" checked={!!form.can_edit_bard_works} onChange={e => set('can_edit_bard_works', e.target.checked)} className="w-5 h-5 accent-gold-300" />
+            <span className="text-sm">Can edit Bard Works</span>
           </label>
         </Field>
         <Field label="Attending Next Event">

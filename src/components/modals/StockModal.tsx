@@ -31,6 +31,7 @@ export function StockModal({ data, initial, prefill, onClose, onSave }: Props) {
     ...(initial?.id ? { id: initial.id } : {})
   });
   const [busy, setBusy] = useState(false);
+  const [error, setError] = useState<string | null>(null);
 
   const suggestions = useMemo(() => {
     if (!search || search === selectedCatalogue?.name) return [];
@@ -51,6 +52,7 @@ export function StockModal({ data, initial, prefill, onClose, onSave }: Props) {
   async function save() {
     if (!form.item_name?.trim() || !form.tier || !form.form || busy) return;
     setBusy(true);
+    setError(null);
     try {
       await onSave({
         ...form,
@@ -58,6 +60,8 @@ export function StockModal({ data, initial, prefill, onClose, onSave }: Props) {
         tier: form.tier,
         form: form.form
       } as Partial<MagicItemStock> & { item_name: string; tier: string; form: string });
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Something went wrong');
     } finally {
       setBusy(false);
     }
@@ -80,6 +84,7 @@ export function StockModal({ data, initial, prefill, onClose, onSave }: Props) {
         </>
       }
     >
+      {error && <p className="text-xs text-red-400 bg-red-500/10 rounded px-3 py-2">{error}</p>}
       <div className="grid grid-cols-2 gap-4">
         <Field label="Item Name (from catalogue)" span="full">
           <div className="relative">

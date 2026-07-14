@@ -6,12 +6,14 @@ interface ThemeCtx { theme: Theme; toggleTheme: () => void; }
 const ThemeContext = createContext<ThemeCtx | null>(null);
 
 export function ThemeProvider({ children }: { children: ReactNode }) {
-  const [theme, setTheme] = useState<Theme>(
-    () => (localStorage.getItem('theme') as Theme) ?? 'dark'
-  );
+  const [theme, setTheme] = useState<Theme>(() => {
+    try { return (localStorage.getItem('theme') as Theme) ?? 'dark'; }
+    catch (e) { console.warn('localStorage unavailable:', e); return 'dark'; }
+  });
   useEffect(() => {
     document.documentElement.setAttribute('data-theme', theme);
-    localStorage.setItem('theme', theme);
+    try { localStorage.setItem('theme', theme); }
+    catch (e) { console.warn('localStorage unavailable:', e); }
   }, [theme]);
   return createElement(
     ThemeContext.Provider,

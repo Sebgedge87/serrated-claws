@@ -931,7 +931,7 @@ function CatalogueView({
 }) {
   const [search, setSearch] = useState('');
   const [tierFilter, setTierFilter] = useState<'all' | ItemTier>('all');
-  const [formGroup, setFormGroup] = useState<'all' | 'weapon' | 'armour' | 'talisman'>('all');
+  const [formGroup, setFormGroup] = useState<'all' | 'weapon' | 'armour' | 'talisman' | 'standard'>('all');
   const [nationFilter, setNationFilter] = useState<string>('all');
   const [expanded, setExpanded] = useState<string | null>(null);
 
@@ -949,7 +949,8 @@ function CatalogueView({
       if (tierFilter !== 'all' && item.tier !== tierFilter) return false;
       if (formGroup === 'weapon' && !item.form.startsWith('weapon')) return false;
       if (formGroup === 'armour' && item.form !== 'armour') return false;
-      if (formGroup === 'talisman' && !item.form.startsWith('talisman') && item.form !== 'standard') return false;
+      if (formGroup === 'talisman' && !item.form.startsWith('talisman')) return false;
+      if (formGroup === 'standard' && item.form !== 'standard') return false;
       if (nationFilter !== 'all') {
         if (item.nations === 'all') return false;
         if (!item.nations.includes(nationFilter)) return false;
@@ -991,7 +992,7 @@ function CatalogueView({
           })}
         </div>
         <div className="flex gap-1">
-          {(['all', 'weapon', 'armour', 'talisman'] as const).map(fg => {
+          {(['all', 'weapon', 'armour', 'talisman', 'standard'] as const).map(fg => {
             const active = formGroup === fg;
             return (
               <button key={fg} onClick={() => setFormGroup(fg)} className="px-3 py-2 text-xs font-medium rounded-lg border transition-all"
@@ -1236,7 +1237,7 @@ function RitualsView() {
                         <tr key={ritual.name} className={idx > 0 ? 'border-t border-gold-500/10' : ''}>
                           <td className="px-4 py-3 font-semibold text-sm whitespace-nowrap align-top">{ritual.name}</td>
                           <td className="px-4 py-3 text-sm text-ink-100/80 align-top">{ritual.effect}</td>
-                          <td className="px-4 py-3 text-xs text-ink-100/50 whitespace-nowrap align-top">{ritual.mastered}</td>
+                          <td className="px-4 py-3 text-xs text-ink-100/50 whitespace-nowrap align-top">{ritual.magnitude ?? ''}</td>
                         </tr>
                       ))}
                     </tbody>
@@ -1477,10 +1478,13 @@ function Th({ children, center, right }: { children: React.ReactNode; center?: b
 }
 
 function formatForm(form: string): string {
-  return form
-    .replace('weapon-', 'Weapon · ').replace('talisman-', 'Talisman · ')
-    .replace('armour', 'Armour').replace('standard', 'Standard')
-    .replace('1h', '1H').replace('great', 'Great').replace('polearm', 'Polearm')
-    .replace('spear', 'Spear').replace('implement', 'Implement').replace('paired', 'Paired')
-    .replace('icon', 'Icon').replace('reliquary', 'Reliquary').replace('paraphernalia', 'Paraphernalia');
+  const FORM_LABELS: Record<string, string> = {
+    'weapon-1h': 'Weapon · 1H', 'weapon-great': 'Weapon · Great', 'weapon-polearm': 'Weapon · Polearm',
+    'weapon-spear': 'Weapon · Spear', 'weapon-implement': 'Weapon · Implement', 'weapon-paired': 'Weapon · Paired',
+    'weapon-bow': 'Weapon · Bow', 'weapon-shield': 'Weapon · Shield',
+    'armour': 'Armour', 'standard': 'Standard',
+    'talisman': 'Talisman', 'talisman-icon': 'Talisman · Icon',
+    'talisman-reliquary': 'Talisman · Reliquary', 'talisman-paraphernalia': 'Talisman · Paraphernalia',
+  };
+  return FORM_LABELS[form] ?? form;
 }

@@ -14,6 +14,7 @@ interface AuthContextValue {
   signUpWithPassword: (email: string, password: string) => Promise<{ error: string | null }>;
   signOut: () => Promise<void>;
   isAdmin: boolean;
+  refreshProfile: () => Promise<void>;
 }
 
 const AuthContext = createContext<AuthContextValue | null>(null);
@@ -103,7 +104,13 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     },
     async signOut() {
       await supabase.auth.signOut();
-    }
+    },
+    async refreshProfile() {
+      const userId = session?.user?.id;
+      if (!userId) return;
+      const { data } = await supabase.from('profiles').select('*').eq('id', userId).single();
+      setProfile((data as Profile) ?? null);
+    },
   };
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;

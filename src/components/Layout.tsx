@@ -155,7 +155,7 @@ export function Layout() {
   const currentMembership = lances.currentMembership;
 
   const lanceContextValue = {
-    lanceId: lances.currentLanceId!,
+    lanceId: lances.currentLanceId ?? '',
     data: lance.data,
     memberships: lance.memberships,
     settings: lance.settings,
@@ -458,9 +458,9 @@ export function Layout() {
             {activeTab === 'treasury' && <BankTab canManageBusiness={perms.canManageBusiness} initialView={treasuryView} />}
             {activeTab === 'admin' && isAdmin && (
               <AdminTab
-                currentUserId={user!.id}
+                currentUserId={user?.id ?? ""}
                 inviteCode={lances.currentLance?.invite_code ?? null}
-                onRegenerateInviteCode={() => lances.regenerateInviteCode(lances.currentLanceId!)}
+                onRegenerateInviteCode={() => lances.regenerateInviteCode(lances.currentLanceId ?? "")}
                 onDeleteMember={lance.deleteMember}
                 onViewMember={setSelectedMember}
                 canManageFunction={perms.canManageFunction}
@@ -526,8 +526,8 @@ export function Layout() {
         <div className="fixed inset-0 z-50 bg-ink-950/90 backdrop-blur-sm overflow-y-auto">
           <CreateCharacterScreen
             userId={user.id}
-            lanceId={lances.currentLanceId!}
-            onCreated={() => window.location.reload()}
+            lanceId={lances.currentLanceId ?? ""}
+            onCreated={() => lances.reloadMemberships()}
             onClose={() => setShowCreateCharacter(false)}
           />
         </div>

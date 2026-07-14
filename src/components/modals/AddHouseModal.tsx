@@ -21,6 +21,7 @@ export function AddHouseModal({ onClose, onSave, initial }: Props) {
   const [description, setDescription] = useState(initial?.description ?? '');
   const [color, setColor] = useState(initial?.primary_color ?? initCfg.colors[0]);
   const [busy, setBusy] = useState(false);
+  const [error, setError] = useState<string | null>(null);
 
   const cfg = nationConfig(nation);
 
@@ -33,6 +34,7 @@ export function AddHouseModal({ onClose, onSave, initial }: Props) {
   async function save() {
     if (!name.trim() || busy) return;
     setBusy(true);
+    setError(null);
     try {
       await onSave({
         id: initial?.id ?? houseIdFromName(name),
@@ -43,6 +45,8 @@ export function AddHouseModal({ onClose, onSave, initial }: Props) {
         sort_order: initial?.sort_order ?? 99,
         nation,
       });
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Something went wrong');
     } finally {
       setBusy(false);
     }
@@ -66,6 +70,7 @@ export function AddHouseModal({ onClose, onSave, initial }: Props) {
       }
     >
       {/* Nation picker */}
+      {error && <p className="text-xs text-red-400 bg-red-500/10 rounded px-3 py-2">{error}</p>}
       <Field label="Nation">
         <div className="grid grid-cols-2 gap-1.5">
           {NATIONS.map(n => {
