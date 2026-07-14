@@ -28,7 +28,7 @@ begin
   end if;
 
   insert into public.lance_memberships (lance_id, profile_id, role)
-  values (v_lance.id, auth.uid(), 'member')
+  values (v_lance.id, auth.uid(), 'member'::public.user_role)
   on conflict (lance_id, profile_id) do nothing;
 
   return v_lance;
