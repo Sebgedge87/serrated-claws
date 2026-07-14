@@ -11,6 +11,8 @@ interface Props {
   ritualName: string;
   initialScript: string;
   members: Member[];
+  canWrite?: boolean;
+  canExport?: boolean;
   onSave: (script: string) => Promise<void>;
 }
 
@@ -50,7 +52,7 @@ function ToolbarBtn({ title, onClick, children }: { title: string; onClick: () =
   );
 }
 
-export function RitualScriptEditor({ covenName, ritualName, initialScript, members, onSave }: Props) {
+export function RitualScriptEditor({ covenName, ritualName, initialScript, members, canWrite = true, canExport = true, onSave }: Props) {
   const [content, setContent] = useState(initialScript);
   const [preview, setPreview] = useState(false);
   const [dirty, setDirty] = useState(false);
@@ -238,14 +240,19 @@ export function RitualScriptEditor({ covenName, ritualName, initialScript, membe
       {/* Header row */}
       <div className="flex items-center gap-2 px-1 mb-0" style={{ borderBottom: '1px solid var(--line-soft)', paddingBottom: 8 }}>
         <span className="eyebrow text-[11px] text-ink-100/50 flex-1">Ritual Script</span>
-        <div className="flex bg-black/30 border border-gold-500/15 rounded p-0.5">
-          <button onClick={() => setPreview(false)} className={cx('px-2.5 py-1 text-[11px] rounded-sm transition-colors', !preview ? 'bg-gold-500/20 text-gold-300' : 'text-ink-300 hover:text-ink-100')}>Edit</button>
-          <button onClick={() => setPreview(true)}  className={cx('px-2.5 py-1 text-[11px] rounded-sm transition-colors',  preview ? 'bg-gold-500/20 text-gold-300' : 'text-ink-300 hover:text-ink-100')}>Preview</button>
-        </div>
-        <button onClick={exportPdf} className="flex items-center gap-1 px-2.5 py-1 text-[11px] border border-ink-100/15 rounded hover:border-ink-100/30 transition-colors text-ink-100/50 hover:text-ink-100/80">
-          <Icons.Download size={11} />PDF
-        </button>
-        {dirty && (
+        {canWrite && (
+          <div className="flex bg-black/30 border border-gold-500/15 rounded p-0.5">
+            <button onClick={() => setPreview(false)} className={cx('px-2.5 py-1 text-[11px] rounded-sm transition-colors', !preview ? 'bg-gold-500/20 text-gold-300' : 'text-ink-300 hover:text-ink-100')}>Edit</button>
+            <button onClick={() => setPreview(true)}  className={cx('px-2.5 py-1 text-[11px] rounded-sm transition-colors',  preview ? 'bg-gold-500/20 text-gold-300' : 'text-ink-300 hover:text-ink-100')}>Preview</button>
+          </div>
+        )}
+        {!canWrite && <span className="text-[11px] text-ink-100/40 italic">Read only</span>}
+        {canExport && (
+          <button onClick={exportPdf} className="flex items-center gap-1 px-2.5 py-1 text-[11px] border border-ink-100/15 rounded hover:border-ink-100/30 transition-colors text-ink-100/50 hover:text-ink-100/80">
+            <Icons.Download size={11} />PDF
+          </button>
+        )}
+        {canWrite && dirty && (
           <button onClick={save} disabled={busy} className="btn btn-primary btn-sm text-[11px] py-1 px-2.5">
             {busy ? 'Saving…' : 'Save'}
           </button>
@@ -253,7 +260,7 @@ export function RitualScriptEditor({ covenName, ritualName, initialScript, membe
       </div>
 
       {/* Toolbar */}
-      {!preview && (
+      {canWrite && !preview && (
         <div className="flex flex-wrap gap-0.5 items-center py-1.5 px-1" style={{ borderBottom: '1px solid var(--line-soft)' }}>
           <ToolbarBtn title="Bold (**text**)" onClick={() => insertAt('**', '**', 'bold')}><span className="font-bold text-sm">B</span></ToolbarBtn>
           <ToolbarBtn title="Italic (*text*)" onClick={() => insertAt('*', '*', 'italic')}><span className="italic text-sm">I</span></ToolbarBtn>
@@ -275,7 +282,7 @@ export function RitualScriptEditor({ covenName, ritualName, initialScript, membe
 
       {/* Editor / Preview */}
       <div className="relative">
-        {preview ? (
+        {(preview || !canWrite) ? (
           <div
             className="px-1 py-3 text-sm text-ink-100/80 leading-relaxed"
             style={{ minHeight: 180 }}

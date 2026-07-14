@@ -203,6 +203,7 @@ export function Layout() {
     upsertBardWork: lance.upsertBardWork,
     deleteBardWork: lance.deleteBardWork,
     upsertRitualScript: lance.upsertRitualScript,
+    upsertScriptPermission: lance.upsertScriptPermission,
   };
 
   return (
@@ -455,7 +456,7 @@ export function Layout() {
                 />
               );
             })()}
-            {activeTab === 'covens' && <CovensTab canManageCoven={perms.canManageCoven} />}
+            {activeTab === 'covens' && <CovensTab canManageCoven={perms.canManageCoven} myMemberId={currentMembership?.member_id ?? null} />}
             {activeTab === 'treasury' && <BankTab canManageBusiness={perms.canManageBusiness} initialView={treasuryView} />}
             {activeTab === 'admin' && isAdmin && (
               <AdminTab

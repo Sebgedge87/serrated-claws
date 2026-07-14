@@ -1,5 +1,5 @@
 import React, { useMemo, useState } from 'react';
-import type { Coven, CovenRitual, LanceData } from '@/lib/types';
+import type { Coven, CovenRitual, CovenScriptPermission, LanceData } from '@/lib/types';
 import { RITUALS_CATALOGUE, REALM_COLORS } from '@/lib/ritualsCatalogue';
 import type { RitualRealm } from '@/lib/ritualsCatalogue';
 import { Icons } from '@/components/Icons';
@@ -39,6 +39,7 @@ function StyledCheckbox({ checked, onChange, label, color = '#a78bfa', title }: 
 
 interface Props {
   canManageCoven: (id: string) => boolean;
+  myMemberId: string | null;
 }
 
 const A = '#b56eb5';
@@ -56,8 +57,8 @@ const REALM_HUE: Record<RitualRealm, string> = {
 };
 
 
-export function CovensTab({ canManageCoven }: Props) {
-  const { data, isAdmin, upsertCoven: onUpsert, deleteCoven: onDelete, upsertCovenRitual: onUpsertRitual, deleteCovenRitual: onDeleteRitual, upsertRitualScript: onUpsertScript } = useLance();
+export function CovensTab({ canManageCoven, myMemberId }: Props) {
+  const { data, isAdmin, upsertCoven: onUpsert, deleteCoven: onDelete, upsertCovenRitual: onUpsertRitual, deleteCovenRitual: onDeleteRitual, upsertRitualScript: onUpsertScript, upsertScriptPermission: onUpsertScriptPerm } = useLance();
   const [selected, setSelected] = useState<string | null>(null);
   const [editing, setEditing] = useState<Partial<Coven> | null>(null);
   const { confirm, Dialog: ConfirmDialog } = useConfirm();
@@ -72,6 +73,7 @@ export function CovensTab({ canManageCoven }: Props) {
           data={data}
           isAdmin={isAdmin}
           canManage={canManageCoven(coven.id)}
+          myMemberId={myMemberId}
           onBack={() => setSelected(null)}
           onUpsert={onUpsert}
           onDelete={async () => {
@@ -83,6 +85,7 @@ export function CovensTab({ canManageCoven }: Props) {
           onUpsertRitual={onUpsertRitual}
           onDeleteRitual={onDeleteRitual}
           onUpsertScript={onUpsertScript}
+          onUpsertScriptPerm={onUpsertScriptPerm}
           confirm={confirm}
         />
         {ConfirmDialog}
@@ -161,18 +164,20 @@ export function CovensTab({ canManageCoven }: Props) {
 // ── Coven Detail ──────────────────────────────────────────────────────────────
 
 function CovenDetail({
-  coven, data, isAdmin, canManage, onBack, onUpsert, onDelete, onUpsertRitual, onDeleteRitual, onUpsertScript, confirm
+  coven, data, isAdmin, canManage, myMemberId, onBack, onUpsert, onDelete, onUpsertRitual, onDeleteRitual, onUpsertScript, onUpsertScriptPerm, confirm
 }: {
   coven: Coven;
   data: LanceData;
   isAdmin: boolean;
   canManage: boolean;
+  myMemberId: string | null;
   onBack: () => void;
   onUpsert: (c: Partial<Coven> & { id: string; name: string }) => Promise<void>;
   onDelete: () => void;
   onUpsertRitual: (r: Omit<CovenRitual, 'id'> & { id?: string }) => Promise<void>;
   onDeleteRitual: (id: string) => Promise<void>;
   onUpsertScript: (covenId: string, ritualName: string, script: string) => Promise<void>;
+  onUpsertScriptPerm: (covenId: string, memberId: string, canWrite: boolean, canExport: boolean) => Promise<void>;
   confirm: (opts: { title: string; body?: string; danger?: boolean; confirmLabel?: string }) => Promise<boolean>;
 }) {
   void onUpsertRitual; void onDeleteRitual; void confirm;
@@ -200,6 +205,11 @@ function CovenDetail({
 
   const members = data.members.filter(m => m.coven === coven.id);
   const memberIds = new Set(members.map(m => m.id));
+  // Script permissions for this coven
+  const scriptPerms = data.covenScriptPermissions.filter(p => p.coven_id === coven.id);
+  const myScriptPerm = myMemberId ? scriptPerms.find(p => p.member_id === myMemberId) : null;
+  const myCanWrite = canManage || !!myScriptPerm?.can_write;
+  const myCanExport = canManage || !!myScriptPerm?.can_export;
   const memberMap = Object.fromEntries(members.map(m => [m.id, m.name]));
   const covenHue = coven.domain ? (REALM_HUE[coven.domain as RitualRealm] ?? A) : A;
   const leaderName = coven.leader ? data.members.find(m => m.id === coven.leader)?.name : null;
@@ -482,6 +492,8 @@ function CovenDetail({
                             ritualName={r.name}
                             initialScript={data.ritualScripts.find(s => s.coven_id === coven.id && s.ritual_name === r.name)?.script ?? ''}
                             members={members}
+                            canWrite={myCanWrite}
+                            canExport={myCanExport}
                             onSave={script => onUpsertScript(coven.id, r.name, script)}
                           />
                         </td>
@@ -552,6 +564,45 @@ function CovenDetail({
           <p className="text-ink-100/40 text-sm py-10 text-center">No members assigned to this coven yet.</p>
         )}
       </div>
+
+      {/* Script Access — only leaders/admins can manage */}
+      {canManage && members.length > 0 && (
+        <div className="mt-6">
+          <SectionHeader title="Script Access" accent={covenHue} />
+          <div style={{ border: '1px solid var(--line)', borderRadius: '8px', overflow: 'hidden', background: 'rgb(var(--ink-800))' }}>
+            <div style={{ display: 'grid', gridTemplateColumns: '1fr auto auto', alignItems: 'center', padding: '8px 16px', borderBottom: '1px solid var(--line)', gap: 12 }}>
+              <span className="eyebrow text-[10px]">Member</span>
+              <span className="eyebrow text-[10px] w-14 text-center">Write</span>
+              <span className="eyebrow text-[10px] w-14 text-center">Export</span>
+            </div>
+            {members.map((m, i) => {
+              const perm: CovenScriptPermission | undefined = scriptPerms.find(p => p.member_id === m.id);
+              const canW = !!perm?.can_write;
+              const canE = !!perm?.can_export;
+              return (
+                <div key={m.id} style={{ display: 'grid', gridTemplateColumns: '1fr auto auto', alignItems: 'center', padding: '10px 16px', borderTop: i > 0 ? '1px solid var(--line)' : 'none', gap: 12 }}>
+                  <span className="text-sm text-ink-100">{m.name}</span>
+                  <div className="w-14 flex justify-center">
+                    <StyledCheckbox
+                      checked={canW}
+                      color={covenHue}
+                      onChange={() => onUpsertScriptPerm(coven.id, m.id, !canW, canE)}
+                    />
+                  </div>
+                  <div className="w-14 flex justify-center">
+                    <StyledCheckbox
+                      checked={canE}
+                      color={covenHue}
+                      onChange={() => onUpsertScriptPerm(coven.id, m.id, canW, !canE)}
+                    />
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+          <p className="text-xs text-ink-100/40 mt-2">Write = can edit ritual scripts · Export = can download as PDF</p>
+        </div>
+      )}
 
       {editingCoven && (
         <CovenModal

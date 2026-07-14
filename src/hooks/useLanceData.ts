@@ -8,6 +8,7 @@ import type {
   CharacterSkill,
   CharacterSpell,
   CovenRitual,
+  CovenScriptPermission,
   CraftingQueueItem,
   Coven,
   Func,
@@ -46,7 +47,8 @@ export function useLanceData(lanceId: string | null) {
     craftingQueue: [],
     covenRituals: [],
     bardWorks: [],
-    ritualScripts: []
+    ritualScripts: [],
+    covenScriptPermissions: []
   });
   const [memberships, setMemberships] = useState<LanceMembership[]>([]);
   const [settings, setSettings] = useState<LanceSettings | null>(null);
@@ -58,7 +60,7 @@ export function useLanceData(lanceId: string | null) {
     if (!silent) setLoading(true);
     setError(null);
     try {
-      const [houses, members, covens, fns, biz, bizOwners, inv, invLog, ms, evts, charInv, charSkills, charSpells, charRituals, magicStock, craftingQ, covenRituals, bardWorksRes, ritualScriptsRes] = await Promise.all([
+      const [houses, members, covens, fns, biz, bizOwners, inv, invLog, ms, evts, charInv, charSkills, charSpells, charRituals, magicStock, craftingQ, covenRituals, bardWorksRes, ritualScriptsRes, scriptPermsRes] = await Promise.all([
         supabase.from('houses').select('*').eq('lance_id', lanceId).order('sort_order'),
         supabase.from('members').select('*').eq('lance_id', lanceId).order('is_noble', { ascending: false }).order('name'),
         supabase.from('covens').select('*').eq('lance_id', lanceId),
@@ -77,7 +79,8 @@ export function useLanceData(lanceId: string | null) {
         supabase.from('crafting_queue').select('*').eq('lance_id', lanceId).order('created_at', { ascending: false }),
         supabase.from('coven_rituals').select('*'),
         supabase.from('bard_works').select('*'),
-        supabase.from('coven_ritual_scripts').select('*')
+        supabase.from('coven_ritual_scripts').select('*'),
+        supabase.from('coven_script_permissions').select('*')
       ]);
 
       // Scope character tables (no lance_id column) to this lance's members/covens
@@ -108,7 +111,8 @@ export function useLanceData(lanceId: string | null) {
         craftingQueue: (craftingQ.data ?? []) as CraftingQueueItem[],
         covenRituals: ((covenRituals.data ?? []) as CovenRitual[]).filter(r => covenIds.has(r.coven_id)),
         bardWorks: ((bardWorksRes.data ?? []) as BardWork[]).filter(r => memberIds.has(r.author_member_id)),
-        ritualScripts: ((ritualScriptsRes.data ?? []) as RitualScript[]).filter(r => covenIds.has(r.coven_id))
+        ritualScripts: ((ritualScriptsRes.data ?? []) as RitualScript[]).filter(r => covenIds.has(r.coven_id)),
+        covenScriptPermissions: ((scriptPermsRes.data ?? []) as CovenScriptPermission[]).filter(r => covenIds.has(r.coven_id))
       });
       setMemberships((ms.data ?? []) as LanceMembership[]);
 
@@ -456,6 +460,15 @@ export function useLanceData(lanceId: string | null) {
     await reload(true);
   }, [reload]);
 
+  const upsertScriptPermission = useCallback(async (covenId: string, memberId: string, canWrite: boolean, canExport: boolean) => {
+    const { error: err } = await supabase.from('coven_script_permissions').upsert(
+      { coven_id: covenId, member_id: memberId, can_write: canWrite, can_export: canExport },
+      { onConflict: 'coven_id,member_id' }
+    );
+    if (err) throw new Error(err.message);
+    await reload(true);
+  }, [reload]);
+
   // ---- Bard Works ----
   const upsertBardWork = useCallback(async (work: Omit<BardWork, 'id' | 'created_at' | 'updated_at'> & { id?: string }) => {
     const payload = { ...work, updated_at: new Date().toISOString() };
@@ -566,6 +579,7 @@ export function useLanceData(lanceId: string | null) {
     updateCovenMana,
     upsertBardWork,
     deleteBardWork,
-    upsertRitualScript
+    upsertRitualScript,
+    upsertScriptPermission
   };
 }
