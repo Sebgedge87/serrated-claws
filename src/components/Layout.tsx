@@ -395,8 +395,8 @@ export function Layout() {
             member={liveMember}
             data={lance.data}
             isAdmin={isAdmin}
-            canEdit={isAdmin || currentMembership?.member_id === liveMember.id}
-            isOwn={currentMembership?.member_id === liveMember.id}
+            canEdit={isAdmin || currentMembership?.member_id === liveMember.id || (!!user && liveMember.claimed_by === user.id)}
+            isOwn={currentMembership?.member_id === liveMember.id || (!!user && liveMember.claimed_by === user.id)}
             wikiUrl={WIKI_URL}
             onBack={() => setSelectedMember(null)}
             onUpsertMember={lance.upsertMember}
