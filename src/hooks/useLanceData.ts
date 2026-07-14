@@ -486,6 +486,50 @@ export function useLanceData(lanceId: string | null) {
   }, [reload]);
 
   // ---- Danger Zone ----
+  const resetAllPlayerData = useCallback(async () => {
+    if (!lanceId) return;
+    // Delete in dependency order so foreign keys don't block.
+    // Character data cascades from members, coven data cascades from covens,
+    // so delete leaf tables first then parents.
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const steps: any[] = [
+      // character leaf tables
+      supabase.from('character_skills').delete().not('id', 'is', null),
+      supabase.from('character_rituals').delete().not('id', 'is', null),
+      supabase.from('character_spells').delete().not('id', 'is', null),
+      supabase.from('character_inventory').delete().not('id', 'is', null),
+      supabase.from('bard_works').delete().not('id', 'is', null),
+      // coven content
+      supabase.from('coven_ritual_scripts').delete().not('id', 'is', null),
+      supabase.from('coven_script_permissions').delete().not('coven_id', 'is', null),
+      supabase.from('coven_rituals').delete().not('id', 'is', null),
+      // lance-level data
+      supabase.from('magic_items_stock').delete().eq('lance_id', lanceId),
+      supabase.from('crafting_queue').delete().eq('lance_id', lanceId),
+      supabase.from('inventory').delete().eq('lance_id', lanceId),
+      supabase.from('inventory_log').delete().eq('lance_id', lanceId),
+      supabase.from('events').delete().eq('lance_id', lanceId),
+    ];
+    for (const step of steps) {
+      const { error: err } = await step;
+      if (err) throw new Error(err.message);
+    }
+    // Now delete structural data — cascade handles children
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const structural: any[] = [
+      supabase.from('members').delete().eq('lance_id', lanceId),
+      supabase.from('businesses').delete().eq('lance_id', lanceId),
+      supabase.from('functions').delete().eq('lance_id', lanceId),
+      supabase.from('covens').delete().eq('lance_id', lanceId),
+      supabase.from('houses').delete().eq('lance_id', lanceId),
+    ];
+    for (const step of structural) {
+      const { error: err } = await step;
+      if (err) throw new Error(err.message);
+    }
+    await reload(true);
+  }, [lanceId, reload]);
+
   const resetInventoryQty = useCallback(async () => {
     const { error: err } = await supabase.from('inventory').update({ current_qty: 0 }).eq('lance_id', lanceId).not('item', 'is', null);
     if (err) throw new Error(err.message);
@@ -580,6 +624,7 @@ export function useLanceData(lanceId: string | null) {
     upsertBardWork,
     deleteBardWork,
     upsertRitualScript,
-    upsertScriptPermission
+    upsertScriptPermission,
+    resetAllPlayerData
   };
 }

@@ -11,7 +11,7 @@ interface Step {
 const STEPS: Step[] = [
   {
     icon: Icons.Swords,
-    title: 'Welcome to your Lance',
+    title: 'Welcome to your Group',
     body: 'This app helps you manage your Empire LARP lance — track characters, houses, covens, treasury, and upcoming events. Everything updates in real time as your lance mates make changes.',
     tip: 'You can return to this tour any time from the user menu in the top-right corner.',
   },

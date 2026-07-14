@@ -21,7 +21,7 @@ const A = '#d4b46d';
 export const ROLE_COLORS: Record<UserRole, string> = { super_admin: '#f0a040', admin: '#d4b46d', support: '#a78bfa', member: '#7eb0d4', viewer: '#9ca3af' };
 
 export function AdminTab({ currentUserId, inviteCode, onRegenerateInviteCode, onDeleteMember, onViewMember, canManageFunction }: Props) {
-  const { data, memberships, settings, isAdmin: _isAdmin, upsertSettings: onUpsertSettings, resetInventoryQty: onResetInventoryQty, clearInventoryLog: onClearInventoryLog, upsertEvent: onUpsertEvent, deleteEvent: onDeleteEvent, clearAttending: onClearAttending } = useLance();
+  const { data, memberships, settings, isAdmin: _isAdmin, upsertSettings: onUpsertSettings, resetInventoryQty: onResetInventoryQty, clearInventoryLog: onClearInventoryLog, upsertEvent: onUpsertEvent, deleteEvent: onDeleteEvent, clearAttending: onClearAttending, resetAllPlayerData: onResetAllPlayerData } = useLance();
   const currentRole = memberships.find(m => m.profile_id === currentUserId)?.role ?? 'admin';
   const isSuperAdmin = currentRole === 'super_admin';
 
@@ -64,7 +64,7 @@ export function AdminTab({ currentUserId, inviteCode, onRegenerateInviteCode, on
       {isSuperAdmin && <ExportSection data={data} memberships={memberships} />}
 
       {/* 7. Danger Zone */}
-      {isSuperAdmin && <DangerZone onResetInventoryQty={onResetInventoryQty} onClearInventoryLog={onClearInventoryLog} logCount={data.inventoryLog.length} />}
+      {isSuperAdmin && <DangerZone onResetInventoryQty={onResetInventoryQty} onClearInventoryLog={onClearInventoryLog} logCount={data.inventoryLog.length} onResetAllPlayerData={onResetAllPlayerData} />}
     </div>
   );
 }
@@ -271,7 +271,7 @@ function SettingsSection({ settings, onSave }: { settings: LanceSettings | null;
 
   return (
     <section>
-      <SectionHeading icon={<Icons.Edit size={16} />} title="Lance Settings" />
+      <SectionHeading icon={<Icons.Edit size={16} />} title="Settings" />
       {settings === null ? (
         <div className="card p-5">
           <p className="text-sm text-ink-100/60 mb-3">The <code className="text-gold-300 bg-black/30 px-1 rounded">lance_settings</code> table hasn't been created yet. Run this SQL in your <a href="https://supabase.com/dashboard" target="_blank" rel="noreferrer" className="text-gold-300 underline">Supabase SQL editor</a>:</p>
@@ -364,7 +364,7 @@ function InviteCodeSection({ inviteCode, currentRole, onRegenerateInviteCode }: 
           <div className="font-mono text-2xl font-bold tracking-widest text-ink-100 select-all mb-1">
             {displayCode ?? '—'}
           </div>
-          <div className="text-xs text-ink-100/50">Share this code with new members so they can join from the "No Lance Yet" screen.</div>
+          <div className="text-xs text-ink-100/50">Share this code with new members so they can join from the "Get Started" screen.</div>
         </div>
         <div className="flex gap-2 flex-shrink-0">
           <button onClick={handleCopy} className="btn btn-ghost btn-sm" disabled={!displayCode}>
@@ -442,14 +442,22 @@ function ExportSection({ data, memberships }: { data: LanceData; memberships: La
 
 // ── Danger Zone ───────────────────────────────────────────────────────────────
 
-function DangerZone({ onResetInventoryQty, onClearInventoryLog, logCount }: { onResetInventoryQty: () => Promise<void>; onClearInventoryLog: () => Promise<void>; logCount: number }) {
+function DangerZone({ onResetInventoryQty, onClearInventoryLog, logCount, onResetAllPlayerData }: { onResetInventoryQty: () => Promise<void>; onClearInventoryLog: () => Promise<void>; logCount: number; onResetAllPlayerData: () => Promise<void> }) {
   return (
     <section>
       <SectionHeading icon={<Icons.Trash size={16} />} title="Danger Zone" color="#f87171" />
       <div className="border border-red-500/30 rounded-xl p-6 bg-red-500/5 space-y-5">
         <DangerAction
-          title="Reset all inventory quantities"
-          description="Sets every item's current quantity to 0. Useful after an event reset. The required quantities and catalogue are preserved."
+          title="Full reset — wipe all lance data"
+          description="Deletes everything: members, houses, covens, groups, businesses, all character data, inventory, events, bard works, ritual scripts. Only user accounts and login access are preserved. Cannot be undone."
+          confirmWord="WIPE"
+          buttonLabel="Wipe All Data"
+          onConfirm={onResetAllPlayerData}
+        />
+        <div className="border-t border-red-500/20" />
+        <DangerAction
+          title="Reset inventory quantities"
+          description="Sets every item's current quantity to 0. The required quantities and catalogue are preserved."
           confirmWord="RESET"
           buttonLabel="Reset Quantities"
           onConfirm={onResetInventoryQty}

@@ -178,7 +178,7 @@ export function BankTab({ canManageBusiness, initialView }: { canManageBusiness:
 
         {/* Income / Tithe panel */}
         <div className="card p-6">
-          <div className="eyebrow mb-4" style={{ fontSize: '10px', letterSpacing: '0.12em', textTransform: 'uppercase' }}>Lance Tithe Per Event</div>
+          <div className="eyebrow mb-4" style={{ fontSize: '10px', letterSpacing: '0.12em', textTransform: 'uppercase' }}>Group Tithe Per Event</div>
           <div className="num" style={{ fontSize: '38px', color: 'var(--ok)', lineHeight: 1, marginBottom: '6px' }}>
             {tithingRings.toLocaleString()}
             <span style={{ fontFamily: "'Spectral', serif", fontSize: '14px', color: 'rgb(var(--ink-300))', marginLeft: '8px', fontVariantNumeric: 'normal' }}>rings / event</span>

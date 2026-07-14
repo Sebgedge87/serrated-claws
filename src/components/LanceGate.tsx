@@ -72,7 +72,7 @@ export function LanceGate({ memberships, loading, currentLanceId, memberIdToMove
   if (memberships.length > 1 && !currentLanceId) {
     return (
       <div className="min-h-screen flex flex-col items-center justify-center gap-6 p-8">
-        <h1 className="text-2xl font-display font-bold text-gold-300">Select a Lance</h1>
+        <h1 className="text-2xl font-display font-bold text-gold-300">Select a Group</h1>
         <div className="grid gap-3 w-full max-w-sm">
           {memberships.map(m => (
             <button key={m.lance_id} onClick={() => onSelect(m.lance_id)} className="card card-lift p-5 text-left">
@@ -93,7 +93,7 @@ export function LanceGate({ memberships, loading, currentLanceId, memberIdToMove
       </div>
 
       <div className="text-center max-w-sm w-full">
-        <h1 className="text-2xl font-display font-bold text-gold-300 mb-6">No Lance Yet</h1>
+        <h1 className="text-2xl font-display font-bold text-gold-300 mb-6">Get Started</h1>
 
         {mode === 'choose' && (
           <div className="space-y-3">
@@ -101,7 +101,7 @@ export function LanceGate({ memberships, loading, currentLanceId, memberIdToMove
               <Icons.Users size={16} /> Join with Invite Code
             </button>
             <button onClick={() => reset('create')} className="btn btn-ghost w-full justify-center border border-gold-500/20">
-              <Icons.Plus size={16} /> Create New Lance
+              <Icons.Plus size={16} /> Create New Group
             </button>
           </div>
         )}
@@ -123,7 +123,7 @@ export function LanceGate({ memberships, loading, currentLanceId, memberIdToMove
             <div className="flex gap-2 pt-1">
               <button type="button" onClick={() => reset('choose')} className="btn btn-ghost flex-1">Back</button>
               <button type="submit" disabled={!code.trim() || busy} className="btn btn-primary flex-1">
-                {busy ? 'Joining…' : 'Join Lance'}
+                {busy ? 'Joining…' : 'Join Group'}
               </button>
             </div>
           </form>
@@ -132,7 +132,7 @@ export function LanceGate({ memberships, loading, currentLanceId, memberIdToMove
         {mode === 'create' && (
           <form onSubmit={handleCreate} className="space-y-3 text-left">
             <div>
-              <label className="text-xs uppercase tracking-widest text-ink-100/50 mb-1 block">Lance Name</label>
+              <label className="text-xs uppercase tracking-widest text-ink-100/50 mb-1 block">Group Name</label>
               <input className="input w-full" value={name} onChange={e => setName(e.target.value)} placeholder="The Iron Brotherhood" autoFocus />
             </div>
             <div>
