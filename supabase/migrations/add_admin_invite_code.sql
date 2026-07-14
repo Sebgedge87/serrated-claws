@@ -7,7 +7,7 @@ returns public.lances
 language plpgsql security definer set search_path = public as $$
 declare
   v_lance public.lances;
-  v_role  text;
+  v_role  public.user_role;
 begin
   -- Check regular invite code first
   select * into v_lance
@@ -15,7 +15,7 @@ begin
   where lower(trim(invite_code)) = lower(trim(p_code));
 
   if found then
-    v_role := 'member';
+    v_role := 'member'::public.user_role;
   else
     -- Check admin invite code
     select * into v_lance
@@ -26,7 +26,7 @@ begin
     if not found then
       raise exception 'Invalid invite code';
     end if;
-    v_role := 'admin';
+    v_role := 'admin'::public.user_role;
   end if;
 
   insert into public.lance_memberships (lance_id, profile_id, role)
