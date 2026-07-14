@@ -18,6 +18,7 @@ import type {
   LanceSettings,
   MagicItemStock,
   Member,
+  RitualScript,
   UserRole
 } from '@/lib/types';
 
@@ -44,7 +45,8 @@ export function useLanceData(lanceId: string | null) {
     magicItemsStock: [],
     craftingQueue: [],
     covenRituals: [],
-    bardWorks: []
+    bardWorks: [],
+    ritualScripts: []
   });
   const [memberships, setMemberships] = useState<LanceMembership[]>([]);
   const [settings, setSettings] = useState<LanceSettings | null>(null);
@@ -56,7 +58,7 @@ export function useLanceData(lanceId: string | null) {
     if (!silent) setLoading(true);
     setError(null);
     try {
-      const [houses, members, covens, fns, biz, bizOwners, inv, invLog, ms, evts, charInv, charSkills, charSpells, charRituals, magicStock, craftingQ, covenRituals, bardWorksRes] = await Promise.all([
+      const [houses, members, covens, fns, biz, bizOwners, inv, invLog, ms, evts, charInv, charSkills, charSpells, charRituals, magicStock, craftingQ, covenRituals, bardWorksRes, ritualScriptsRes] = await Promise.all([
         supabase.from('houses').select('*').eq('lance_id', lanceId).order('sort_order'),
         supabase.from('members').select('*').eq('lance_id', lanceId).order('is_noble', { ascending: false }).order('name'),
         supabase.from('covens').select('*').eq('lance_id', lanceId),
@@ -74,7 +76,8 @@ export function useLanceData(lanceId: string | null) {
         supabase.from('magic_items_stock').select('*').eq('lance_id', lanceId).order('created_at', { ascending: false }),
         supabase.from('crafting_queue').select('*').eq('lance_id', lanceId).order('created_at', { ascending: false }),
         supabase.from('coven_rituals').select('*'),
-        supabase.from('bard_works').select('*')
+        supabase.from('bard_works').select('*'),
+        supabase.from('coven_ritual_scripts').select('*')
       ]);
 
       // Scope character tables (no lance_id column) to this lance's members/covens
@@ -104,7 +107,8 @@ export function useLanceData(lanceId: string | null) {
         magicItemsStock: (magicStock.data ?? []) as MagicItemStock[],
         craftingQueue: (craftingQ.data ?? []) as CraftingQueueItem[],
         covenRituals: ((covenRituals.data ?? []) as CovenRitual[]).filter(r => covenIds.has(r.coven_id)),
-        bardWorks: ((bardWorksRes.data ?? []) as BardWork[]).filter(r => memberIds.has(r.author_member_id))
+        bardWorks: ((bardWorksRes.data ?? []) as BardWork[]).filter(r => memberIds.has(r.author_member_id)),
+        ritualScripts: ((ritualScriptsRes.data ?? []) as RitualScript[]).filter(r => covenIds.has(r.coven_id))
       });
       setMemberships((ms.data ?? []) as LanceMembership[]);
 
@@ -442,6 +446,16 @@ export function useLanceData(lanceId: string | null) {
     await reload(true);
   }, [reload]);
 
+  // ---- Ritual Scripts ----
+  const upsertRitualScript = useCallback(async (covenId: string, ritualName: string, script: string) => {
+    const { error: err } = await supabase.from('coven_ritual_scripts').upsert(
+      { coven_id: covenId, ritual_name: ritualName, script, updated_at: new Date().toISOString() },
+      { onConflict: 'coven_id,ritual_name' }
+    );
+    if (err) throw new Error(err.message);
+    await reload(true);
+  }, [reload]);
+
   // ---- Bard Works ----
   const upsertBardWork = useCallback(async (work: Omit<BardWork, 'id' | 'created_at' | 'updated_at'> & { id?: string }) => {
     const payload = { ...work, updated_at: new Date().toISOString() };
@@ -551,6 +565,7 @@ export function useLanceData(lanceId: string | null) {
     deleteCovenRitual,
     updateCovenMana,
     upsertBardWork,
-    deleteBardWork
+    deleteBardWork,
+    upsertRitualScript
   };
 }

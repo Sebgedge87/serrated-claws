@@ -9,6 +9,7 @@ import { initials } from '@/lib/utils';
 import { SectionHeader } from '@/components/ui/SectionHeader';
 import { CustomSelect } from '@/components/ui/CustomSelect';
 import { useLance } from '@/contexts/LanceContext';
+import { RitualScriptEditor } from '@/components/RitualScriptEditor';
 
 interface Props {
   canManageCoven: (id: string) => boolean;
@@ -30,7 +31,7 @@ const REALM_HUE: Record<RitualRealm, string> = {
 
 
 export function CovensTab({ canManageCoven }: Props) {
-  const { data, isAdmin, upsertCoven: onUpsert, deleteCoven: onDelete, upsertCovenRitual: onUpsertRitual, deleteCovenRitual: onDeleteRitual } = useLance();
+  const { data, isAdmin, upsertCoven: onUpsert, deleteCoven: onDelete, upsertCovenRitual: onUpsertRitual, deleteCovenRitual: onDeleteRitual, upsertRitualScript: onUpsertScript } = useLance();
   const [selected, setSelected] = useState<string | null>(null);
   const [editing, setEditing] = useState<Partial<Coven> | null>(null);
   const { confirm, Dialog: ConfirmDialog } = useConfirm();
@@ -55,6 +56,7 @@ export function CovensTab({ canManageCoven }: Props) {
           }}
           onUpsertRitual={onUpsertRitual}
           onDeleteRitual={onDeleteRitual}
+          onUpsertScript={onUpsertScript}
           confirm={confirm}
         />
         {ConfirmDialog}
@@ -133,7 +135,7 @@ export function CovensTab({ canManageCoven }: Props) {
 // ── Coven Detail ──────────────────────────────────────────────────────────────
 
 function CovenDetail({
-  coven, data, isAdmin, canManage, onBack, onUpsert, onDelete, onUpsertRitual, onDeleteRitual, confirm
+  coven, data, isAdmin, canManage, onBack, onUpsert, onDelete, onUpsertRitual, onDeleteRitual, onUpsertScript, confirm
 }: {
   coven: Coven;
   data: LanceData;
@@ -144,12 +146,28 @@ function CovenDetail({
   onDelete: () => void;
   onUpsertRitual: (r: Omit<CovenRitual, 'id'> & { id?: string }) => Promise<void>;
   onDeleteRitual: (id: string) => Promise<void>;
+  onUpsertScript: (covenId: string, ritualName: string, script: string) => Promise<void>;
   confirm: (opts: { title: string; body?: string; danger?: boolean; confirmLabel?: string }) => Promise<boolean>;
 }) {
   void onUpsertRitual; void onDeleteRitual; void confirm;
   const [editingCoven, setEditingCoven] = useState(false);
   const [realmFilter, setRealmFilter] = useState<RitualRealm | 'all'>('all');
   const [expandedRitual, setExpandedRitual] = useState<string | null>(null);
+  const [regio, setRegio] = useState(false);
+  // Per-ritual override: which member_ids are actively casting (null = all)
+  const [activeCasters, setActiveCasters] = useState<Map<string, Set<string>>>(new Map());
+
+  function toggleCaster(ritualName: string, memberId: string, allIds: string[]) {
+    setActiveCasters(prev => {
+      const next = new Map(prev);
+      const current = next.get(ritualName) ?? new Set(allIds);
+      const updated = new Set(current);
+      if (updated.has(memberId)) { updated.delete(memberId); } else { updated.add(memberId); }
+      // If all selected again, clear the override
+      if (updated.size === allIds.length) { next.delete(ritualName); } else { next.set(ritualName, updated); }
+      return next;
+    });
+  }
 
   const members = data.members.filter(m => m.coven === coven.id);
   const memberIds = new Set(members.map(m => m.id));
@@ -176,7 +194,7 @@ function CovenDetail({
   }, [data.characterSkills, memberIds]);
 
   // Aggregate character rituals for all coven members
-  const memberRituals = useMemo(() => {
+  const baseRituals = useMemo(() => {
     // Group character_rituals by ritual name
     const byName = new Map<string, {
       ritual: typeof RITUALS_CATALOGUE[0] | undefined;
@@ -200,18 +218,25 @@ function CovenDetail({
         });
       }
     }
-    // Compute coven mana contribution per ritual
     return Array.from(byName.entries())
-      .map(([name, v]) => {
-        // Each member contributes their lore rank in this realm × 2 if mastered
-        const covenMana = v.memberEntries.reduce((sum, entry) => {
-          const loreRank = memberLore.get(entry.member_id)?.get(v.realm) ?? 0;
-          return sum + loreRank * (entry.mastered ? 2 : 1);
-        }, 0);
-        return { name, ...v, covenMana };
-      })
+      .map(([name, v]) => ({ name, ...v }))
       .sort((a, b) => (a.ritual?.magnitude ?? 0) - (b.ritual?.magnitude ?? 0));
-  }, [data.characterRituals, memberIds, memberMap, memberLore]);
+  }, [data.characterRituals, memberIds, memberMap]);
+
+  // Derived: mana per ritual based on active casters + regio bonus (recomputed when regio/activeCasters changes)
+  const memberRituals = useMemo(() => {
+    return baseRituals.map(v => {
+      const casting = activeCasters.get(v.name) ?? new Set(v.memberEntries.map(e => e.member_id));
+      const covenMana = v.memberEntries
+        .filter(e => casting.has(e.member_id))
+        .reduce((sum, entry) => {
+          const baseRank = memberLore.get(entry.member_id)?.get(v.realm) ?? 0;
+          const effectiveRank = baseRank + (regio ? 1 : 0);
+          return sum + effectiveRank * (entry.mastered ? 2 : 1);
+        }, 0);
+      return { ...v, covenMana, casting };
+    });
+  }, [baseRituals, activeCasters, regio, memberLore]);
 
   const filteredRituals = useMemo(() =>
     realmFilter === 'all' ? memberRituals : memberRituals.filter(r => r.realm === realmFilter),
@@ -283,7 +308,20 @@ function CovenDetail({
 
       {/* Rituals known by coven members */}
       <div className="mb-8">
-        <SectionHeader title="Rituals Known" count={memberRituals.length} accent={covenHue} />
+        <div className="flex items-center justify-between mb-1">
+          <SectionHeader title="Rituals Known" count={memberRituals.length} accent={covenHue} />
+          <label className="flex items-center gap-2 cursor-pointer select-none text-sm">
+            <input
+              type="checkbox"
+              checked={regio}
+              onChange={e => setRegio(e.target.checked)}
+              className="accent-purple-400 w-4 h-4"
+            />
+            <span style={{ color: regio ? 'var(--gold)' : 'rgba(232,230,227,0.5)' }}>
+              Regio <span className="text-[11px] text-ink-100/40">(+1 lore rank each caster)</span>
+            </span>
+          </label>
+        </div>
 
         {/* Realm filter tabs */}
         {realmsPresent.length > 1 && (
@@ -324,7 +362,7 @@ function CovenDetail({
                   <th className="px-4 py-3 text-[11px] uppercase tracking-widest font-bold text-center text-ink-100/60">Mag</th>
                   <th className="px-4 py-3 text-[11px] uppercase tracking-widest font-bold text-center text-ink-100/60">Coven Mana</th>
                   <th className="px-4 py-3 text-[11px] uppercase tracking-widest font-bold text-left text-ink-100/60">Shortfall / Resources</th>
-                  <th className="px-4 py-3 text-[11px] uppercase tracking-widest font-bold text-left text-ink-100/60">Mastered By</th>
+                  <th className="px-4 py-3 text-[11px] uppercase tracking-widest font-bold text-left text-ink-100/60">Casters</th>
                   <th className="px-4 py-3 text-[11px] uppercase tracking-widest font-bold text-left text-ink-100/60">Effect</th>
                 </tr>
               </thead>
@@ -363,7 +401,8 @@ function CovenDetail({
                   }
 
                   return (
-                    <tr key={r.name} className={idx > 0 ? 'border-t border-gold-500/10' : ''}>
+                    <React.Fragment key={r.name}>
+                    <tr className={idx > 0 ? 'border-t border-gold-500/10' : ''}>
                       <td className="px-4 py-3 font-semibold text-sm text-ink-100 whitespace-nowrap">{r.name}</td>
                       <td className="px-4 py-3 whitespace-nowrap">
                         {rc ? (
@@ -378,13 +417,58 @@ function CovenDetail({
                         <span className="num text-sm" style={{ color: r.covenMana >= mag ? 'var(--ok)' : 'var(--danger)' }}>{r.covenMana}</span>
                       </td>
                       <td className="px-4 py-3">{shortfallNode}</td>
-                      <td className="px-4 py-3 text-sm text-ink-100/70 whitespace-nowrap">{r.masteredBy.join(', ')}</td>
+                      <td className="px-4 py-3">
+                        {r.memberEntries.length === 1 ? (
+                          <span className="text-sm text-ink-100/70">
+                            {memberMap[r.memberEntries[0].member_id] ?? '—'}
+                            {r.memberEntries[0].mastered && <span className="ml-1 text-[10px] text-purple-400">★</span>}
+                          </span>
+                        ) : (
+                          <div className="flex flex-col gap-1">
+                            {r.memberEntries.map(entry => {
+                              const name = memberMap[entry.member_id] ?? entry.member_id;
+                              const allIds = r.memberEntries.map(e => e.member_id);
+                              const isActive = r.casting.has(entry.member_id);
+                              return (
+                                <label key={entry.member_id} className="flex items-center gap-1.5 cursor-pointer text-xs">
+                                  <input
+                                    type="checkbox"
+                                    checked={isActive}
+                                    onChange={() => toggleCaster(r.name, entry.member_id, allIds)}
+                                    className="accent-purple-400"
+                                  />
+                                  <span style={{ color: isActive ? 'rgb(var(--ink-100))' : 'rgba(232,230,227,0.35)' }}>
+                                    {name}
+                                    {entry.mastered && <span className="ml-1 text-[10px] text-purple-400">★</span>}
+                                  </span>
+                                </label>
+                              );
+                            })}
+                          </div>
+                        )}
+                      </td>
                       <td className="px-4 py-3 text-sm text-ink-100/70 cursor-pointer max-w-xs"
                         onClick={() => setExpandedRitual(isExpanded ? null : r.name)}>
-                        {isExpanded ? effect : (effect.length > 70 ? `${effect.slice(0, 70)}…` : effect)}
+                        <span>{effect.length > 70 ? `${effect.slice(0, 70)}…` : effect}</span>
+                        <span className="ml-2 text-[10px] text-ink-100/30">{isExpanded ? '▲' : '▼ script'}</span>
                       </td>
                     </tr>
-                  );
+                    {isExpanded && (
+                      <tr key={`${r.name}-script`} className="border-t border-gold-500/10">
+                        <td colSpan={7} className="px-4 pb-4">
+                          {effect && <p className="text-sm text-ink-100/60 mt-3 mb-2 leading-relaxed">{effect}</p>}
+                          <RitualScriptEditor
+                            covenName={coven.name}
+                            ritualName={r.name}
+                            initialScript={data.ritualScripts.find(s => s.coven_id === coven.id && s.ritual_name === r.name)?.script ?? ''}
+                            members={members}
+                            onSave={script => onUpsertScript(coven.id, r.name, script)}
+                          />
+                        </td>
+                      </tr>
+                    )}
+                  </React.Fragment>
+                );
                 })}
               </tbody>
             </table>
