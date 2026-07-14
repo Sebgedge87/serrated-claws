@@ -1,6 +1,6 @@
 create table if not exists public.coven_script_permissions (
   coven_id text not null references public.covens(id) on delete cascade,
-  member_id text not null references public.members(id) on delete cascade,
+  member_id uuid not null references public.members(id) on delete cascade,
   can_write boolean not null default false,
   can_export boolean not null default false,
   primary key (coven_id, member_id)
