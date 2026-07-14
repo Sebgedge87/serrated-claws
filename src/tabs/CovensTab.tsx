@@ -158,34 +158,70 @@ function CovenDetail({
   const leaderName = coven.leader ? data.members.find(m => m.id === coven.leader)?.name : null;
   const manaAvailable = coven.mana_available ?? 0;
 
+  // Map lore skill name → realm
+  const LORE_REALM: Record<string, string> = {
+    'Spring Lore': 'Spring', 'Summer Lore': 'Summer', 'Autumn Lore': 'Autumn',
+    'Winter Lore': 'Winter', 'Day Lore': 'Day', 'Night Lore': 'Night',
+  };
+
+  // Per-member lore rank per realm
+  const memberLore = useMemo(() => {
+    const map = new Map<string, Map<string, number>>(); // member_id → realm → rank
+    for (const sk of data.characterSkills) {
+      if (!memberIds.has(sk.member_id)) continue;
+      const realm = LORE_REALM[sk.skill_name];
+      if (!realm) continue;
+      if (!map.has(sk.member_id)) map.set(sk.member_id, new Map());
+      map.get(sk.member_id)!.set(realm, sk.rank);
+    }
+    return map;
+  }, [data.characterSkills, memberIds]);
+
   // Aggregate character rituals for all coven members
   const memberRituals = useMemo(() => {
-    const byName = new Map<string, { ritual: typeof RITUALS_CATALOGUE[0] | undefined; masteredBy: string[]; realm: string }>();
+    // Group character_rituals by ritual name
+    const byName = new Map<string, {
+      ritual: typeof RITUALS_CATALOGUE[0] | undefined;
+      masteredBy: string[];
+      realm: string;
+      memberEntries: Array<{ member_id: string; mastered: boolean }>;
+    }>();
     for (const cr of data.characterRituals) {
       if (!memberIds.has(cr.member_id)) continue;
-      const existing = byName.get(cr.ritual_name);
       const catalogueEntry = RITUALS_CATALOGUE.find(r => r.name === cr.ritual_name);
+      const existing = byName.get(cr.ritual_name);
       if (existing) {
-        existing.masteredBy.push(memberMap[cr.member_id] ?? cr.member_id);
+        if (cr.mastered) existing.masteredBy.push(memberMap[cr.member_id] ?? cr.member_id);
+        existing.memberEntries.push({ member_id: cr.member_id, mastered: cr.mastered });
       } else {
         byName.set(cr.ritual_name, {
           ritual: catalogueEntry,
-          masteredBy: [memberMap[cr.member_id] ?? cr.member_id],
+          masteredBy: cr.mastered ? [memberMap[cr.member_id] ?? cr.member_id] : [],
           realm: cr.realm ?? catalogueEntry?.realm ?? 'Special',
+          memberEntries: [{ member_id: cr.member_id, mastered: cr.mastered }],
         });
       }
     }
+    // Compute coven mana contribution per ritual
     return Array.from(byName.entries())
-      .map(([name, v]) => ({ name, ...v }))
+      .map(([name, v]) => {
+        // Each member contributes their lore rank in this realm × 2 if mastered
+        const covenMana = v.memberEntries.reduce((sum, entry) => {
+          const loreRank = memberLore.get(entry.member_id)?.get(v.realm) ?? 0;
+          return sum + loreRank * (entry.mastered ? 2 : 1);
+        }, 0);
+        return { name, ...v, covenMana };
+      })
       .sort((a, b) => (a.ritual?.magnitude ?? 0) - (b.ritual?.magnitude ?? 0));
-  }, [data.characterRituals, memberIds, memberMap]);
+  }, [data.characterRituals, memberIds, memberMap, memberLore]);
 
   const filteredRituals = useMemo(() =>
     realmFilter === 'all' ? memberRituals : memberRituals.filter(r => r.realm === realmFilter),
     [memberRituals, realmFilter]
   );
 
-  const castableCount = memberRituals.filter(r => (r.ritual?.magnitude ?? 0) <= manaAvailable).length;
+  // "Can cast" = coven mana contribution meets ritual magnitude
+  const castableCount = memberRituals.filter(r => r.covenMana >= (r.ritual?.magnitude ?? 0)).length;
   const realmsPresent = useMemo(() => {
     const s = new Set(memberRituals.map(r => r.realm as RitualRealm));
     return (['Spring','Summer','Autumn','Winter','Day','Night','Special'] as RitualRealm[]).filter(r => s.has(r));
@@ -236,7 +272,7 @@ function CovenDetail({
       {/* Mana strip */}
       <div className="mb-8" style={{ border: '1px solid var(--line)', borderRadius: '8px', display: 'flex', overflow: 'hidden', background: 'rgb(var(--ink-800))' }}>
         {[
-          { label: 'Mana Available', value: manaAvailable, color: covenHue },
+          { label: 'Mana Pool', value: manaAvailable, color: covenHue },
           { label: 'Rituals Known',  value: memberRituals.length, color: 'rgb(var(--ink-300))' },
           { label: 'Can Cast',       value: castableCount, color: castableCount > 0 ? 'var(--ok)' : 'rgb(var(--ink-300))' },
           { label: 'Cannot Cast',    value: memberRituals.length - castableCount, color: (memberRituals.length - castableCount) > 0 ? 'var(--danger)' : 'rgb(var(--ink-300))' },
@@ -289,6 +325,7 @@ function CovenDetail({
                   <th className="px-4 py-3 text-[11px] uppercase tracking-widest font-bold text-left text-ink-100/60">Ritual</th>
                   <th className="px-4 py-3 text-[11px] uppercase tracking-widest font-bold text-left text-ink-100/60">Realm</th>
                   <th className="px-4 py-3 text-[11px] uppercase tracking-widest font-bold text-center text-ink-100/60">Mag</th>
+                  <th className="px-4 py-3 text-[11px] uppercase tracking-widest font-bold text-center text-ink-100/60">Mana</th>
                   <th className="px-4 py-3 text-[11px] uppercase tracking-widest font-bold text-center text-ink-100/60">Cast?</th>
                   <th className="px-4 py-3 text-[11px] uppercase tracking-widest font-bold text-left text-ink-100/60">Mastered By</th>
                   <th className="px-4 py-3 text-[11px] uppercase tracking-widest font-bold text-left text-ink-100/60">Effect</th>
@@ -297,7 +334,7 @@ function CovenDetail({
               <tbody>
                 {filteredRituals.map((r, idx) => {
                   const mag = r.ritual?.magnitude ?? 0;
-                  const canCast = manaAvailable >= mag;
+                  const canCast = r.covenMana >= mag;
                   const rh = REALM_HUE[r.realm as RitualRealm] ?? covenHue;
                   const rc = REALM_COLORS[r.realm as RitualRealm];
                   const isExpanded = expandedRitual === r.name;
@@ -313,6 +350,9 @@ function CovenDetail({
                       </td>
                       <td className="px-4 py-3 text-center">
                         <span className="num text-sm" style={{ color: rh }}>{mag}</span>
+                      </td>
+                      <td className="px-4 py-3 text-center">
+                        <span className="num text-sm" style={{ color: r.covenMana >= mag ? 'var(--ok)' : 'var(--danger)' }}>{r.covenMana}</span>
                       </td>
                       <td className="px-4 py-3 text-center">
                         {mag === 0 ? (

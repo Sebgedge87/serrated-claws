@@ -1623,7 +1623,7 @@ function RitualsSection({
     if (!ritualName || busy) return;
     setBusy(true);
     try {
-      await onUpsert({ member_id: memberId, ritual_name: ritualName, realm, notes: notes.trim() || null });
+      await onUpsert({ member_id: memberId, ritual_name: ritualName, realm, mastered: false, notes: notes.trim() || null });
       setRitualName('');
       setNotes('');
       setAdding(false);
@@ -1680,11 +1680,26 @@ function RitualsSection({
                       </div>
                     )}
                   </div>
-                  {canEdit && (
-                    <button onClick={() => onDelete(rt.id)} className="shrink-0 opacity-40 hover:opacity-100 transition-opacity">
-                      <Icons.X size={13} />
-                    </button>
-                  )}
+                  <div className="flex items-center gap-2 shrink-0">
+                    {canEdit ? (
+                      <label className="flex items-center gap-1 text-[11px] text-ink-100/60 cursor-pointer select-none">
+                        <input
+                          type="checkbox"
+                          checked={rt.mastered}
+                          onChange={() => onUpsert({ ...rt, mastered: !rt.mastered })}
+                          className="accent-purple-400"
+                        />
+                        Mastered
+                      </label>
+                    ) : rt.mastered ? (
+                      <span className="text-[11px] text-purple-400 font-medium">Mastered</span>
+                    ) : null}
+                    {canEdit && (
+                      <button onClick={() => onDelete(rt.id)} className="opacity-40 hover:opacity-100 transition-opacity">
+                        <Icons.X size={13} />
+                      </button>
+                    )}
+                  </div>
                 </DataRow>
               );
             })}

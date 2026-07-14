@@ -33,6 +33,7 @@ export interface CharacterRitual {
   member_id: string;
   ritual_name: string;
   realm: string;
+  mastered: boolean;
   notes: string | null;
 }
 

@@ -473,7 +473,7 @@ function CharacterRitualsSection({
     if (!ritualName || busy) return;
     setBusy(true);
     try {
-      await onUpsert({ member_id: memberId, ritual_name: ritualName, realm, notes: notes.trim() || null });
+      await onUpsert({ member_id: memberId, ritual_name: ritualName, realm, mastered: false, notes: notes.trim() || null });
       setRitualName('');
       setNotes('');
       setAdding(false);
