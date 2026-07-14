@@ -287,9 +287,30 @@ function Masthead({
               />
             </div>
             <div>
+              <label className="eyebrow block mb-1">PID</label>
+              <input className="input num" value={form.pid ?? ''} onChange={e => set('pid', e.target.value || null)} />
+            </div>
+            <div>
               <label className="eyebrow block mb-1">Rank</label>
               <input className="input" value={form.rank ?? ''} onChange={e => set('rank', e.target.value || null)} />
             </div>
+            {data.functions.length > 0 && (
+              <div>
+                <label className="eyebrow block mb-1">Claw</label>
+                <CustomSelect
+                  value={form.function ?? ''}
+                  onChange={v => set('function', v || null)}
+                  options={data.functions.map(f => ({ value: f.id, label: f.name }))}
+                  placeholder="None"
+                />
+              </div>
+            )}
+            {data.functions.length > 0 && (
+              <div>
+                <label className="eyebrow block mb-1">Military Role</label>
+                <input className="input" placeholder="Shield Wall, Battle Mage…" value={form.military_function ?? ''} onChange={e => set('military_function', e.target.value || null)} />
+              </div>
+            )}
             <div>
               <label className="eyebrow block mb-1">HP</label>
               <input type="number" min={0} className="input" value={form.hp ?? ''} onChange={e => set('hp', e.target.value !== '' ? Number(e.target.value) : null)} />
@@ -376,6 +397,7 @@ function Masthead({
   const eyebrowParts = [
     member.rank,
     house ? `of ${house.name}` : null,
+    member.pid ? `No. ${member.pid}` : null,
   ].filter(Boolean).join(' · ');
 
   return (
@@ -424,6 +446,7 @@ function Masthead({
           style={{ borderColor: 'var(--line-soft)' }}
         >
           <Field label="Player" value={member.player_name ?? '—'} />
+          {data.functions.length > 0 && <Field label="Claw" value={clawName ?? '—'} />}
           <Field label="Coven" value={covenName ?? '—'} />
           <Field label="Resource" value={member.resource ?? '—'} />
         </div>
