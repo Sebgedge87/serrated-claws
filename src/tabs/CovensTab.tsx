@@ -5,10 +5,8 @@ import type { RitualRealm } from '@/lib/ritualsCatalogue';
 import { Icons } from '@/components/Icons';
 import { Modal, Field } from '@/components/Modal';
 import { useConfirm } from '@/components/ConfirmDialog';
-import { exportRitualsPdf } from '@/lib/parchmentPdf';
 import { initials } from '@/lib/utils';
 import { SectionHeader } from '@/components/ui/SectionHeader';
-import { DataRow } from '@/components/ui/DataRow';
 import { CustomSelect } from '@/components/ui/CustomSelect';
 import { useLance } from '@/contexts/LanceContext';
 
@@ -148,18 +146,50 @@ function CovenDetail({
   onDeleteRitual: (id: string) => Promise<void>;
   confirm: (opts: { title: string; body?: string; danger?: boolean; confirmLabel?: string }) => Promise<boolean>;
 }) {
-  const [addingRitual, setAddingRitual] = useState(false);
-  const [editingRitual, setEditingRitual] = useState<CovenRitual | null>(null);
+  void onUpsertRitual; void onDeleteRitual; void confirm;
   const [editingCoven, setEditingCoven] = useState(false);
+  const [realmFilter, setRealmFilter] = useState<RitualRealm | 'all'>('all');
+  const [expandedRitual, setExpandedRitual] = useState<string | null>(null);
 
   const members = data.members.filter(m => m.coven === coven.id);
-  const rituals = data.covenRituals.filter(r => r.coven_id === coven.id);
-  const totalRequired = rituals.reduce((s, r) => s + r.magnitude, 0);
-  const manaHave = members.reduce((sum, m) => sum + (m.mp ?? 0), 0);
-  const manaNeeded = Math.max(0, totalRequired - manaHave);
-  const surplus = manaHave - totalRequired;
+  const memberIds = new Set(members.map(m => m.id));
+  const memberMap = Object.fromEntries(members.map(m => [m.id, m.name]));
   const covenHue = coven.domain ? (REALM_HUE[coven.domain as RitualRealm] ?? A) : A;
   const leaderName = coven.leader ? data.members.find(m => m.id === coven.leader)?.name : null;
+  const manaAvailable = coven.mana_available ?? 0;
+
+  // Aggregate character rituals for all coven members
+  const memberRituals = useMemo(() => {
+    const byName = new Map<string, { ritual: typeof RITUALS_CATALOGUE[0] | undefined; masteredBy: string[]; realm: string }>();
+    for (const cr of data.characterRituals) {
+      if (!memberIds.has(cr.member_id)) continue;
+      const existing = byName.get(cr.ritual_name);
+      const catalogueEntry = RITUALS_CATALOGUE.find(r => r.name === cr.ritual_name);
+      if (existing) {
+        existing.masteredBy.push(memberMap[cr.member_id] ?? cr.member_id);
+      } else {
+        byName.set(cr.ritual_name, {
+          ritual: catalogueEntry,
+          masteredBy: [memberMap[cr.member_id] ?? cr.member_id],
+          realm: cr.realm ?? catalogueEntry?.realm ?? 'Special',
+        });
+      }
+    }
+    return Array.from(byName.entries())
+      .map(([name, v]) => ({ name, ...v }))
+      .sort((a, b) => (a.ritual?.magnitude ?? 0) - (b.ritual?.magnitude ?? 0));
+  }, [data.characterRituals, memberIds, memberMap]);
+
+  const filteredRituals = useMemo(() =>
+    realmFilter === 'all' ? memberRituals : memberRituals.filter(r => r.realm === realmFilter),
+    [memberRituals, realmFilter]
+  );
+
+  const castableCount = memberRituals.filter(r => (r.ritual?.magnitude ?? 0) <= manaAvailable).length;
+  const realmsPresent = useMemo(() => {
+    const s = new Set(memberRituals.map(r => r.realm as RitualRealm));
+    return (['Spring','Summer','Autumn','Winter','Day','Night','Special'] as RitualRealm[]).filter(r => s.has(r));
+  }, [memberRituals]);
 
   return (
     <div className="animate-fade-in">
@@ -203,85 +233,106 @@ function CovenDetail({
         <p className="text-sm text-ink-100/70 mt-3 mb-6 max-w-2xl italic">{coven.description}</p>
       )}
 
-      {/* Mana strip — flat bordered row like Overview stat strip */}
-      <div
-        className="mb-8"
-        style={{
-          border: '1px solid var(--line)',
-          borderRadius: '8px',
-          display: 'flex',
-          overflow: 'hidden',
-          background: 'rgb(var(--ink-800))',
-        }}
-      >
+      {/* Mana strip */}
+      <div className="mb-8" style={{ border: '1px solid var(--line)', borderRadius: '8px', display: 'flex', overflow: 'hidden', background: 'rgb(var(--ink-800))' }}>
         {[
-          { label: 'Required', value: totalRequired, color: 'rgb(var(--ink-300))' },
-          { label: 'Have',     value: manaHave,      color: covenHue },
-          { label: 'Needed',   value: manaNeeded,    color: manaNeeded > 0 ? 'var(--danger)' : 'var(--ok)' },
-          { label: 'Surplus',  value: surplus,       color: surplus >= 0 ? 'var(--ok)' : 'var(--danger)' },
+          { label: 'Mana Available', value: manaAvailable, color: covenHue },
+          { label: 'Rituals Known',  value: memberRituals.length, color: 'rgb(var(--ink-300))' },
+          { label: 'Can Cast',       value: castableCount, color: castableCount > 0 ? 'var(--ok)' : 'rgb(var(--ink-300))' },
+          { label: 'Cannot Cast',    value: memberRituals.length - castableCount, color: (memberRituals.length - castableCount) > 0 ? 'var(--danger)' : 'rgb(var(--ink-300))' },
         ].map((s, i) => (
-          <div
-            key={s.label}
-            style={{
-              flex: 1,
-              padding: '18px 16px',
-              borderLeft: i > 0 ? '1px solid var(--line)' : 'none',
-              textAlign: 'center',
-            }}
-          >
+          <div key={s.label} style={{ flex: 1, padding: '18px 16px', borderLeft: i > 0 ? '1px solid var(--line)' : 'none', textAlign: 'center' }}>
             <div className="num" style={{ fontSize: '28px', color: s.color, lineHeight: 1, marginBottom: '5px' }}>{s.value}</div>
             <div className="eyebrow" style={{ fontSize: '10px', letterSpacing: '0.1em', textTransform: 'uppercase' }}>{s.label}</div>
           </div>
         ))}
       </div>
 
-      {/* Rituals */}
+      {/* Rituals known by coven members */}
       <div className="mb-8">
-        <SectionHeader
-          title="Rituals Mastered"
-          count={rituals.length}
-          accent={covenHue}
-          action={canManage ? (
-            <span onClick={() => setAddingRitual(true)}>+ Add ritual</span>
-          ) : undefined}
-        />
+        <SectionHeader title="Rituals Known" count={memberRituals.length} accent={covenHue} />
 
-        <div>
-          {rituals.map(r => {
-            const ritualHue = r.realm ? (REALM_HUE[r.realm as RitualRealm] ?? covenHue) : covenHue;
-            return (
-              <DataRow key={r.id} accent={ritualHue}>
-                <div className="flex-1 min-w-0">
-                  <span className="font-semibold text-ink-100 text-sm">{r.ritual_name}</span>
-                  {r.realm && <span className="ml-2 text-[10px] uppercase tracking-wider font-semibold" style={{ color: ritualHue }}>{r.realm}</span>}
-                  {r.notes && <span className="ml-2 text-xs text-ink-300 italic">{r.notes}</span>}
-                </div>
-                <span className="text-xs text-ink-300 num flex-shrink-0">mag {r.magnitude}</span>
-                <div className="flex gap-1 flex-shrink-0">
-                  {canManage && (
-                    <button onClick={() => setEditingRitual(r)} className="btn btn-ghost btn-sm">
-                      <Icons.Edit size={13} />
-                    </button>
-                  )}
-                  {canManage && (
-                    <button onClick={async () => { if (await confirm({ title: `Remove ${r.ritual_name}?`, danger: true, confirmLabel: 'Remove' })) onDeleteRitual(r.id); }} className="btn btn-ghost btn-sm text-red-400/60 hover:text-red-400">
-                      <Icons.Trash size={13} />
-                    </button>
-                  )}
-                </div>
-              </DataRow>
-            );
-          })}
-          {rituals.length === 0 && (
-            <p className="text-ink-100/40 text-sm py-6 text-center">No rituals added yet.{canManage ? ' Click "+ Add ritual" to start.' : ''}</p>
-          )}
-        </div>
-
-        {rituals.length > 0 && (
-          <div className="mt-2 flex justify-end">
-            <button onClick={() => exportRitualsPdf(coven.name, coven.domain, rituals, manaHave)} className="btn btn-ghost btn-sm text-xs" style={{ color: covenHue }}>
-              <Icons.Download size={12} /> Export PDF
+        {/* Realm filter tabs */}
+        {realmsPresent.length > 1 && (
+          <div className="flex gap-1.5 flex-wrap mb-4">
+            <button
+              onClick={() => setRealmFilter('all')}
+              className="px-3 py-1.5 text-xs font-medium rounded-lg border transition-all"
+              style={{ background: realmFilter === 'all' ? `${covenHue}22` : 'transparent', color: realmFilter === 'all' ? covenHue : 'rgba(232,230,227,0.45)', borderColor: realmFilter === 'all' ? `${covenHue}50` : 'rgba(201,169,97,0.15)' }}
+            >
+              All
             </button>
+            {realmsPresent.map(realm => {
+              const rc = REALM_COLORS[realm];
+              const active = realmFilter === realm;
+              return (
+                <button
+                  key={realm}
+                  onClick={() => setRealmFilter(realm)}
+                  className="px-3 py-1.5 text-xs font-medium rounded-lg border transition-all"
+                  style={{ background: active ? `${rc.bg}` : 'transparent', color: active ? rc.text : 'rgba(232,230,227,0.45)', borderColor: active ? rc.border : 'rgba(201,169,97,0.15)' }}
+                >
+                  {realm}
+                </button>
+              );
+            })}
+          </div>
+        )}
+
+        {memberRituals.length === 0 ? (
+          <p className="text-ink-100/40 text-sm py-6 text-center">No rituals mastered by coven members yet.</p>
+        ) : (
+          <div className="card overflow-hidden">
+            <table className="w-full">
+              <thead className="bg-gold-500/10">
+                <tr>
+                  <th className="px-4 py-3 text-[11px] uppercase tracking-widest font-bold text-left text-ink-100/60">Ritual</th>
+                  <th className="px-4 py-3 text-[11px] uppercase tracking-widest font-bold text-left text-ink-100/60">Realm</th>
+                  <th className="px-4 py-3 text-[11px] uppercase tracking-widest font-bold text-center text-ink-100/60">Mag</th>
+                  <th className="px-4 py-3 text-[11px] uppercase tracking-widest font-bold text-center text-ink-100/60">Cast?</th>
+                  <th className="px-4 py-3 text-[11px] uppercase tracking-widest font-bold text-left text-ink-100/60">Mastered By</th>
+                  <th className="px-4 py-3 text-[11px] uppercase tracking-widest font-bold text-left text-ink-100/60">Effect</th>
+                </tr>
+              </thead>
+              <tbody>
+                {filteredRituals.map((r, idx) => {
+                  const mag = r.ritual?.magnitude ?? 0;
+                  const canCast = manaAvailable >= mag;
+                  const rh = REALM_HUE[r.realm as RitualRealm] ?? covenHue;
+                  const rc = REALM_COLORS[r.realm as RitualRealm];
+                  const isExpanded = expandedRitual === r.name;
+                  const effect = r.ritual?.effect ?? '';
+                  return (
+                    <tr key={r.name} className={idx > 0 ? 'border-t border-gold-500/10' : ''}>
+                      <td className="px-4 py-3 font-semibold text-sm text-ink-100 whitespace-nowrap">{r.name}</td>
+                      <td className="px-4 py-3 whitespace-nowrap">
+                        {rc ? (
+                          <span className="px-2 py-0.5 rounded-full text-[10px] font-bold uppercase tracking-widest"
+                            style={{ background: rc.bg, color: rc.text, border: `1px solid ${rc.border}` }}>{r.realm}</span>
+                        ) : <span className="text-xs text-ink-100/50">{r.realm}</span>}
+                      </td>
+                      <td className="px-4 py-3 text-center">
+                        <span className="num text-sm" style={{ color: rh }}>{mag}</span>
+                      </td>
+                      <td className="px-4 py-3 text-center">
+                        {mag === 0 ? (
+                          <span className="text-ink-100/30 text-xs">—</span>
+                        ) : canCast ? (
+                          <span className="text-[11px] font-bold uppercase tracking-widest" style={{ color: 'var(--ok)' }}>✓</span>
+                        ) : (
+                          <span className="text-[11px] font-bold uppercase tracking-widest" style={{ color: 'var(--danger)' }}>✗</span>
+                        )}
+                      </td>
+                      <td className="px-4 py-3 text-sm text-ink-100/70 whitespace-nowrap">{r.masteredBy.join(', ')}</td>
+                      <td className="px-4 py-3 text-sm text-ink-100/70 cursor-pointer max-w-xs"
+                        onClick={() => setExpandedRitual(isExpanded ? null : r.name)}>
+                        {isExpanded ? effect : (effect.length > 70 ? `${effect.slice(0, 70)}…` : effect)}
+                      </td>
+                    </tr>
+                  );
+                })}
+              </tbody>
+            </table>
           </div>
         )}
       </div>
@@ -343,23 +394,6 @@ function CovenDetail({
         )}
       </div>
 
-      {addingRitual && (
-        <RitualModal
-          covenId={coven.id}
-          domain={coven.domain as RitualRealm | null}
-          onClose={() => setAddingRitual(false)}
-          onSave={async r => { await onUpsertRitual(r); setAddingRitual(false); }}
-        />
-      )}
-      {editingRitual && (
-        <RitualModal
-          covenId={coven.id}
-          domain={coven.domain as RitualRealm | null}
-          initial={editingRitual}
-          onClose={() => setEditingRitual(null)}
-          onSave={async r => { await onUpsertRitual({ ...r, id: editingRitual.id }); setEditingRitual(null); }}
-        />
-      )}
       {editingCoven && (
         <CovenModal
           members={data.members}
@@ -432,124 +466,3 @@ function CovenModal({ members, initial, onClose, onSave }: { members: LanceData[
   );
 }
 
-function RitualModal({ covenId, domain, initial, onClose, onSave }: {
-  covenId: string;
-  domain: RitualRealm | null;
-  initial?: CovenRitual;
-  onClose: () => void;
-  onSave: (r: Omit<CovenRitual, 'id'>) => Promise<void>;
-}) {
-  const isEdit = !!initial;
-  const [search, setSearch] = useState('');
-  const [selected, setSelected] = useState<typeof RITUALS_CATALOGUE[number] | null>(
-    initial ? RITUALS_CATALOGUE.find(r => r.name === initial.ritual_name) ?? null : null
-  );
-  const [magnitude, setMagnitude] = useState(initial?.magnitude ?? 2);
-  const [notes, setNotes] = useState(initial?.notes ?? '');
-  const [wording, setWording] = useState(initial?.wording ?? '');
-  const [busy, setBusy] = useState(false);
-
-  const allowed = useMemo(() =>
-    RITUALS_CATALOGUE.filter(r => !domain || r.realm === domain || r.realm === 'Special'),
-    [domain]
-  );
-
-  const filtered = useMemo(() => {
-    const q = search.trim().toLowerCase();
-    if (!q) return allowed;
-    return allowed.filter(r =>
-      r.name.toLowerCase().includes(q) ||
-      r.realm.toLowerCase().includes(q) ||
-      r.effect.toLowerCase().includes(q)
-    );
-  }, [search, allowed]);
-
-  function pick(entry: typeof RITUALS_CATALOGUE[number]) { setSelected(entry); }
-  function clear() { setSelected(null); setSearch(''); }
-
-  // In edit mode we already have the ritual data from `initial`, no re-selection needed
-  const canSave = isEdit ? !busy : (!busy && !!selected);
-  const ritualName = selected?.name ?? initial?.ritual_name ?? '';
-  const ritualRealm = selected?.realm ?? initial?.realm ?? null;
-
-  async function save() {
-    if (!canSave || !ritualName) return;
-    setBusy(true);
-    try {
-      await onSave({
-        coven_id: covenId,
-        ritual_name: ritualName,
-        magnitude,
-        realm: ritualRealm,
-        notes: notes.trim() || null,
-        wording: wording.trim() || null,
-      });
-    } finally { setBusy(false); }
-  }
-
-  const realmColor = ritualRealm ? REALM_COLORS[ritualRealm as RitualRealm]?.text : A;
-
-  return (
-    <Modal onClose={onClose} title={isEdit ? 'Edit Ritual' : 'Add Ritual'} icon={<Icons.Sparkles size={20} />} accent="#b56eb5" width="lg"
-      footer={<><button onClick={onClose} className="btn btn-ghost">Cancel</button><button onClick={save} disabled={!canSave} className="btn btn-primary">{busy ? 'Saving…' : isEdit ? 'Save' : 'Add Ritual'}</button></>}>
-
-      {!isEdit && (
-        <Field label="Search">
-          <input
-            className="input"
-            autoFocus={!isEdit}
-            placeholder="Filter by name, realm, or effect…"
-            value={search}
-            onChange={e => { setSearch(e.target.value); if (selected) setSelected(null); }}
-          />
-        </Field>
-      )}
-
-      {(isEdit || selected) ? (
-        <div className="rounded-lg px-4 py-3 flex items-start justify-between gap-3" style={{ background: `${realmColor}12`, border: `1px solid ${realmColor}30` }}>
-          <div>
-            <div className="font-semibold text-ink-100">{ritualName}</div>
-            {ritualRealm && <div className="text-xs mb-1" style={{ color: realmColor }}>{ritualRealm}</div>}
-            {selected?.effect && <div className="text-xs text-ink-100/60 leading-relaxed">{selected.effect}</div>}
-          </div>
-          {!isEdit && <button onClick={clear} className="text-ink-100/40 hover:text-ink-100 flex-shrink-0 mt-0.5">✕</button>}
-        </div>
-      ) : !isEdit && (
-        <div className="border border-gold-500/15 rounded-lg overflow-hidden">
-          <div className="max-h-56 overflow-y-auto">
-            {filtered.length === 0 ? (
-              <p className="text-center text-ink-100/40 text-sm py-6">No rituals match "{search}"</p>
-            ) : filtered.map(r => (
-              <button key={r.name} onClick={() => pick(r)}
-                className="w-full text-left px-3 py-2.5 hover:bg-white/5 flex items-start gap-3 border-b border-gold-500/8 last:border-0 transition-colors">
-                <div className="min-w-0">
-                  <div className="text-sm font-medium text-ink-100 leading-snug">{r.name}</div>
-                  <div className="text-[11px] text-ink-100/50 leading-snug line-clamp-1">{r.effect}</div>
-                </div>
-              </button>
-            ))}
-          </div>
-          <div className="px-3 py-1.5 border-t border-gold-500/10 text-[11px] text-ink-100/30">
-            {filtered.length} ritual{filtered.length !== 1 ? 's' : ''} · click to select
-          </div>
-        </div>
-      )}
-
-      <Field label="Magnitude">
-        <input type="number" min={1} className="input" value={magnitude}
-          onChange={e => setMagnitude(parseInt(e.target.value, 10) || 1)} disabled={!selected} />
-      </Field>
-
-      <Field label="Casting Wording" optional>
-        <textarea rows={4} className="input resize-y font-mono text-sm"
-          placeholder="Record the exact wording used when casting this ritual…"
-          value={wording} onChange={e => setWording(e.target.value)} disabled={!isEdit && !selected} />
-      </Field>
-
-      <Field label="Notes" optional>
-        <input className="input" value={notes} onChange={e => setNotes(e.target.value)}
-          placeholder="Any coven notes…" disabled={!isEdit && !selected} />
-      </Field>
-    </Modal>
-  );
-}
