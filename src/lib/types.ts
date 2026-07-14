@@ -92,6 +92,14 @@ export interface CovenRitual {
   wording: string | null;
 }
 
+export interface RitualScript {
+  id: string;
+  coven_id: string;
+  ritual_name: string;
+  script: string;
+  updated_at: string;
+}
+
 export interface Func {
   id: string;
   name: string;
@@ -185,6 +193,7 @@ export interface LanceData {
   magicItemsStock: MagicItemStock[];
   craftingQueue: CraftingQueueItem[];
   covenRituals: CovenRitual[];
+  ritualScripts: RitualScript[];
   bardWorks: BardWork[];
 }
 

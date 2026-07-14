@@ -202,6 +202,7 @@ export function Layout() {
     updateCovenMana: lance.updateCovenMana,
     upsertBardWork: lance.upsertBardWork,
     deleteBardWork: lance.deleteBardWork,
+    upsertRitualScript: lance.upsertRitualScript,
   };
 
   return (

@@ -52,6 +52,7 @@ export interface LanceContextValue {
   updateCovenMana: LanceDataHook['updateCovenMana'];
   upsertBardWork: LanceDataHook['upsertBardWork'];
   deleteBardWork: LanceDataHook['deleteBardWork'];
+  upsertRitualScript: LanceDataHook['upsertRitualScript'];
 }
 
 const LanceContext = createContext<LanceContextValue | null>(null);

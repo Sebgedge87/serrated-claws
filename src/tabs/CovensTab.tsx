@@ -9,6 +9,7 @@ import { initials } from '@/lib/utils';
 import { SectionHeader } from '@/components/ui/SectionHeader';
 import { CustomSelect } from '@/components/ui/CustomSelect';
 import { useLance } from '@/contexts/LanceContext';
+import { RitualScriptEditor } from '@/components/RitualScriptEditor';
 
 interface Props {
   canManageCoven: (id: string) => boolean;
@@ -30,7 +31,7 @@ const REALM_HUE: Record<RitualRealm, string> = {
 
 
 export function CovensTab({ canManageCoven }: Props) {
-  const { data, isAdmin, upsertCoven: onUpsert, deleteCoven: onDelete, upsertCovenRitual: onUpsertRitual, deleteCovenRitual: onDeleteRitual } = useLance();
+  const { data, isAdmin, upsertCoven: onUpsert, deleteCoven: onDelete, upsertCovenRitual: onUpsertRitual, deleteCovenRitual: onDeleteRitual, upsertRitualScript: onUpsertScript } = useLance();
   const [selected, setSelected] = useState<string | null>(null);
   const [editing, setEditing] = useState<Partial<Coven> | null>(null);
   const { confirm, Dialog: ConfirmDialog } = useConfirm();
@@ -55,6 +56,7 @@ export function CovensTab({ canManageCoven }: Props) {
           }}
           onUpsertRitual={onUpsertRitual}
           onDeleteRitual={onDeleteRitual}
+          onUpsertScript={onUpsertScript}
           confirm={confirm}
         />
         {ConfirmDialog}
@@ -133,7 +135,7 @@ export function CovensTab({ canManageCoven }: Props) {
 // ── Coven Detail ──────────────────────────────────────────────────────────────
 
 function CovenDetail({
-  coven, data, isAdmin, canManage, onBack, onUpsert, onDelete, onUpsertRitual, onDeleteRitual, confirm
+  coven, data, isAdmin, canManage, onBack, onUpsert, onDelete, onUpsertRitual, onDeleteRitual, onUpsertScript, confirm
 }: {
   coven: Coven;
   data: LanceData;
@@ -144,6 +146,7 @@ function CovenDetail({
   onDelete: () => void;
   onUpsertRitual: (r: Omit<CovenRitual, 'id'> & { id?: string }) => Promise<void>;
   onDeleteRitual: (id: string) => Promise<void>;
+  onUpsertScript: (covenId: string, ritualName: string, script: string) => Promise<void>;
   confirm: (opts: { title: string; body?: string; danger?: boolean; confirmLabel?: string }) => Promise<boolean>;
 }) {
   void onUpsertRitual; void onDeleteRitual; void confirm;
@@ -398,7 +401,8 @@ function CovenDetail({
                   }
 
                   return (
-                    <tr key={r.name} className={idx > 0 ? 'border-t border-gold-500/10' : ''}>
+                    <React.Fragment key={r.name}>
+                    <tr className={idx > 0 ? 'border-t border-gold-500/10' : ''}>
                       <td className="px-4 py-3 font-semibold text-sm text-ink-100 whitespace-nowrap">{r.name}</td>
                       <td className="px-4 py-3 whitespace-nowrap">
                         {rc ? (
@@ -445,10 +449,26 @@ function CovenDetail({
                       </td>
                       <td className="px-4 py-3 text-sm text-ink-100/70 cursor-pointer max-w-xs"
                         onClick={() => setExpandedRitual(isExpanded ? null : r.name)}>
-                        {isExpanded ? effect : (effect.length > 70 ? `${effect.slice(0, 70)}…` : effect)}
+                        <span>{effect.length > 70 ? `${effect.slice(0, 70)}…` : effect}</span>
+                        <span className="ml-2 text-[10px] text-ink-100/30">{isExpanded ? '▲' : '▼ script'}</span>
                       </td>
                     </tr>
-                  );
+                    {isExpanded && (
+                      <tr key={`${r.name}-script`} className="border-t border-gold-500/10">
+                        <td colSpan={7} className="px-4 pb-4">
+                          {effect && <p className="text-sm text-ink-100/60 mt-3 mb-2 leading-relaxed">{effect}</p>}
+                          <RitualScriptEditor
+                            covenName={coven.name}
+                            ritualName={r.name}
+                            initialScript={data.ritualScripts.find(s => s.coven_id === coven.id && s.ritual_name === r.name)?.script ?? ''}
+                            members={members}
+                            onSave={script => onUpsertScript(coven.id, r.name, script)}
+                          />
+                        </td>
+                      </tr>
+                    )}
+                  </React.Fragment>
+                );
                 })}
               </tbody>
             </table>
