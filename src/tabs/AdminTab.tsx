@@ -448,8 +448,8 @@ function DangerZone({ onResetInventoryQty, onClearInventoryLog, logCount, onRese
       <SectionHeading icon={<Icons.Trash size={16} />} title="Danger Zone" color="#f87171" />
       <div className="border border-red-500/30 rounded-xl p-6 bg-red-500/5 space-y-5">
         <DangerAction
-          title="Reset all player data"
-          description="Wipes all character skills, rituals, spells, personal inventory, bard works, ritual scripts, magic items, crafting queue, and resets lance inventory quantities. Members, houses, covens, and events are kept. Cannot be undone."
+          title="Full reset — wipe all lance data"
+          description="Deletes everything: members, houses, covens, groups, businesses, all character data, inventory, events, bard works, ritual scripts. Only user accounts and login access are preserved. Cannot be undone."
           confirmWord="WIPE"
           buttonLabel="Wipe All Data"
           onConfirm={onResetAllPlayerData}

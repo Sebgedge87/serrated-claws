@@ -488,32 +488,47 @@ export function useLanceData(lanceId: string | null) {
   // ---- Danger Zone ----
   const resetAllPlayerData = useCallback(async () => {
     if (!lanceId) return;
-    // Collect member IDs scoped to this lance so we only delete our own data
-    const memberIds = data.members.map(m => m.id);
-    const covenIds  = data.covens.map(c => c.id);
-    if (memberIds.length === 0) return;
-
-    const deletes = [
-      supabase.from('character_skills').delete().in('member_id', memberIds),
-      supabase.from('character_rituals').delete().in('member_id', memberIds),
-      supabase.from('character_spells').delete().in('member_id', memberIds),
-      supabase.from('character_inventory').delete().in('member_id', memberIds),
-      supabase.from('bard_works').delete().in('author_member_id', memberIds),
+    // Delete in dependency order so foreign keys don't block.
+    // Character data cascades from members, coven data cascades from covens,
+    // so delete leaf tables first then parents.
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const steps: any[] = [
+      // character leaf tables
+      supabase.from('character_skills').delete().not('id', 'is', null),
+      supabase.from('character_rituals').delete().not('id', 'is', null),
+      supabase.from('character_spells').delete().not('id', 'is', null),
+      supabase.from('character_inventory').delete().not('id', 'is', null),
+      supabase.from('bard_works').delete().not('id', 'is', null),
+      // coven content
+      supabase.from('coven_ritual_scripts').delete().not('id', 'is', null),
+      supabase.from('coven_script_permissions').delete().not('coven_id', 'is', null),
+      supabase.from('coven_rituals').delete().not('id', 'is', null),
+      // lance-level data
       supabase.from('magic_items_stock').delete().eq('lance_id', lanceId),
       supabase.from('crafting_queue').delete().eq('lance_id', lanceId),
-      supabase.from('inventory').update({ current_qty: 0 }).eq('lance_id', lanceId),
+      supabase.from('inventory').delete().eq('lance_id', lanceId),
       supabase.from('inventory_log').delete().eq('lance_id', lanceId),
-      ...(covenIds.length > 0 ? [
-        supabase.from('coven_ritual_scripts').delete().in('coven_id', covenIds),
-        supabase.from('coven_script_permissions').delete().in('coven_id', covenIds),
-      ] : []),
+      supabase.from('events').delete().eq('lance_id', lanceId),
     ];
-
-    const results = await Promise.all(deletes);
-    const firstErr = results.find(r => r.error)?.error;
-    if (firstErr) throw new Error(firstErr.message);
+    for (const step of steps) {
+      const { error: err } = await step;
+      if (err) throw new Error(err.message);
+    }
+    // Now delete structural data — cascade handles children
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const structural: any[] = [
+      supabase.from('members').delete().eq('lance_id', lanceId),
+      supabase.from('businesses').delete().eq('lance_id', lanceId),
+      supabase.from('functions').delete().eq('lance_id', lanceId),
+      supabase.from('covens').delete().eq('lance_id', lanceId),
+      supabase.from('houses').delete().eq('lance_id', lanceId),
+    ];
+    for (const step of structural) {
+      const { error: err } = await step;
+      if (err) throw new Error(err.message);
+    }
     await reload(true);
-  }, [lanceId, data.members, data.covens, reload]);
+  }, [lanceId, reload]);
 
   const resetInventoryQty = useCallback(async () => {
     const { error: err } = await supabase.from('inventory').update({ current_qty: 0 }).eq('lance_id', lanceId).not('item', 'is', null);
