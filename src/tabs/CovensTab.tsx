@@ -153,7 +153,10 @@ function CovenDetail({
   const [editingCoven, setEditingCoven] = useState(false);
   const [realmFilter, setRealmFilter] = useState<RitualRealm | 'all'>('all');
   const [expandedRitual, setExpandedRitual] = useState<string | null>(null);
-  const [regio, setRegio] = useState(false);
+  const [regioRituals, setRegioRituals] = useState<Set<string>>(new Set());
+  function toggleRegio(name: string) {
+    setRegioRituals(prev => { const n = new Set(prev); n.has(name) ? n.delete(name) : n.add(name); return n; });
+  }
   // Per-ritual override: which member_ids are actively casting (null = all)
   const [activeCasters, setActiveCasters] = useState<Map<string, Set<string>>>(new Map());
 
@@ -231,12 +234,12 @@ function CovenDetail({
         .filter(e => casting.has(e.member_id))
         .reduce((sum, entry) => {
           const baseRank = memberLore.get(entry.member_id)?.get(v.realm) ?? 0;
-          const effectiveRank = baseRank + (regio ? 1 : 0);
+          const effectiveRank = baseRank + (regioRituals.has(v.name) ? 1 : 0);
           return sum + effectiveRank * (entry.mastered ? 2 : 1);
         }, 0);
       return { ...v, covenMana, casting };
     });
-  }, [baseRituals, activeCasters, regio, memberLore]);
+  }, [baseRituals, activeCasters, regioRituals, memberLore]);
 
   const filteredRituals = useMemo(() =>
     realmFilter === 'all' ? memberRituals : memberRituals.filter(r => r.realm === realmFilter),
@@ -308,20 +311,7 @@ function CovenDetail({
 
       {/* Rituals known by coven members */}
       <div className="mb-8">
-        <div className="flex items-center justify-between mb-1">
-          <SectionHeader title="Rituals Known" count={memberRituals.length} accent={covenHue} />
-          <label className="flex items-center gap-2 cursor-pointer select-none text-sm">
-            <input
-              type="checkbox"
-              checked={regio}
-              onChange={e => setRegio(e.target.checked)}
-              className="accent-purple-400 w-4 h-4"
-            />
-            <span style={{ color: regio ? 'var(--gold)' : 'rgba(232,230,227,0.5)' }}>
-              Regio <span className="text-[11px] text-ink-100/40">(+1 lore rank each caster)</span>
-            </span>
-          </label>
-        </div>
+        <SectionHeader title="Rituals Known" count={memberRituals.length} accent={covenHue} />
 
         {/* Realm filter tabs */}
         {realmsPresent.length > 1 && (
@@ -362,6 +352,7 @@ function CovenDetail({
                   <th className="px-4 py-3 text-[11px] uppercase tracking-widest font-bold text-center text-ink-100/60">Mag</th>
                   <th className="px-4 py-3 text-[11px] uppercase tracking-widest font-bold text-center text-ink-100/60">Coven Mana</th>
                   <th className="px-4 py-3 text-[11px] uppercase tracking-widest font-bold text-left text-ink-100/60">Shortfall / Resources</th>
+                  <th className="px-4 py-3 text-[11px] uppercase tracking-widest font-bold text-center text-ink-100/60">Regio</th>
                   <th className="px-4 py-3 text-[11px] uppercase tracking-widest font-bold text-left text-ink-100/60">Casters</th>
                   <th className="px-4 py-3 text-[11px] uppercase tracking-widest font-bold text-left text-ink-100/60">Effect</th>
                 </tr>
@@ -417,6 +408,17 @@ function CovenDetail({
                         <span className="num text-sm" style={{ color: r.covenMana >= mag ? 'var(--ok)' : 'var(--danger)' }}>{r.covenMana}</span>
                       </td>
                       <td className="px-4 py-3">{shortfallNode}</td>
+                      <td className="px-4 py-3 text-center">
+                        <label className="flex items-center justify-center cursor-pointer">
+                          <input
+                            type="checkbox"
+                            checked={regioRituals.has(r.name)}
+                            onChange={() => toggleRegio(r.name)}
+                            className="accent-purple-400 w-4 h-4"
+                            title="+1 lore rank to each caster"
+                          />
+                        </label>
+                      </td>
                       <td className="px-4 py-3">
                         {r.memberEntries.length === 1 ? (
                           <span className="text-sm text-ink-100/70">
@@ -455,7 +457,7 @@ function CovenDetail({
                     </tr>
                     {isExpanded && (
                       <tr key={`${r.name}-script`} className="border-t border-gold-500/10">
-                        <td colSpan={7} className="px-4 pb-4">
+                        <td colSpan={8} className="px-4 pb-4">
                           {effect && <p className="text-sm text-ink-100/60 mt-3 mb-2 leading-relaxed">{effect}</p>}
                           <RitualScriptEditor
                             covenName={coven.name}
