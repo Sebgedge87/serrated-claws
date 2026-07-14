@@ -100,6 +100,13 @@ export interface RitualScript {
   updated_at: string;
 }
 
+export interface CovenScriptPermission {
+  coven_id: string;
+  member_id: string;
+  can_write: boolean;
+  can_export: boolean;
+}
+
 export interface Func {
   id: string;
   name: string;
@@ -194,6 +201,7 @@ export interface LanceData {
   craftingQueue: CraftingQueueItem[];
   covenRituals: CovenRitual[];
   ritualScripts: RitualScript[];
+  covenScriptPermissions: CovenScriptPermission[];
   bardWorks: BardWork[];
 }
 

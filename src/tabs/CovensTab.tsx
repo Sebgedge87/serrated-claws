@@ -1,5 +1,5 @@
 import React, { useMemo, useState } from 'react';
-import type { Coven, CovenRitual, LanceData } from '@/lib/types';
+import type { Coven, CovenRitual, CovenScriptPermission, LanceData } from '@/lib/types';
 import { RITUALS_CATALOGUE, REALM_COLORS } from '@/lib/ritualsCatalogue';
 import type { RitualRealm } from '@/lib/ritualsCatalogue';
 import { Icons } from '@/components/Icons';
@@ -39,6 +39,7 @@ function StyledCheckbox({ checked, onChange, label, color = '#a78bfa', title }: 
 
 interface Props {
   canManageCoven: (id: string) => boolean;
+  myMemberId: string | null;
 }
 
 const A = '#b56eb5';
@@ -56,8 +57,8 @@ const REALM_HUE: Record<RitualRealm, string> = {
 };
 
 
-export function CovensTab({ canManageCoven }: Props) {
-  const { data, isAdmin, upsertCoven: onUpsert, deleteCoven: onDelete, upsertCovenRitual: onUpsertRitual, deleteCovenRitual: onDeleteRitual, upsertRitualScript: onUpsertScript } = useLance();
+export function CovensTab({ canManageCoven, myMemberId }: Props) {
+  const { data, isAdmin, upsertCoven: onUpsert, deleteCoven: onDelete, upsertCovenRitual: onUpsertRitual, deleteCovenRitual: onDeleteRitual, upsertRitualScript: onUpsertScript, upsertScriptPermission: onUpsertScriptPerm } = useLance();
   const [selected, setSelected] = useState<string | null>(null);
   const [editing, setEditing] = useState<Partial<Coven> | null>(null);
   const { confirm, Dialog: ConfirmDialog } = useConfirm();
@@ -72,6 +73,7 @@ export function CovensTab({ canManageCoven }: Props) {
           data={data}
           isAdmin={isAdmin}
           canManage={canManageCoven(coven.id)}
+          myMemberId={myMemberId}
           onBack={() => setSelected(null)}
           onUpsert={onUpsert}
           onDelete={async () => {
@@ -83,6 +85,7 @@ export function CovensTab({ canManageCoven }: Props) {
           onUpsertRitual={onUpsertRitual}
           onDeleteRitual={onDeleteRitual}
           onUpsertScript={onUpsertScript}
+          onUpsertScriptPerm={onUpsertScriptPerm}
           confirm={confirm}
         />
         {ConfirmDialog}
@@ -161,18 +164,20 @@ export function CovensTab({ canManageCoven }: Props) {
 // ── Coven Detail ──────────────────────────────────────────────────────────────
 
 function CovenDetail({
-  coven, data, isAdmin, canManage, onBack, onUpsert, onDelete, onUpsertRitual, onDeleteRitual, onUpsertScript, confirm
+  coven, data, isAdmin, canManage, myMemberId, onBack, onUpsert, onDelete, onUpsertRitual, onDeleteRitual, onUpsertScript, onUpsertScriptPerm, confirm
 }: {
   coven: Coven;
   data: LanceData;
   isAdmin: boolean;
   canManage: boolean;
+  myMemberId: string | null;
   onBack: () => void;
   onUpsert: (c: Partial<Coven> & { id: string; name: string }) => Promise<void>;
   onDelete: () => void;
   onUpsertRitual: (r: Omit<CovenRitual, 'id'> & { id?: string }) => Promise<void>;
   onDeleteRitual: (id: string) => Promise<void>;
   onUpsertScript: (covenId: string, ritualName: string, script: string) => Promise<void>;
+  onUpsertScriptPerm: (covenId: string, memberId: string, canWrite: boolean, canExport: boolean) => Promise<void>;
   confirm: (opts: { title: string; body?: string; danger?: boolean; confirmLabel?: string }) => Promise<boolean>;
 }) {
   void onUpsertRitual; void onDeleteRitual; void confirm;
@@ -200,6 +205,11 @@ function CovenDetail({
 
   const members = data.members.filter(m => m.coven === coven.id);
   const memberIds = new Set(members.map(m => m.id));
+  // Script permissions for this coven
+  const scriptPerms = data.covenScriptPermissions.filter(p => p.coven_id === coven.id);
+  const myScriptPerm = myMemberId ? scriptPerms.find(p => p.member_id === myMemberId) : null;
+  const myCanWrite = canManage || !!myScriptPerm?.can_write;
+  const myCanExport = canManage || !!myScriptPerm?.can_export;
   const memberMap = Object.fromEntries(members.map(m => [m.id, m.name]));
   const covenHue = coven.domain ? (REALM_HUE[coven.domain as RitualRealm] ?? A) : A;
   const leaderName = coven.leader ? data.members.find(m => m.id === coven.leader)?.name : null;
@@ -285,22 +295,22 @@ function CovenDetail({
       <div style={{ height: '2px', background: `linear-gradient(90deg, ${covenHue}, transparent)` }} />
       <div className="hairline-fade" />
 
-      <div className="flex items-center gap-3.5 mb-2 mt-3">
+      <div className="flex items-start gap-3 mb-2 mt-3">
         <div
-          className="w-12 h-12 rounded-xl grid place-items-center font-display font-bold text-lg select-none flex-shrink-0"
+          className="w-10 h-10 sm:w-12 sm:h-12 rounded-xl grid place-items-center font-display font-bold text-lg select-none flex-shrink-0"
           style={{ background: `${covenHue}18`, border: `1px solid ${covenHue}55`, color: covenHue }}
         >
           ✦
         </div>
         <div className="flex-1 min-w-0">
-          <h2 className="font-display text-4xl font-bold text-ink-100 m-0 leading-tight">{coven.name}</h2>
-          <p className="text-sm text-ink-100/60 m-0 tracking-wide">
+          <h2 className="font-display text-2xl sm:text-4xl font-bold text-ink-100 m-0 leading-tight truncate">{coven.name}</h2>
+          <p className="text-xs sm:text-sm text-ink-100/60 m-0 tracking-wide">
             {members.length} member{members.length !== 1 ? 's' : ''}
             {coven.domain && <span style={{ color: covenHue }}> · {coven.domain}</span>}
             {leaderName && <span className="italic"> · led by {leaderName}</span>}
           </p>
         </div>
-        <div className="flex items-center gap-2 flex-shrink-0">
+        <div className="flex items-center gap-1.5 flex-shrink-0">
           <button onClick={onBack} className="text-xs text-ink-100/50 hover:text-ink-100/80 border border-ink-100/20 rounded px-2 py-1 transition-colors">
             ← Covens
           </button>
@@ -322,15 +332,15 @@ function CovenDetail({
       )}
 
       {/* Mana strip */}
-      <div className="mb-8" style={{ border: '1px solid var(--line)', borderRadius: '8px', display: 'flex', overflow: 'hidden', background: 'rgb(var(--ink-800))' }}>
+      <div className="mb-6 grid grid-cols-3" style={{ border: '1px solid var(--line)', borderRadius: '8px', overflow: 'hidden', background: 'rgb(var(--ink-800))' }}>
         {[
           { label: 'Rituals Known', value: memberRituals.length, color: 'rgb(var(--ink-300))' },
           { label: 'Can Cast',     value: castableCount, color: castableCount > 0 ? 'var(--ok)' : 'rgb(var(--ink-300))' },
           { label: 'Need Resources', value: memberRituals.length - castableCount, color: (memberRituals.length - castableCount) > 0 ? 'var(--danger)' : 'rgb(var(--ink-300))' },
         ].map((s, i) => (
-          <div key={s.label} style={{ flex: 1, padding: '18px 16px', borderLeft: i > 0 ? '1px solid var(--line)' : 'none', textAlign: 'center' }}>
-            <div className="num" style={{ fontSize: '28px', color: s.color, lineHeight: 1, marginBottom: '5px' }}>{s.value}</div>
-            <div className="eyebrow" style={{ fontSize: '10px', letterSpacing: '0.1em', textTransform: 'uppercase' }}>{s.label}</div>
+          <div key={s.label} style={{ padding: '14px 8px', borderLeft: i > 0 ? '1px solid var(--line)' : 'none', textAlign: 'center' }}>
+            <div className="num" style={{ fontSize: '24px', color: s.color, lineHeight: 1, marginBottom: '4px' }}>{s.value}</div>
+            <div className="eyebrow" style={{ fontSize: '9px', letterSpacing: '0.07em', textTransform: 'uppercase' }}>{s.label}</div>
           </div>
         ))}
       </div>
@@ -369,130 +379,221 @@ function CovenDetail({
         {memberRituals.length === 0 ? (
           <p className="text-ink-100/40 text-sm py-6 text-center">No rituals mastered by coven members yet.</p>
         ) : (
-          <div className="card overflow-hidden">
-            <table className="w-full">
-              <thead className="bg-gold-500/10">
-                <tr>
-                  <th className="px-4 py-3 text-[11px] uppercase tracking-widest font-bold text-left text-ink-100/60">Ritual</th>
-                  <th className="px-4 py-3 text-[11px] uppercase tracking-widest font-bold text-left text-ink-100/60">Realm</th>
-                  <th className="px-4 py-3 text-[11px] uppercase tracking-widest font-bold text-center text-ink-100/60">Mag</th>
-                  <th className="px-4 py-3 text-[11px] uppercase tracking-widest font-bold text-center text-ink-100/60">Coven Mana</th>
-                  <th className="px-4 py-3 text-[11px] uppercase tracking-widest font-bold text-left text-ink-100/60">Shortfall / Resources</th>
-                  <th className="px-4 py-3 text-[11px] uppercase tracking-widest font-bold text-center text-ink-100/60">Regio</th>
-                  <th className="px-4 py-3 text-[11px] uppercase tracking-widest font-bold text-left text-ink-100/60">Casters</th>
-                  <th className="px-4 py-3 text-[11px] uppercase tracking-widest font-bold text-left text-ink-100/60">Effect</th>
-                </tr>
-              </thead>
-              <tbody>
-                {filteredRituals.map((r, idx) => {
-                  const mag = r.ritual?.magnitude ?? 0;
-                  const shortfall = Math.max(0, mag - r.covenMana);
-                  const rh = REALM_HUE[r.realm as RitualRealm] ?? covenHue;
-                  const rc = REALM_COLORS[r.realm as RitualRealm];
-                  const isExpanded = expandedRitual === r.name;
-                  const effect = r.ritual?.effect ?? '';
-
-                  let shortfallNode: React.ReactNode;
-                  if (mag === 0) {
-                    shortfallNode = <span className="text-ink-100/30 text-xs">—</span>;
-                  } else if (shortfall === 0) {
-                    shortfallNode = <span className="text-[11px] font-bold" style={{ color: 'var(--ok)' }}>✓ Ready</span>;
-                  } else {
-                    // vis = 3 mana each; crystals = 1 mana each
-                    const visNeeded = Math.ceil(shortfall / 3);
-                    // Best mix: max vis without overshooting, then top up with crystals
-                    const visMix = Math.floor(shortfall / 3);
-                    const crystalMix = shortfall - visMix * 3;
-                    const mixLabel = visMix > 0 && crystalMix > 0
-                      ? `${visMix} vis + ${crystalMix} crystal${crystalMix !== 1 ? 's' : ''}`
-                      : null;
-                    shortfallNode = (
-                      <div className="text-xs leading-snug">
-                        <span style={{ color: 'var(--danger)' }} className="font-semibold">−{shortfall} mana short</span>
-                        <div className="text-ink-100/40 mt-0.5">
-                          {shortfall} crystal{shortfall !== 1 ? 's' : ''} · or {visNeeded} vis
-                          {mixLabel && <> · or {mixLabel}</>}
-                        </div>
+          <>
+            {/* ── Mobile cards (hidden md+) ── */}
+            <div className="flex flex-col gap-3 md:hidden">
+              {filteredRituals.map(r => {
+                const mag = r.ritual?.magnitude ?? 0;
+                const shortfall = Math.max(0, mag - r.covenMana);
+                const rh = REALM_HUE[r.realm as RitualRealm] ?? covenHue;
+                const rc = REALM_COLORS[r.realm as RitualRealm];
+                const isExpanded = expandedRitual === r.name;
+                const effect = r.ritual?.effect ?? '';
+                const visNeeded = shortfall > 0 ? Math.ceil(shortfall / 3) : 0;
+                const visMix = shortfall > 0 ? Math.floor(shortfall / 3) : 0;
+                const crystalMix = shortfall > 0 ? shortfall - visMix * 3 : 0;
+                const mixLabel = visMix > 0 && crystalMix > 0 ? `${visMix} vis + ${crystalMix} crystal${crystalMix !== 1 ? 's' : ''}` : null;
+                return (
+                  <div key={r.name} className="card overflow-hidden" style={{ borderLeft: `3px solid ${rh}` }}>
+                    {/* Name + realm + mag row */}
+                    <div className="px-4 pt-3 pb-2 flex items-start justify-between gap-2">
+                      <div className="flex-1 min-w-0">
+                        <div className="font-semibold text-sm text-ink-100 leading-snug">{r.name}</div>
+                        {rc && <span className="inline-block mt-1 px-2 py-0.5 rounded-full text-[10px] font-bold uppercase tracking-widest"
+                          style={{ background: rc.bg, color: rc.text, border: `1px solid ${rc.border}` }}>{r.realm}</span>}
                       </div>
-                    );
-                  }
-
-                  return (
-                    <React.Fragment key={r.name}>
-                    <tr className={idx > 0 ? 'border-t border-gold-500/10' : ''}>
-                      <td className="px-4 py-3 font-semibold text-sm text-ink-100 whitespace-nowrap">{r.name}</td>
-                      <td className="px-4 py-3 whitespace-nowrap">
-                        {rc ? (
-                          <span className="px-2 py-0.5 rounded-full text-[10px] font-bold uppercase tracking-widest"
-                            style={{ background: rc.bg, color: rc.text, border: `1px solid ${rc.border}` }}>{r.realm}</span>
-                        ) : <span className="text-xs text-ink-100/50">{r.realm}</span>}
-                      </td>
-                      <td className="px-4 py-3 text-center">
-                        <span className="num text-sm" style={{ color: rh }}>{mag}</span>
-                      </td>
-                      <td className="px-4 py-3 text-center">
-                        <span className="num text-sm" style={{ color: r.covenMana >= mag ? 'var(--ok)' : 'var(--danger)' }}>{r.covenMana}</span>
-                      </td>
-                      <td className="px-4 py-3">{shortfallNode}</td>
-                      <td className="px-4 py-3 text-center">
-                        <div className="flex justify-center">
-                          <StyledCheckbox
-                            checked={regioRituals.has(r.name)}
-                            onChange={() => toggleRegio(r.name)}
-                            title="+1 lore rank to each caster"
-                          />
-                        </div>
-                      </td>
-                      <td className="px-4 py-3">
-                        {r.memberEntries.length === 1 ? (
-                          <span className="text-sm text-ink-100/70">
-                            {memberMap[r.memberEntries[0].member_id] ?? '—'}
-                            {r.memberEntries[0].mastered && <span className="ml-1 text-[10px] text-purple-400">★</span>}
-                          </span>
-                        ) : (
-                          <div className="flex flex-col gap-1">
-                            {r.memberEntries.map(entry => {
-                              const name = memberMap[entry.member_id] ?? entry.member_id;
-                              const allIds = r.memberEntries.map(e => e.member_id);
-                              const isActive = r.casting.has(entry.member_id);
-                              return (
-                                <StyledCheckbox
-                                  key={entry.member_id}
-                                  checked={isActive}
-                                  onChange={() => toggleCaster(r.name, entry.member_id, allIds)}
-                                  label={<>{name}{entry.mastered && <span className="ml-1 text-[10px] text-purple-400">★</span>}</>}
-                                />
-                              );
-                            })}
-                          </div>
-                        )}
-                      </td>
-                      <td className="px-4 py-3 text-sm text-ink-100/70 cursor-pointer max-w-xs"
-                        onClick={() => setExpandedRitual(isExpanded ? null : r.name)}>
-                        <span>{effect.length > 70 ? `${effect.slice(0, 70)}…` : effect}</span>
-                        <span className="ml-2 text-[10px] text-ink-100/30">{isExpanded ? '▲' : '▼ script'}</span>
-                      </td>
-                    </tr>
-                    {isExpanded && (
-                      <tr key={`${r.name}-script`} className="border-t border-gold-500/10">
-                        <td colSpan={8} className="px-4 pb-4">
-                          {effect && <p className="text-sm text-ink-100/60 mt-3 mb-2 leading-relaxed">{effect}</p>}
-                          <RitualScriptEditor
-                            covenName={coven.name}
-                            ritualName={r.name}
-                            initialScript={data.ritualScripts.find(s => s.coven_id === coven.id && s.ritual_name === r.name)?.script ?? ''}
-                            members={members}
-                            onSave={script => onUpsertScript(coven.id, r.name, script)}
-                          />
-                        </td>
-                      </tr>
+                      <div className="flex-shrink-0 text-right">
+                        <div className="num text-lg leading-none" style={{ color: r.covenMana >= mag ? 'var(--ok)' : 'var(--danger)' }}>{r.covenMana}<span className="text-ink-100/30 text-[10px]">/{mag}</span></div>
+                        <div className="text-[9px] uppercase tracking-wider text-ink-100/40 mt-0.5">mana</div>
+                      </div>
+                    </div>
+                    {/* Shortfall */}
+                    {mag > 0 && (
+                      <div className="px-4 pb-2 text-xs">
+                        {shortfall === 0
+                          ? <span className="font-bold" style={{ color: 'var(--ok)' }}>✓ Ready to cast</span>
+                          : <span>
+                              <span style={{ color: 'var(--danger)' }} className="font-semibold">−{shortfall} mana short</span>
+                              <span className="text-ink-100/40 ml-1.5">
+                                {shortfall} crystal{shortfall !== 1 ? 's' : ''} · or {visNeeded} vis
+                                {mixLabel && ` · or ${mixLabel}`}
+                              </span>
+                            </span>
+                        }
+                      </div>
                     )}
-                  </React.Fragment>
+                    {/* Regio + casters row */}
+                    <div className="px-4 pb-3 flex flex-wrap gap-x-4 gap-y-2 items-start border-t border-gold-500/10 pt-2">
+                      <StyledCheckbox
+                        checked={regioRituals.has(r.name)}
+                        onChange={() => toggleRegio(r.name)}
+                        label="Regio +1"
+                        color={rh}
+                      />
+                      {r.memberEntries.length > 1 && r.memberEntries.map(entry => {
+                        const name = memberMap[entry.member_id] ?? entry.member_id;
+                        const allIds = r.memberEntries.map(e => e.member_id);
+                        return (
+                          <StyledCheckbox
+                            key={entry.member_id}
+                            checked={r.casting.has(entry.member_id)}
+                            onChange={() => toggleCaster(r.name, entry.member_id, allIds)}
+                            label={<>{name}{entry.mastered && <span className="ml-1 text-purple-400">★</span>}</>}
+                            color={rh}
+                          />
+                        );
+                      })}
+                      {r.memberEntries.length === 1 && (
+                        <span className="text-xs text-ink-100/60">
+                          {memberMap[r.memberEntries[0].member_id] ?? '—'}
+                          {r.memberEntries[0].mastered && <span className="ml-1 text-purple-400">★</span>}
+                        </span>
+                      )}
+                    </div>
+                    {/* Effect + script toggle */}
+                    <button
+                      className="w-full px-4 py-2 text-left flex items-center justify-between gap-2 border-t border-gold-500/10"
+                      onClick={() => setExpandedRitual(isExpanded ? null : r.name)}
+                    >
+                      <span className="text-xs text-ink-100/50 truncate">{effect.length > 60 ? `${effect.slice(0, 60)}…` : effect || 'No effect description'}</span>
+                      <span className="text-[10px] text-ink-100/30 flex-shrink-0">{isExpanded ? '▲' : '▼ script'}</span>
+                    </button>
+                    {isExpanded && (
+                      <div className="px-4 pb-4 border-t border-gold-500/10">
+                        {effect && <p className="text-sm text-ink-100/60 mt-3 mb-2 leading-relaxed">{effect}</p>}
+                        <RitualScriptEditor
+                          covenName={coven.name}
+                          ritualName={r.name}
+                          initialScript={data.ritualScripts.find(s => s.coven_id === coven.id && s.ritual_name === r.name)?.script ?? ''}
+                          members={members}
+                          canWrite={myCanWrite}
+                          canExport={myCanExport}
+                          onSave={script => onUpsertScript(coven.id, r.name, script)}
+                        />
+                      </div>
+                    )}
+                  </div>
                 );
-                })}
-              </tbody>
-            </table>
-          </div>
+              })}
+            </div>
+
+            {/* ── Desktop table (hidden below md) ── */}
+            <div className="hidden md:block card overflow-x-auto">
+              <table className="w-full">
+                <thead className="bg-gold-500/10">
+                  <tr>
+                    <th className="px-4 py-3 text-[11px] uppercase tracking-widest font-bold text-left text-ink-100/60">Ritual</th>
+                    <th className="px-4 py-3 text-[11px] uppercase tracking-widest font-bold text-left text-ink-100/60">Realm</th>
+                    <th className="px-4 py-3 text-[11px] uppercase tracking-widest font-bold text-center text-ink-100/60">Mag</th>
+                    <th className="px-4 py-3 text-[11px] uppercase tracking-widest font-bold text-center text-ink-100/60">Coven Mana</th>
+                    <th className="px-4 py-3 text-[11px] uppercase tracking-widest font-bold text-left text-ink-100/60">Shortfall / Resources</th>
+                    <th className="px-4 py-3 text-[11px] uppercase tracking-widest font-bold text-center text-ink-100/60">Regio</th>
+                    <th className="px-4 py-3 text-[11px] uppercase tracking-widest font-bold text-left text-ink-100/60">Casters</th>
+                    <th className="px-4 py-3 text-[11px] uppercase tracking-widest font-bold text-left text-ink-100/60">Effect</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {filteredRituals.map((r, idx) => {
+                    const mag = r.ritual?.magnitude ?? 0;
+                    const shortfall = Math.max(0, mag - r.covenMana);
+                    const rh = REALM_HUE[r.realm as RitualRealm] ?? covenHue;
+                    const rc = REALM_COLORS[r.realm as RitualRealm];
+                    const isExpanded = expandedRitual === r.name;
+                    const effect = r.ritual?.effect ?? '';
+                    let shortfallNode: React.ReactNode;
+                    if (mag === 0) {
+                      shortfallNode = <span className="text-ink-100/30 text-xs">—</span>;
+                    } else if (shortfall === 0) {
+                      shortfallNode = <span className="text-[11px] font-bold" style={{ color: 'var(--ok)' }}>✓ Ready</span>;
+                    } else {
+                      const visNeeded = Math.ceil(shortfall / 3);
+                      const visMix = Math.floor(shortfall / 3);
+                      const crystalMix = shortfall - visMix * 3;
+                      const mixLabel = visMix > 0 && crystalMix > 0 ? `${visMix} vis + ${crystalMix} crystal${crystalMix !== 1 ? 's' : ''}` : null;
+                      shortfallNode = (
+                        <div className="text-xs leading-snug">
+                          <span style={{ color: 'var(--danger)' }} className="font-semibold">−{shortfall} mana short</span>
+                          <div className="text-ink-100/40 mt-0.5">
+                            {shortfall} crystal{shortfall !== 1 ? 's' : ''} · or {visNeeded} vis
+                            {mixLabel && <> · or {mixLabel}</>}
+                          </div>
+                        </div>
+                      );
+                    }
+                    return (
+                      <React.Fragment key={r.name}>
+                        <tr className={idx > 0 ? 'border-t border-gold-500/10' : ''}>
+                          <td className="px-4 py-3 font-semibold text-sm text-ink-100 whitespace-nowrap">{r.name}</td>
+                          <td className="px-4 py-3 whitespace-nowrap">
+                            {rc ? (
+                              <span className="px-2 py-0.5 rounded-full text-[10px] font-bold uppercase tracking-widest"
+                                style={{ background: rc.bg, color: rc.text, border: `1px solid ${rc.border}` }}>{r.realm}</span>
+                            ) : <span className="text-xs text-ink-100/50">{r.realm}</span>}
+                          </td>
+                          <td className="px-4 py-3 text-center">
+                            <span className="num text-sm" style={{ color: rh }}>{mag}</span>
+                          </td>
+                          <td className="px-4 py-3 text-center">
+                            <span className="num text-sm" style={{ color: r.covenMana >= mag ? 'var(--ok)' : 'var(--danger)' }}>{r.covenMana}</span>
+                          </td>
+                          <td className="px-4 py-3">{shortfallNode}</td>
+                          <td className="px-4 py-3 text-center">
+                            <div className="flex justify-center">
+                              <StyledCheckbox checked={regioRituals.has(r.name)} onChange={() => toggleRegio(r.name)} title="+1 lore rank to each caster" />
+                            </div>
+                          </td>
+                          <td className="px-4 py-3">
+                            {r.memberEntries.length === 1 ? (
+                              <span className="text-sm text-ink-100/70">
+                                {memberMap[r.memberEntries[0].member_id] ?? '—'}
+                                {r.memberEntries[0].mastered && <span className="ml-1 text-[10px] text-purple-400">★</span>}
+                              </span>
+                            ) : (
+                              <div className="flex flex-col gap-1">
+                                {r.memberEntries.map(entry => {
+                                  const name = memberMap[entry.member_id] ?? entry.member_id;
+                                  const allIds = r.memberEntries.map(e => e.member_id);
+                                  return (
+                                    <StyledCheckbox
+                                      key={entry.member_id}
+                                      checked={r.casting.has(entry.member_id)}
+                                      onChange={() => toggleCaster(r.name, entry.member_id, allIds)}
+                                      label={<>{name}{entry.mastered && <span className="ml-1 text-[10px] text-purple-400">★</span>}</>}
+                                    />
+                                  );
+                                })}
+                              </div>
+                            )}
+                          </td>
+                          <td className="px-4 py-3 text-sm text-ink-100/70 cursor-pointer max-w-xs"
+                            onClick={() => setExpandedRitual(isExpanded ? null : r.name)}>
+                            <span>{effect.length > 70 ? `${effect.slice(0, 70)}…` : effect}</span>
+                            <span className="ml-2 text-[10px] text-ink-100/30">{isExpanded ? '▲' : '▼ script'}</span>
+                          </td>
+                        </tr>
+                        {isExpanded && (
+                          <tr key={`${r.name}-script`} className="border-t border-gold-500/10">
+                            <td colSpan={8} className="px-4 pb-4">
+                              {effect && <p className="text-sm text-ink-100/60 mt-3 mb-2 leading-relaxed">{effect}</p>}
+                              <RitualScriptEditor
+                                covenName={coven.name}
+                                ritualName={r.name}
+                                initialScript={data.ritualScripts.find(s => s.coven_id === coven.id && s.ritual_name === r.name)?.script ?? ''}
+                                members={members}
+                                canWrite={myCanWrite}
+                                canExport={myCanExport}
+                                onSave={script => onUpsertScript(coven.id, r.name, script)}
+                              />
+                            </td>
+                          </tr>
+                        )}
+                      </React.Fragment>
+                    );
+                  })}
+                </tbody>
+              </table>
+            </div>
+          </>
         )}
       </div>
 
@@ -552,6 +653,45 @@ function CovenDetail({
           <p className="text-ink-100/40 text-sm py-10 text-center">No members assigned to this coven yet.</p>
         )}
       </div>
+
+      {/* Script Access — only leaders/admins can manage */}
+      {canManage && members.length > 0 && (
+        <div className="mt-6">
+          <SectionHeader title="Script Access" accent={covenHue} />
+          <div style={{ border: '1px solid var(--line)', borderRadius: '8px', overflow: 'hidden', background: 'rgb(var(--ink-800))' }}>
+            <div style={{ display: 'grid', gridTemplateColumns: '1fr auto auto', alignItems: 'center', padding: '8px 16px', borderBottom: '1px solid var(--line)', gap: 12 }}>
+              <span className="eyebrow text-[10px]">Member</span>
+              <span className="eyebrow text-[10px] w-14 text-center">Write</span>
+              <span className="eyebrow text-[10px] w-14 text-center">Export</span>
+            </div>
+            {members.map((m, i) => {
+              const perm: CovenScriptPermission | undefined = scriptPerms.find(p => p.member_id === m.id);
+              const canW = !!perm?.can_write;
+              const canE = !!perm?.can_export;
+              return (
+                <div key={m.id} style={{ display: 'grid', gridTemplateColumns: '1fr auto auto', alignItems: 'center', padding: '10px 16px', borderTop: i > 0 ? '1px solid var(--line)' : 'none', gap: 12 }}>
+                  <span className="text-sm text-ink-100">{m.name}</span>
+                  <div className="w-14 flex justify-center">
+                    <StyledCheckbox
+                      checked={canW}
+                      color={covenHue}
+                      onChange={() => onUpsertScriptPerm(coven.id, m.id, !canW, canE)}
+                    />
+                  </div>
+                  <div className="w-14 flex justify-center">
+                    <StyledCheckbox
+                      checked={canE}
+                      color={covenHue}
+                      onChange={() => onUpsertScriptPerm(coven.id, m.id, canW, !canE)}
+                    />
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+          <p className="text-xs text-ink-100/40 mt-2">Write = can edit ritual scripts · Export = can download as PDF</p>
+        </div>
+      )}
 
       {editingCoven && (
         <CovenModal
