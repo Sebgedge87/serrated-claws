@@ -1236,7 +1236,7 @@ function RitualsView() {
                         <tr key={ritual.name} className={idx > 0 ? 'border-t border-gold-500/10' : ''}>
                           <td className="px-4 py-3 font-semibold text-sm whitespace-nowrap align-top">{ritual.name}</td>
                           <td className="px-4 py-3 text-sm text-ink-100/80 align-top">{ritual.effect}</td>
-                          <td className="px-4 py-3 text-xs text-ink-100/50 whitespace-nowrap align-top">{ritual.mastered}</td>
+                          <td className="px-4 py-3 text-xs text-ink-100/50 whitespace-nowrap align-top">{ritual.magnitude ?? ''}</td>
                         </tr>
                       ))}
                     </tbody>
