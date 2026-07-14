@@ -1,11 +1,10 @@
-import { useEffect, useRef, useState } from 'react';
-import { jsPDF } from 'jspdf';
+import { useState, useRef, useCallback, useEffect } from 'react';
 import { Icons } from '@/components/Icons';
+import { cx } from '@/lib/utils';
+import { renderMarkdown } from '@/components/BardWorkEditor';
+import { jsPDF } from 'jspdf';
 
-interface Member {
-  id: string;
-  name: string;
-}
+interface Member { id: string; name: string }
 
 interface Props {
   covenName: string;
@@ -15,256 +14,383 @@ interface Props {
   onSave: (script: string) => Promise<void>;
 }
 
-// Render markdown-like text with @mentions highlighted.
-// Supports: **bold**, *italic*, # headings, - bullet, blank line = paragraph break, @Name highlight
-function renderScript(text: string, members: Member[]): string {
-  const memberNames = members.map(m => m.name);
-
-  const lines = text.split('\n');
-  const htmlLines: string[] = [];
-  let inList = false;
-
-  for (const raw of lines) {
-    let line = raw
-      .replace(/&/g, '&amp;')
-      .replace(/</g, '&lt;')
-      .replace(/>/g, '&gt;');
-
-    // Headings
-    if (line.startsWith('### ')) {
-      if (inList) { htmlLines.push('</ul>'); inList = false; }
-      htmlLines.push(`<h3 style="font-size:1rem;font-weight:700;margin:1em 0 0.25em">${line.slice(4)}</h3>`);
-      continue;
-    }
-    if (line.startsWith('## ')) {
-      if (inList) { htmlLines.push('</ul>'); inList = false; }
-      htmlLines.push(`<h2 style="font-size:1.15rem;font-weight:700;margin:1em 0 0.25em">${line.slice(3)}</h2>`);
-      continue;
-    }
-    if (line.startsWith('# ')) {
-      if (inList) { htmlLines.push('</ul>'); inList = false; }
-      htmlLines.push(`<h1 style="font-size:1.3rem;font-weight:700;margin:1em 0 0.3em">${line.slice(2)}</h1>`);
-      continue;
-    }
-
-    // Bullet list
-    if (line.startsWith('- ') || line.startsWith('* ')) {
-      if (!inList) { htmlLines.push('<ul style="margin:0.25em 0 0.25em 1.25em;padding:0">'); inList = true; }
-      let content = line.slice(2);
-      content = applyInline(content, memberNames);
-      htmlLines.push(`<li style="margin:0.1em 0">${content}</li>`);
-      continue;
-    }
-
-    if (inList) { htmlLines.push('</ul>'); inList = false; }
-
-    if (line.trim() === '') {
-      htmlLines.push('<br/>');
-      continue;
-    }
-
-    line = applyInline(line, memberNames);
-    htmlLines.push(`<p style="margin:0.1em 0">${line}</p>`);
-  }
-  if (inList) htmlLines.push('</ul>');
-  return htmlLines.join('');
+interface SlashCmd {
+  key: string; label: string; description: string; hint: string;
+  icon: React.ReactNode; category: string; value: string;
 }
 
-function applyInline(text: string, memberNames: string[]): string {
-  // Bold and italic
-  text = text.replace(/\*\*(.+?)\*\*/g, '<strong>$1</strong>');
-  text = text.replace(/\*(.+?)\*/g, '<em>$1</em>');
+function buildCommands(members: Member[]): SlashCmd[] {
+  const base: SlashCmd[] = [
+    { key: 'text',     label: 'Text',           description: 'Plain paragraph',        hint: 'p',   icon: <span style={{ fontFamily: 'serif', fontSize: '13px', fontWeight: 700 }}>P</span>,    category: 'Blocks', value: '\n'      },
+    { key: 'h1',       label: 'Heading 1',      description: 'Large section heading',   hint: '#',   icon: <span style={{ fontFamily: 'serif', fontSize: '11px', fontWeight: 800 }}>H1</span>,   category: 'Blocks', value: '\n# '    },
+    { key: 'h2',       label: 'Heading 2',      description: 'Medium section heading',  hint: '##',  icon: <span style={{ fontFamily: 'serif', fontSize: '11px', fontWeight: 800 }}>H2</span>,   category: 'Blocks', value: '\n## '   },
+    { key: 'h3',       label: 'Heading 3',      description: 'Small section heading',   hint: '###', icon: <span style={{ fontFamily: 'serif', fontSize: '11px', fontWeight: 800 }}>H3</span>,   category: 'Blocks', value: '\n### '  },
+    { key: 'bullet',   label: 'Bulleted list',  description: 'Create a simple list',    hint: '-',   icon: <span style={{ fontSize: '16px' }}>•</span>,                                           category: 'Blocks', value: '\n- '    },
+    { key: 'numbered', label: 'Numbered list',  description: 'Create a numbered list',  hint: '1.',  icon: <span style={{ fontFamily: 'monospace', fontSize: '10px', fontWeight: 700 }}>1.</span>,category: 'Blocks', value: '\n1. '   },
+    { key: 'quote',    label: 'Quote',          description: 'Capture a quotation',     hint: '>',   icon: <span style={{ fontSize: '14px', fontStyle: 'italic', fontWeight: 700 }}>"</span>,    category: 'Blocks', value: '\n> '    },
+    { key: 'hr',       label: 'Divider',        description: 'Visually divide sections',hint: '---', icon: <span style={{ fontSize: '12px' }}>—</span>,                                           category: 'Blocks', value: '\n---\n' },
+    { key: 'stage',    label: 'Stage direction',description: 'Narrator / stage note',   hint: '**',  icon: <span style={{ fontSize: '11px' }}>📢</span>,                                           category: 'Ritual', value: '\n**[Stage] **' },
+    { key: 'chant',    label: 'Chant',          description: 'Words spoken together',   hint: '>',   icon: <span style={{ fontSize: '11px' }}>🎵</span>,                                           category: 'Ritual', value: '\n> **All:** ' },
+    { key: 'action',   label: 'Action',         description: 'Physical action to take', hint: '-',   icon: <span style={{ fontSize: '11px' }}>⚡</span>,                                           category: 'Ritual', value: '\n- *Action:* ' },
+  ];
+  const mentions: SlashCmd[] = members.map(m => ({
+    key: `@${m.id}`, label: `@${m.name}`, description: `Assign action to ${m.name}`, hint: '@',
+    icon: <span style={{ fontSize: '11px', color: '#a78bfa' }}>@</span>,
+    category: 'Coven members', value: `@${m.name} `,
+  }));
+  return [...base, ...mentions];
+}
 
-  // @mention — match @followed by a member name (sorted longest first to avoid partial matches)
-  const sorted = [...memberNames].sort((a, b) => b.length - a.length);
-  for (const name of sorted) {
-    const escaped = name.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
-    text = text.replace(
-      new RegExp(`@${escaped}`, 'g'),
-      `<span style="background:rgba(167,139,250,0.2);color:#a78bfa;border-radius:3px;padding:0 3px;font-weight:600">@${name}</span>`
-    );
-  }
-  // Any remaining unmatched @word
-  text = text.replace(/@(\w[\w\s]*)/g, '<span style="color:#a78bfa">@$1</span>');
-  return text;
+function ToolbarBtn({ title, onClick, children }: { title: string; onClick: () => void; children: React.ReactNode }) {
+  return (
+    <button title={title} onClick={onClick}
+      className="w-7 h-7 rounded text-xs text-ink-100/70 hover:text-gold-300 hover:bg-gold-500/15 transition-colors flex items-center justify-center">
+      {children}
+    </button>
+  );
 }
 
 export function RitualScriptEditor({ covenName, ritualName, initialScript, members, onSave }: Props) {
-  const [mode, setMode] = useState<'edit' | 'preview'>('edit');
-  const [script, setScript] = useState(initialScript);
+  const [content, setContent] = useState(initialScript);
+  const [preview, setPreview] = useState(false);
   const [dirty, setDirty] = useState(false);
   const [busy, setBusy] = useState(false);
-  const [mention, setMention] = useState<{ query: string; top: number; left: number } | null>(null);
-  const textareaRef = useRef<HTMLTextAreaElement>(null);
-  const previewRef = useRef<HTMLDivElement>(null);
 
-  useEffect(() => { setScript(initialScript); setDirty(false); }, [initialScript]);
+  const [slashMenuOpen, setSlashMenuOpen] = useState(false);
+  const [slashFilter, setSlashFilter] = useState('');
+  const [slashIndex, setSlashIndex] = useState(0);
+  const [menuSearch, setMenuSearch] = useState('');
+
+  // @mention state
+  const [mentionOpen, setMentionOpen] = useState(false);
+  const [mentionQuery, setMentionQuery] = useState('');
+  const [mentionIndex, setMentionIndex] = useState(0);
+
+  const textareaRef = useRef<HTMLTextAreaElement>(null);
+  const slashStartPosRef = useRef<number>(-1);
+  const mentionStartPosRef = useRef<number>(-1);
+  const menuSearchRef = useRef<HTMLInputElement>(null);
+
+  useEffect(() => { setContent(initialScript); setDirty(false); }, [initialScript]);
+
+  const SLASH_COMMANDS = buildCommands(members);
+
+  const filteredCmds = SLASH_COMMANDS.filter(c => {
+    const q = (slashFilter || menuSearch).toLowerCase();
+    return q === '' || c.key.includes(q) || c.label.toLowerCase().includes(q) || c.description.toLowerCase().includes(q);
+  });
+  const groupedCmds = filteredCmds.reduce<Record<string, SlashCmd[]>>((acc, cmd) => {
+    (acc[cmd.category] ??= []).push(cmd); return acc;
+  }, {});
+
+  const filteredMembers = members.filter(m =>
+    m.name.toLowerCase().startsWith(mentionQuery.toLowerCase())
+  );
+
+  const insertAt = useCallback((before: string, after = '', placeholder = '') => {
+    const ta = textareaRef.current; if (!ta) return;
+    const start = ta.selectionStart; const end = ta.selectionEnd;
+    const sel = ta.value.slice(start, end);
+    const insert = before + (sel || placeholder) + after;
+    const next = ta.value.slice(0, start) + insert + ta.value.slice(end);
+    setContent(next); setDirty(next !== initialScript);
+    requestAnimationFrame(() => {
+      if (!textareaRef.current) return;
+      textareaRef.current.selectionStart = start + before.length;
+      textareaRef.current.selectionEnd = start + before.length + (sel || placeholder).length;
+      textareaRef.current.focus();
+    });
+  }, [initialScript]);
+
+  const handleSlashCommand = useCallback((cmd: SlashCmd) => {
+    const ta = textareaRef.current; if (!ta) return;
+    if (slashStartPosRef.current < 0) return;
+    const before = ta.value.slice(0, slashStartPosRef.current);
+    const after = ta.value.slice(ta.selectionStart);
+    const next = before + cmd.value + after;
+    setContent(next); setDirty(next !== initialScript);
+    requestAnimationFrame(() => {
+      if (!textareaRef.current) return;
+      const pos = slashStartPosRef.current + cmd.value.length;
+      textareaRef.current.selectionStart = pos; textareaRef.current.selectionEnd = pos;
+      textareaRef.current.focus();
+    });
+    setSlashMenuOpen(false); slashStartPosRef.current = -1;
+  }, [initialScript]);
+
+  function insertMentionMember(name: string) {
+    const ta = textareaRef.current; if (!ta) return;
+    const before = content.slice(0, mentionStartPosRef.current);
+    const after = content.slice(ta.selectionStart);
+    const next = before + `@${name} ` + after;
+    setContent(next); setDirty(next !== initialScript);
+    setMentionOpen(false); mentionStartPosRef.current = -1;
+    requestAnimationFrame(() => {
+      if (!textareaRef.current) return;
+      const pos = before.length + name.length + 2;
+      textareaRef.current.selectionStart = pos; textareaRef.current.selectionEnd = pos;
+      textareaRef.current.focus();
+    });
+  }
+
+  function handleContentChange(e: React.ChangeEvent<HTMLTextAreaElement>) {
+    const val = e.target.value;
+    setContent(val); setDirty(val !== initialScript);
+    const pos = e.target.selectionStart;
+    const before = val.slice(0, pos);
+
+    // Slash command detection (start of line)
+    const lineStart = before.lastIndexOf('\n') + 1;
+    const currentLine = before.slice(lineStart);
+    if (currentLine.startsWith('/')) {
+      slashStartPosRef.current = lineStart;
+      setSlashFilter(currentLine.slice(1));
+      setSlashMenuOpen(true); setSlashIndex(0);
+      setMentionOpen(false);
+      return;
+    } else {
+      if (slashMenuOpen) { setSlashMenuOpen(false); slashStartPosRef.current = -1; }
+    }
+
+    // @mention detection
+    const atMatch = before.match(/@([\w ]*)$/);
+    if (atMatch) {
+      mentionStartPosRef.current = before.lastIndexOf('@');
+      setMentionQuery(atMatch[1]);
+      setMentionOpen(true); setMentionIndex(0);
+    } else {
+      if (mentionOpen) { setMentionOpen(false); mentionStartPosRef.current = -1; }
+    }
+  }
+
+  function handleKeyDown(e: React.KeyboardEvent<HTMLTextAreaElement>) {
+    if (mentionOpen && filteredMembers.length > 0) {
+      if (e.key === 'ArrowDown') { e.preventDefault(); setMentionIndex(i => Math.min(i + 1, filteredMembers.length - 1)); return; }
+      if (e.key === 'ArrowUp')   { e.preventDefault(); setMentionIndex(i => Math.max(i - 1, 0)); return; }
+      if (e.key === 'Enter' || e.key === 'Tab') { e.preventDefault(); insertMentionMember(filteredMembers[mentionIndex].name); return; }
+      if (e.key === 'Escape') { setMentionOpen(false); return; }
+    }
+    if (slashMenuOpen) {
+      if (e.key === 'ArrowDown') { e.preventDefault(); setSlashIndex(i => Math.min(i + 1, filteredCmds.length - 1)); return; }
+      if (e.key === 'ArrowUp')   { e.preventDefault(); setSlashIndex(i => Math.max(i - 1, 0)); return; }
+      if (e.key === 'Enter' || e.key === 'Tab') { e.preventDefault(); if (filteredCmds[slashIndex]) handleSlashCommand(filteredCmds[slashIndex]); return; }
+      if (e.key === 'Escape') { setSlashMenuOpen(false); slashStartPosRef.current = -1; return; }
+      if (e.key === ' ') { setSlashMenuOpen(false); slashStartPosRef.current = -1; return; }
+    }
+  }
+
+  useEffect(() => {
+    if (slashMenuOpen) { setMenuSearch(''); requestAnimationFrame(() => menuSearchRef.current?.focus()); }
+  }, [slashMenuOpen]);
+
+  useEffect(() => {
+    if (!slashMenuOpen) return;
+    const h = () => { setSlashMenuOpen(false); };
+    document.addEventListener('click', h);
+    return () => document.removeEventListener('click', h);
+  }, [slashMenuOpen]);
 
   async function save() {
     if (!dirty || busy) return;
     setBusy(true);
-    try { await onSave(script); setDirty(false); } finally { setBusy(false); }
+    try { await onSave(content); setDirty(false); } finally { setBusy(false); }
   }
 
-  function handleChange(e: React.ChangeEvent<HTMLTextAreaElement>) {
-    const val = e.target.value;
-    setScript(val);
-    setDirty(val !== initialScript);
-
-    // Detect @ trigger for mention popup
-    const pos = e.target.selectionStart ?? 0;
-    const before = val.slice(0, pos);
-    const atMatch = before.match(/@([\w ]*)$/);
-    if (atMatch) {
-      const textarea = textareaRef.current!;
-      const rect = textarea.getBoundingClientRect();
-      // Approximate position — place below textarea for simplicity
-      setMention({ query: atMatch[1], top: rect.bottom + 4, left: rect.left + 12 });
-    } else {
-      setMention(null);
-    }
-  }
-
-  function insertMention(name: string) {
-    const ta = textareaRef.current!;
-    const pos = ta.selectionStart ?? 0;
-    const before = script.slice(0, pos);
-    const after = script.slice(pos);
-    const atIdx = before.lastIndexOf('@');
-    const newScript = before.slice(0, atIdx) + `@${name}` + after;
-    setScript(newScript);
-    setDirty(newScript !== initialScript);
-    setMention(null);
-    setTimeout(() => {
-      ta.focus();
-      const newPos = atIdx + name.length + 1;
-      ta.setSelectionRange(newPos, newPos);
-    }, 0);
-  }
-
-  const filteredMembers = mention
-    ? members.filter(m => m.name.toLowerCase().startsWith(mention.query.toLowerCase()))
-    : [];
-
-  async function exportPdf() {
+  function exportPdf() {
     const doc = new jsPDF({ unit: 'mm', format: 'a4' });
     const pageW = doc.internal.pageSize.getWidth();
-    const margin = 18;
-    const lineH = 6;
-    let y = 20;
-
-    doc.setFont('helvetica', 'bold');
-    doc.setFontSize(16);
-    doc.text(ritualName, margin, y);
-    y += 8;
-
-    doc.setFont('helvetica', 'normal');
-    doc.setFontSize(10);
+    const margin = 18; const lineH = 6; let y = 20;
+    doc.setFont('helvetica', 'bold'); doc.setFontSize(16);
+    doc.text(ritualName, margin, y); y += 8;
+    doc.setFont('helvetica', 'normal'); doc.setFontSize(10);
     doc.setTextColor(120, 100, 80);
-    doc.text(`${covenName} — Ritual Script`, margin, y);
-    y += 10;
+    doc.text(`${covenName} · Ritual Script`, margin, y); y += 10;
     doc.setTextColor(30, 28, 24);
-
-    const lines = script.split('\n');
-    for (const raw of lines) {
+    for (const raw of content.split('\n')) {
       if (y > 270) { doc.addPage(); y = 20; }
       if (raw.trim() === '') { y += lineH * 0.5; continue; }
-
-      // Strip markdown syntax for plain PDF
-      const plain = raw
-        .replace(/^#{1,3} /, '')
-        .replace(/^[*-] /, '• ')
-        .replace(/\*\*(.+?)\*\*/g, '$1')
-        .replace(/\*(.+?)\*/g, '$1');
-
+      const plain = raw.replace(/^#{1,3} /, '').replace(/^[*-] /, '• ').replace(/\*\*(.+?)\*\*/g, '$1').replace(/\*(.+?)\*/g, '$1');
       const isHeading = /^#{1,3} /.test(raw);
-      if (isHeading) {
-        doc.setFont('helvetica', 'bold');
-        doc.setFontSize(11);
-      } else {
-        doc.setFont('helvetica', 'normal');
-        doc.setFontSize(10);
-      }
-
+      doc.setFont('helvetica', isHeading ? 'bold' : 'normal');
+      doc.setFontSize(isHeading ? 11 : 10);
       const wrapped = doc.splitTextToSize(plain, pageW - margin * 2);
-      doc.text(wrapped, margin, y);
-      y += wrapped.length * lineH + (isHeading ? 2 : 0);
+      doc.text(wrapped, margin, y); y += wrapped.length * lineH + (isHeading ? 2 : 0);
     }
-
     doc.save(`${ritualName.replace(/\s+/g, '_')}_script.pdf`);
   }
 
-  const rendered = renderScript(script, members);
+  // Render with @mention highlights
+  function renderWithMentions(md: string): string {
+    let html = renderMarkdown(md);
+    const sorted = [...members].sort((a, b) => b.name.length - a.name.length);
+    for (const m of sorted) {
+      const esc = m.name.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+      html = html.replace(
+        new RegExp(`@${esc}`, 'g'),
+        `<span style="background:rgba(167,139,250,0.2);color:#a78bfa;border-radius:3px;padding:0 3px;font-weight:600">@${m.name}</span>`
+      );
+    }
+    return html;
+  }
 
   return (
     <div className="mt-4 border-t border-gold-500/10 pt-4">
-      <div className="flex items-center justify-between mb-2">
-        <span className="eyebrow text-[11px] text-ink-100/50">Ritual Script</span>
-        <div className="flex items-center gap-2">
-          <div className="flex rounded overflow-hidden border border-ink-100/10">
-            <button
-              onClick={() => setMode('edit')}
-              className="px-2.5 py-1 text-[11px] transition-colors"
-              style={{ background: mode === 'edit' ? 'rgba(201,169,97,0.15)' : 'transparent', color: mode === 'edit' ? 'var(--gold)' : 'rgba(232,230,227,0.4)' }}
-            >Edit</button>
-            <button
-              onClick={() => setMode('preview')}
-              className="px-2.5 py-1 text-[11px] transition-colors"
-              style={{ background: mode === 'preview' ? 'rgba(201,169,97,0.15)' : 'transparent', color: mode === 'preview' ? 'var(--gold)' : 'rgba(232,230,227,0.4)' }}
-            >Preview</button>
-          </div>
-          <button onClick={exportPdf} className="flex items-center gap-1 px-2.5 py-1 text-[11px] border border-ink-100/15 rounded hover:border-ink-100/30 transition-colors text-ink-100/50 hover:text-ink-100/80">
-            <Icons.Download size={11} />
-            PDF
-          </button>
-          {dirty && (
-            <button onClick={save} disabled={busy} className="btn btn-primary btn-sm text-[11px] py-1 px-2.5">
-              {busy ? 'Saving…' : 'Save'}
-            </button>
-          )}
+      {/* Header row */}
+      <div className="flex items-center gap-2 px-1 mb-0" style={{ borderBottom: '1px solid var(--line-soft)', paddingBottom: 8 }}>
+        <span className="eyebrow text-[11px] text-ink-100/50 flex-1">Ritual Script</span>
+        <div className="flex bg-black/30 border border-gold-500/15 rounded p-0.5">
+          <button onClick={() => setPreview(false)} className={cx('px-2.5 py-1 text-[11px] rounded-sm transition-colors', !preview ? 'bg-gold-500/20 text-gold-300' : 'text-ink-300 hover:text-ink-100')}>Edit</button>
+          <button onClick={() => setPreview(true)}  className={cx('px-2.5 py-1 text-[11px] rounded-sm transition-colors',  preview ? 'bg-gold-500/20 text-gold-300' : 'text-ink-300 hover:text-ink-100')}>Preview</button>
         </div>
+        <button onClick={exportPdf} className="flex items-center gap-1 px-2.5 py-1 text-[11px] border border-ink-100/15 rounded hover:border-ink-100/30 transition-colors text-ink-100/50 hover:text-ink-100/80">
+          <Icons.Download size={11} />PDF
+        </button>
+        {dirty && (
+          <button onClick={save} disabled={busy} className="btn btn-primary btn-sm text-[11px] py-1 px-2.5">
+            {busy ? 'Saving…' : 'Save'}
+          </button>
+        )}
       </div>
 
-      {mode === 'edit' ? (
-        <div className="relative">
-          <textarea
-            ref={textareaRef}
-            value={script}
-            onChange={handleChange}
-            onBlur={() => setTimeout(() => setMention(null), 150)}
-            placeholder={`Write the ritual script here…\n\nUse **bold**, *italic*, # headings, - bullets\nType @${members[0]?.name ?? 'MemberName'} to assign actions to coven members`}
-            className="input w-full font-mono text-sm leading-relaxed resize-none"
-            style={{ minHeight: '220px', background: 'rgb(var(--ink-900))', padding: '12px' }}
-          />
-          {mention && filteredMembers.length > 0 && (
-            <div
-              className="fixed z-50 rounded border shadow-xl"
-              style={{ top: mention.top, left: mention.left, background: 'rgb(20,18,14)', border: '1px solid var(--line-strong)', minWidth: 160 }}
-            >
-              {filteredMembers.map(m => (
-                <button
-                  key={m.id}
-                  onMouseDown={() => insertMention(m.name)}
-                  className="w-full text-left px-3 py-2 text-sm hover:bg-white/5 flex items-center gap-2"
-                >
-                  <span style={{ color: '#a78bfa' }}>@</span>
-                  <span className="text-ink-100">{m.name}</span>
-                </button>
+      {/* Toolbar */}
+      {!preview && (
+        <div className="flex flex-wrap gap-0.5 items-center py-1.5 px-1" style={{ borderBottom: '1px solid var(--line-soft)' }}>
+          <ToolbarBtn title="Bold (**text**)" onClick={() => insertAt('**', '**', 'bold')}><span className="font-bold text-sm">B</span></ToolbarBtn>
+          <ToolbarBtn title="Italic (*text*)" onClick={() => insertAt('*', '*', 'italic')}><span className="italic text-sm">I</span></ToolbarBtn>
+          <div className="w-px h-4 mx-1" style={{ background: 'var(--line)' }} />
+          <ToolbarBtn title="Heading 1" onClick={() => insertAt('\n# ', '', 'Heading')}>H1</ToolbarBtn>
+          <ToolbarBtn title="Heading 2" onClick={() => insertAt('\n## ', '', 'Heading')}>H2</ToolbarBtn>
+          <ToolbarBtn title="Heading 3" onClick={() => insertAt('\n### ', '', 'Heading')}>H3</ToolbarBtn>
+          <div className="w-px h-4 mx-1" style={{ background: 'var(--line)' }} />
+          <ToolbarBtn title="Blockquote / chant" onClick={() => insertAt('\n> ', '', 'chant')}><span className="font-bold italic text-sm">"</span></ToolbarBtn>
+          <ToolbarBtn title="Divider" onClick={() => insertAt('\n---\n')}>—</ToolbarBtn>
+          <ToolbarBtn title="Bullet" onClick={() => insertAt('\n- ', '', 'item')}>•</ToolbarBtn>
+          <ToolbarBtn title="Numbered list" onClick={() => insertAt('\n1. ', '', 'item')}>1.</ToolbarBtn>
+          <div className="w-px h-4 mx-1" style={{ background: 'var(--line)' }} />
+          <ToolbarBtn title="Stage direction" onClick={() => insertAt('\n**[', ']**', 'Stage')}><span style={{ fontSize: 11 }}>📢</span></ToolbarBtn>
+          <ToolbarBtn title="All chant" onClick={() => insertAt('\n> **All:** ', '', 'words')}><span style={{ fontSize: 11 }}>🎵</span></ToolbarBtn>
+          <ToolbarBtn title="Action" onClick={() => insertAt('\n- *Action:* ', '', 'do this')}><span style={{ fontSize: 11 }}>⚡</span></ToolbarBtn>
+          {members.length > 0 && (
+            <>
+              <div className="w-px h-4 mx-1" style={{ background: 'var(--line)' }} />
+              {members.map(m => (
+                <ToolbarBtn key={m.id} title={`Mention ${m.name}`} onClick={() => insertAt(`@${m.name} `)}>
+                  <span style={{ fontSize: 10, color: '#a78bfa', fontWeight: 600 }}>@{m.name.split(' ')[0]}</span>
+                </ToolbarBtn>
               ))}
-            </div>
+            </>
           )}
         </div>
-      ) : (
-        <div
-          ref={previewRef}
-          className="rounded border p-4 text-sm text-ink-100/80 leading-relaxed"
-          style={{ background: 'rgb(var(--ink-900))', border: '1px solid var(--line)', minHeight: '120px' }}
-          dangerouslySetInnerHTML={{ __html: rendered || '<span style="color:rgba(232,230,227,0.3)">Nothing written yet.</span>' }}
-        />
       )}
 
-      <p className="text-[10px] text-ink-100/25 mt-1">
-        Supports **bold**, *italic*, # headings, - bullets · Type @ to mention a coven member
+      {/* Editor / Preview */}
+      <div className="relative">
+        {preview ? (
+          <div
+            className="px-1 py-3 text-sm text-ink-100/80 leading-relaxed"
+            style={{ minHeight: 180 }}
+            dangerouslySetInnerHTML={{ __html: renderWithMentions(content) || '<span style="color:rgba(232,230,227,0.25);font-style:italic">Nothing written yet.</span>' }}
+          />
+        ) : (
+          <>
+            <textarea
+              ref={textareaRef}
+              value={content}
+              onChange={handleContentChange}
+              onKeyDown={handleKeyDown}
+              placeholder={"Write the ritual script here…\n\nType / for commands · @ to mention a coven member\nTip: use /stage for stage directions, /chant for words spoken together"}
+              className="w-full font-mono text-sm leading-relaxed bg-transparent outline-none resize-none pt-3 px-1"
+              style={{ minHeight: 200, color: 'rgb(var(--ink-100))', border: 'none' }}
+            />
+
+            {/* Slash command menu */}
+            {slashMenuOpen && (
+              <div
+                className="absolute left-0 top-0 z-20 w-80"
+                style={{ background: 'rgb(20,18,14)', border: '1px solid var(--line-strong)', borderRadius: 8, boxShadow: '0 16px 48px rgba(0,0,0,0.8)', overflow: 'hidden' }}
+                onClick={e => e.stopPropagation()}
+              >
+                <div className="flex items-center gap-2 px-3 py-2.5" style={{ borderBottom: '1px solid var(--line-soft)' }}>
+                  <Icons.Search size={13} style={{ color: 'rgb(var(--ink-300))', flexShrink: 0 }} />
+                  <input
+                    ref={menuSearchRef}
+                    className="flex-1 bg-transparent outline-none text-sm"
+                    style={{ color: 'rgb(var(--ink-100))' }}
+                    placeholder="Filter…"
+                    value={menuSearch}
+                    onChange={e => { setMenuSearch(e.target.value); setSlashIndex(0); }}
+                    onKeyDown={e => {
+                      if (e.key === 'ArrowDown') { e.preventDefault(); setSlashIndex(i => Math.min(i + 1, filteredCmds.length - 1)); }
+                      if (e.key === 'ArrowUp')   { e.preventDefault(); setSlashIndex(i => Math.max(i - 1, 0)); }
+                      if (e.key === 'Enter' || e.key === 'Tab') { e.preventDefault(); if (filteredCmds[slashIndex]) handleSlashCommand(filteredCmds[slashIndex]); }
+                      if (e.key === 'Escape') { setSlashMenuOpen(false); slashStartPosRef.current = -1; textareaRef.current?.focus(); }
+                    }}
+                  />
+                </div>
+                <div style={{ maxHeight: 320, overflowY: 'auto' }}>
+                  {filteredCmds.length === 0 ? (
+                    <div className="px-4 py-6 text-center text-sm" style={{ color: 'rgb(var(--ink-300))' }}>No results</div>
+                  ) : Object.entries(groupedCmds).map(([category, cmds]) => {
+                    const categoryStart = filteredCmds.indexOf(cmds[0]);
+                    return (
+                      <div key={category}>
+                        <div className="px-3 pt-3 pb-1 eyebrow" style={{ fontSize: 10 }}>{category}</div>
+                        {cmds.map((cmd, j) => {
+                          const idx = categoryStart + j;
+                          const active = idx === slashIndex;
+                          return (
+                            <button key={cmd.key}
+                              className="w-full px-3 py-2 text-left flex items-center gap-3 transition-colors"
+                              style={active ? { background: 'rgba(203,171,104,0.12)' } : undefined}
+                              onMouseEnter={() => setSlashIndex(idx)}
+                              onClick={() => handleSlashCommand(cmd)}
+                            >
+                              <div className="flex-shrink-0 flex items-center justify-center"
+                                style={{ width: 28, height: 28, borderRadius: 5, background: active ? 'rgba(203,171,104,0.15)' : 'rgba(255,255,255,0.06)', border: `1px solid ${active ? 'rgba(203,171,104,0.3)' : 'rgba(255,255,255,0.08)'}`, color: active ? 'var(--gold)' : 'rgb(var(--ink-100))' }}>
+                                {cmd.icon}
+                              </div>
+                              <div className="flex-1 min-w-0">
+                                <div className="text-sm font-medium" style={{ color: active ? 'var(--gold)' : 'rgb(var(--ink-100))', lineHeight: 1.2 }}>{cmd.label}</div>
+                                <div className="text-xs truncate mt-0.5" style={{ color: 'rgb(var(--ink-300))' }}>{cmd.description}</div>
+                              </div>
+                              <span className="font-mono text-[10px] flex-shrink-0 px-1.5 py-0.5 rounded"
+                                style={{ background: 'rgba(255,255,255,0.06)', color: 'rgb(var(--ink-300))', border: '1px solid rgba(255,255,255,0.08)' }}>
+                                {cmd.hint}
+                              </span>
+                            </button>
+                          );
+                        })}
+                      </div>
+                    );
+                  })}
+                </div>
+              </div>
+            )}
+
+            {/* @mention popup */}
+            {mentionOpen && filteredMembers.length > 0 && (
+              <div className="absolute left-0 top-0 z-20"
+                style={{ background: 'rgb(20,18,14)', border: '1px solid var(--line-strong)', borderRadius: 8, boxShadow: '0 16px 48px rgba(0,0,0,0.8)', minWidth: 180, overflow: 'hidden' }}>
+                <div className="px-3 pt-2 pb-1 eyebrow" style={{ fontSize: 10 }}>Coven members</div>
+                {filteredMembers.map((m, i) => (
+                  <button key={m.id}
+                    className="w-full px-3 py-2 text-left flex items-center gap-2 transition-colors"
+                    style={{ background: i === mentionIndex ? 'rgba(167,139,250,0.12)' : 'transparent' }}
+                    onMouseEnter={() => setMentionIndex(i)}
+                    onMouseDown={() => insertMentionMember(m.name)}
+                  >
+                    <span style={{ color: '#a78bfa', fontWeight: 700, fontSize: 13 }}>@</span>
+                    <span className="text-sm text-ink-100">{m.name}</span>
+                  </button>
+                ))}
+              </div>
+            )}
+          </>
+        )}
+      </div>
+
+      <p className="text-[10px] text-ink-100/25 mt-1 px-1">
+        / for commands · @ to mention · **bold** · *italic* · # heading · - bullet
       </p>
     </div>
   );
