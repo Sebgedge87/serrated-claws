@@ -271,7 +271,7 @@ function SettingsSection({ settings, onSave }: { settings: LanceSettings | null;
 
   return (
     <section>
-      <SectionHeading icon={<Icons.Edit size={16} />} title="Lance Settings" />
+      <SectionHeading icon={<Icons.Edit size={16} />} title="Settings" />
       {settings === null ? (
         <div className="card p-5">
           <p className="text-sm text-ink-100/60 mb-3">The <code className="text-gold-300 bg-black/30 px-1 rounded">lance_settings</code> table hasn't been created yet. Run this SQL in your <a href="https://supabase.com/dashboard" target="_blank" rel="noreferrer" className="text-gold-300 underline">Supabase SQL editor</a>:</p>
@@ -364,7 +364,7 @@ function InviteCodeSection({ inviteCode, currentRole, onRegenerateInviteCode }: 
           <div className="font-mono text-2xl font-bold tracking-widest text-ink-100 select-all mb-1">
             {displayCode ?? '—'}
           </div>
-          <div className="text-xs text-ink-100/50">Share this code with new members so they can join from the "No Lance Yet" screen.</div>
+          <div className="text-xs text-ink-100/50">Share this code with new members so they can join from the "Get Started" screen.</div>
         </div>
         <div className="flex gap-2 flex-shrink-0">
           <button onClick={handleCopy} className="btn btn-ghost btn-sm" disabled={!displayCode}>

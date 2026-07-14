@@ -118,7 +118,7 @@ export function HeaderUserMenu({
             {/* Lance switcher */}
             {memberships.length > 1 && (
               <>
-                <MenuLabel>Lance</MenuLabel>
+                <MenuLabel>Group</MenuLabel>
                 <MenuItem onClick={() => setSwitching(v => !v)}>
                   <Icons.Shield size={14} className="text-ink-300" />
                   Switch lance…

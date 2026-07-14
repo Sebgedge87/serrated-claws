@@ -58,7 +58,7 @@ export function SignIn() {
                          text-transparent bg-clip-text text-center">
             The Serrated Claws
           </h1>
-          <p className="text-[10px] text-ink-100/50 uppercase tracking-[0.18em] mt-1">Lance Management</p>
+          <p className="text-[10px] text-ink-100/50 uppercase tracking-[0.18em] mt-1">Group Management</p>
         </div>
 
         <button
