@@ -11,7 +11,10 @@ import { FunctionsTab } from '@/tabs/FunctionsTab';
 interface Props {
   currentUserId: string;
   inviteCode: string | null;
+  adminInviteCode: string | null;
   onRegenerateInviteCode: () => Promise<string>;
+  onRegenerateAdminInviteCode: () => Promise<string>;
+  onClearAdminInviteCode: () => Promise<void>;
   onDeleteMember?: (id: string) => Promise<void>;
   onViewMember?: (m: Member) => void;
   canManageFunction: (id: string) => boolean;
@@ -20,7 +23,7 @@ interface Props {
 const A = '#d4b46d';
 export const ROLE_COLORS: Record<UserRole, string> = { super_admin: '#f0a040', admin: '#d4b46d', support: '#a78bfa', member: '#7eb0d4', viewer: '#9ca3af' };
 
-export function AdminTab({ currentUserId, inviteCode, onRegenerateInviteCode, onDeleteMember, onViewMember, canManageFunction }: Props) {
+export function AdminTab({ currentUserId, inviteCode, adminInviteCode, onRegenerateInviteCode, onRegenerateAdminInviteCode, onClearAdminInviteCode, onDeleteMember, onViewMember, canManageFunction }: Props) {
   const { data, memberships, settings, isAdmin: _isAdmin, upsertSettings: onUpsertSettings, resetInventoryQty: onResetInventoryQty, clearInventoryLog: onClearInventoryLog, upsertEvent: onUpsertEvent, deleteEvent: onDeleteEvent, clearAttending: onClearAttending, resetAllPlayerData: onResetAllPlayerData, upsertProfile: onUpsertProfile } = useLance();
   const currentRole = memberships.find(m => m.profile_id === currentUserId)?.role ?? 'admin';
   const isSuperAdmin = currentRole === 'super_admin';
@@ -43,7 +46,14 @@ export function AdminTab({ currentUserId, inviteCode, onRegenerateInviteCode, on
       {/* 1. Settings + Join Code — top, two columns */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 items-start">
         <SettingsSection settings={settings} onSave={onUpsertSettings} />
-        <InviteCodeSection inviteCode={inviteCode} currentRole={currentRole} onRegenerateInviteCode={onRegenerateInviteCode} />
+        <InviteCodeSection
+          inviteCode={inviteCode}
+          adminInviteCode={adminInviteCode}
+          currentRole={currentRole}
+          onRegenerateInviteCode={onRegenerateInviteCode}
+          onRegenerateAdminInviteCode={onRegenerateAdminInviteCode}
+          onClearAdminInviteCode={onClearAdminInviteCode}
+        />
       </div>
 
       {/* 2. Events */}
@@ -341,43 +351,94 @@ function SettingsSection({ settings, onSave }: { settings: LanceSettings | null;
 
 // ── Invite Code ───────────────────────────────────────────────────────────────
 
-function InviteCodeSection({ inviteCode, currentRole, onRegenerateInviteCode }: { inviteCode: string | null; currentRole: UserRole; onRegenerateInviteCode: () => Promise<string> }) {
+function InviteCodeSection({ inviteCode, adminInviteCode, currentRole, onRegenerateInviteCode, onRegenerateAdminInviteCode, onClearAdminInviteCode }: {
+  inviteCode: string | null;
+  adminInviteCode: string | null;
+  currentRole: UserRole;
+  onRegenerateInviteCode: () => Promise<string>;
+  onRegenerateAdminInviteCode: () => Promise<string>;
+  onClearAdminInviteCode: () => Promise<void>;
+}) {
   const [localCode, setLocalCode] = useState<string | null>(inviteCode);
+  const [localAdminCode, setLocalAdminCode] = useState<string | null>(adminInviteCode);
   const [regenBusy, setRegenBusy] = useState(false);
-  const [copied, setCopied] = useState(false);
+  const [adminBusy, setAdminBusy] = useState(false);
+  const [copied, setCopied] = useState<'member' | 'admin' | null>(null);
   const displayCode = localCode ?? inviteCode;
+  const displayAdminCode = localAdminCode ?? adminInviteCode;
+  const isAdmin = currentRole === 'super_admin' || currentRole === 'admin';
 
   async function handleRegen() {
     setRegenBusy(true);
     try { const c = await onRegenerateInviteCode(); setLocalCode(c); } finally { setRegenBusy(false); }
   }
 
-  function handleCopy() {
-    if (!displayCode) return;
-    navigator.clipboard.writeText(displayCode).then(() => { setCopied(true); setTimeout(() => setCopied(false), 2000); }).catch(() => {});
+  async function handleRegenAdmin() {
+    setAdminBusy(true);
+    try { const c = await onRegenerateAdminInviteCode(); setLocalAdminCode(c); } finally { setAdminBusy(false); }
+  }
+
+  async function handleClearAdmin() {
+    setAdminBusy(true);
+    try { await onClearAdminInviteCode(); setLocalAdminCode(null); } finally { setAdminBusy(false); }
+  }
+
+  function copy(code: string, type: 'member' | 'admin') {
+    navigator.clipboard.writeText(code).then(() => { setCopied(type); setTimeout(() => setCopied(null), 2000); }).catch(() => {});
   }
 
   return (
-    <section>
-      <SectionHeading icon={<Icons.Copy size={16} />} title="Join Code" />
+    <section className="space-y-4">
+      <SectionHeading icon={<Icons.Copy size={16} />} title="Join Codes" />
+
+      {/* Member code */}
       <div className="card p-5 flex items-center gap-4 flex-wrap" style={{ borderLeft: `3px solid ${A}` }}>
         <div className="flex-1 min-w-0">
+          <div className="text-[10px] uppercase tracking-widest text-ink-100/40 mb-1">Member Code</div>
           <div className="font-mono text-2xl font-bold tracking-widest text-ink-100 select-all mb-1">
             {displayCode ?? '—'}
           </div>
-          <div className="text-xs text-ink-100/50">Share this code with new members so they can join from the "Get Started" screen.</div>
+          <div className="text-xs text-ink-100/50">Share with new members to join as a regular member.</div>
         </div>
         <div className="flex gap-2 flex-shrink-0">
-          <button onClick={handleCopy} className="btn btn-ghost btn-sm" disabled={!displayCode}>
-            <Icons.Copy size={13} />{copied ? 'Copied!' : 'Copy'}
+          <button onClick={() => displayCode && copy(displayCode, 'member')} className="btn btn-ghost btn-sm" disabled={!displayCode}>
+            <Icons.Copy size={13} />{copied === 'member' ? 'Copied!' : 'Copy'}
           </button>
-          {(currentRole === 'super_admin' || currentRole === 'admin') && (
+          {isAdmin && (
             <button onClick={handleRegen} disabled={regenBusy} className="btn btn-ghost btn-sm text-red-400/70 hover:text-red-400">
               <Icons.Refresh size={13} />{regenBusy ? 'Regenerating…' : 'Regenerate'}
             </button>
           )}
         </div>
       </div>
+
+      {/* Admin code — only visible to admins */}
+      {isAdmin && (
+        <div className="card p-5 flex items-center gap-4 flex-wrap" style={{ borderLeft: '3px solid #f0a040' }}>
+          <div className="flex-1 min-w-0">
+            <div className="text-[10px] uppercase tracking-widest text-orange-300/60 mb-1">Admin Code</div>
+            <div className="font-mono text-2xl font-bold tracking-widest text-ink-100 select-all mb-1">
+              {displayAdminCode ?? <span className="text-ink-100/30 text-base">Not set — generate one below</span>}
+            </div>
+            <div className="text-xs text-ink-100/50">Anyone who joins with this code is automatically granted Admin role.</div>
+          </div>
+          <div className="flex gap-2 flex-shrink-0 flex-wrap">
+            {displayAdminCode && (
+              <button onClick={() => copy(displayAdminCode, 'admin')} className="btn btn-ghost btn-sm">
+                <Icons.Copy size={13} />{copied === 'admin' ? 'Copied!' : 'Copy'}
+              </button>
+            )}
+            <button onClick={handleRegenAdmin} disabled={adminBusy} className="btn btn-ghost btn-sm" style={{ color: '#f0a040' }}>
+              <Icons.Refresh size={13} />{adminBusy ? 'Working…' : displayAdminCode ? 'Regenerate' : 'Generate'}
+            </button>
+            {displayAdminCode && (
+              <button onClick={handleClearAdmin} disabled={adminBusy} className="btn btn-ghost btn-sm text-red-400/70 hover:text-red-400">
+                <Icons.X size={13} />Disable
+              </button>
+            )}
+          </div>
+        </div>
+      )}
     </section>
   );
 }

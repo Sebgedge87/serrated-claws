@@ -464,7 +464,10 @@ export function Layout() {
               <AdminTab
                 currentUserId={user?.id ?? ""}
                 inviteCode={lances.currentLance?.invite_code ?? null}
+                adminInviteCode={(lances.currentLance as unknown as Record<string, unknown>)?.admin_invite_code as string | null ?? null}
                 onRegenerateInviteCode={() => lances.regenerateInviteCode(lances.currentLanceId ?? "")}
+                onRegenerateAdminInviteCode={() => lances.regenerateAdminInviteCode(lances.currentLanceId ?? "")}
+                onClearAdminInviteCode={() => lances.clearAdminInviteCode(lances.currentLanceId ?? "")}
                 onDeleteMember={lance.deleteMember}
                 onViewMember={setSelectedMember}
                 canManageFunction={perms.canManageFunction}
@@ -531,8 +534,8 @@ export function Layout() {
           <CreateCharacterScreen
             userId={user.id}
             lanceId={lances.currentLanceId ?? ""}
-            onCreated={member => {
-              lances.reloadMemberships();
+            onCreated={async member => {
+              await Promise.all([lances.reloadMemberships(), lance.reload(true)]);
               setShowCreateCharacter(false);
               setSelectedMember(member);
               setActiveTab('overview');
