@@ -1,11 +1,13 @@
 import type { Member, LanceData } from '@/lib/types';
 import { memberIncomeRings, monogramOf } from '@/lib/utils';
 import { SectionHeader } from '@/components/ui/SectionHeader';
+import { nationConfig } from '@/lib/nations';
 
 interface Props {
   data: LanceData;
   filteredMembers: Member[];
   isAdmin: boolean;
+  nation?: string | null;
   onNavigate?: (tab: string) => void;
 }
 
@@ -32,7 +34,8 @@ function getResourceColor(name: string): string {
   return '#d4b46d';
 }
 
-export function OverviewTab({ data, filteredMembers, isAdmin, onNavigate }: Props) {
+export function OverviewTab({ data, filteredMembers, isAdmin, nation, onNavigate }: Props) {
+  const cfg = nationConfig(nation);
   const totalMembers = data.members.length;
   const coven = data.members.filter(m => m.coven).length;
   const nobles = filteredMembers.filter(m => m.is_noble);
@@ -68,7 +71,7 @@ export function OverviewTab({ data, filteredMembers, isAdmin, onNavigate }: Prop
     <div>
       {/* Title */}
       <h2 style={{ fontFamily: "'Cormorant Garamond', serif", fontSize: '38px', fontWeight: 600, lineHeight: 1.1, color: 'var(--gold)', marginBottom: '4px' }}>
-        Lance Overview
+        {cfg.groupTerm} Overview
       </h2>
       <p style={{ fontFamily: "'Spectral', serif", fontStyle: 'italic', fontSize: '14px', color: 'rgb(var(--ink-300))', marginBottom: '32px' }}>
         At a glance: rosters, nobility, and holdings of your group
@@ -114,7 +117,7 @@ export function OverviewTab({ data, filteredMembers, isAdmin, onNavigate }: Prop
       <div className="grid grid-cols-[repeat(auto-fit,minmax(300px,1fr))] gap-4 mb-10">
         {/* Treasury */}
         <div className="card p-6 cursor-pointer hover:bg-white/[0.02] transition-colors" onClick={() => onNavigate?.('treasury')}>
-          <div className="eyebrow mb-4" style={{ fontSize: '10px', letterSpacing: '0.12em', textTransform: 'uppercase' }}>Treasury</div>
+          <div className="eyebrow mb-4" style={{ fontSize: '10px', letterSpacing: '0.12em', textTransform: 'uppercase' }}>Quartermaster</div>
           <div className="grid grid-cols-3 gap-3 mb-4">
             {[
               { label: 'Rings',   value: rings },
@@ -209,7 +212,7 @@ export function OverviewTab({ data, filteredMembers, isAdmin, onNavigate }: Prop
       )}
 
       {/* The Houses */}
-      <SectionHeader title="The Houses"  />
+      <SectionHeader title={`The ${cfg.groupTermPlural}`} />
       <div className="grid grid-cols-[repeat(auto-fit,minmax(260px,1fr))] gap-4">
         {data.houses.map((house, idx) => {
           const c = house.primary_color ?? HOUSE_COLORS[idx % HOUSE_COLORS.length];

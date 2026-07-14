@@ -1,12 +1,12 @@
 import { useState, useEffect } from 'react';
 import { supabase } from '@/lib/supabase';
 import { Icons } from '@/components/Icons';
-import type { House } from '@/lib/types';
+import type { House, Member } from '@/lib/types';
 
 interface Props {
   userId: string;
   lanceId: string;
-  onCreated: () => void;
+  onCreated: (member: Member) => void;
   onClose?: () => void;
 }
 
@@ -17,9 +17,10 @@ export function CreateCharacterScreen({ userId, lanceId, onCreated, onClose }: P
     player_name: '',
     pid: '',
     house_id: '',
-    total_xp: 8,
+    total_xp: '8',
   });
   const [busy, setBusy] = useState(false);
+  const [done, setDone] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
@@ -32,7 +33,7 @@ export function CreateCharacterScreen({ userId, lanceId, onCreated, onClose }: P
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
-    if (!form.name.trim() || busy) return;
+    if (!form.name.trim() || busy || done) return;
     setBusy(true);
     setError(null);
     try {
@@ -46,7 +47,7 @@ export function CreateCharacterScreen({ userId, lanceId, onCreated, onClose }: P
           rank: 'Member',
           is_noble: false,
           status: 'active',
-          total_xp: form.total_xp,
+          total_xp: parseInt(form.total_xp, 10) || 8,
           claimed_by: userId,
           lance_id: lanceId,
         })
@@ -64,10 +65,10 @@ export function CreateCharacterScreen({ userId, lanceId, onCreated, onClose }: P
       if (profileErr) throw new Error(profileErr.message);
       if (membershipErr) throw new Error(membershipErr.message);
 
-      onCreated();
+      setDone(true);
+      onCreated(member as Member);
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Something went wrong');
-    } finally {
       setBusy(false);
     }
   }
@@ -134,7 +135,7 @@ export function CreateCharacterScreen({ userId, lanceId, onCreated, onClose }: P
                 min={0}
                 className="input"
                 value={form.total_xp}
-                onChange={e => setForm(f => ({ ...f, total_xp: parseInt(e.target.value, 10) || 8 }))}
+                onChange={e => setForm(f => ({ ...f, total_xp: e.target.value }))}
               />
               <p className="text-[11px] text-ink-100/40 mt-1">Starting characters begin at 8 XP</p>
             </div>
@@ -163,11 +164,11 @@ export function CreateCharacterScreen({ userId, lanceId, onCreated, onClose }: P
 
             <button
               type="submit"
-              disabled={!form.name.trim() || busy}
+              disabled={!form.name.trim() || busy || done}
               className="btn btn-primary w-full justify-center"
             >
               <Icons.Plus size={16} />
-              {busy ? 'Creating character…' : 'Create Character'}
+              {done ? 'Created! Opening…' : busy ? 'Creating character…' : 'Create Character'}
             </button>
 
             {onClose && (

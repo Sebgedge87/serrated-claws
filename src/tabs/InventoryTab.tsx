@@ -17,6 +17,7 @@ import {
 import { SPELLS_CATALOGUE } from '@/lib/spellsCatalogue';
 import { RITUALS_CATALOGUE, REALM_COLORS, RITUAL_REALM_ORDER } from '@/lib/ritualsCatalogue';
 import type { RitualRealm } from '@/lib/ritualsCatalogue';
+import { POTIONS_CATALOGUE } from '@/lib/potionsCatalogue';
 import { Icons } from '@/components/Icons';
 import { Modal, Field } from '@/components/Modal';
 import { StockModal } from '@/components/modals/StockModal';
@@ -25,7 +26,7 @@ import { CustomSelect } from '@/components/ui/CustomSelect';
 
 const ACCENT = '#e76eb5';
 
-type SubView = 'inventory' | 'stock' | 'queue' | 'catalogue' | 'magic' | 'vis';
+type SubView = 'inventory' | 'stock' | 'queue' | 'catalogue' | 'magic' | 'vis' | 'potions';
 
 const TIER_PILL_COLORS: Record<ItemTier, { bg: string; text: string; border: string }> = {
   apprentice: { bg: 'rgba(212,180,109,0.15)', text: '#d4b46d', border: 'rgba(212,180,109,0.4)' },
@@ -89,9 +90,94 @@ const SUB_TABS: { id: SubView; label: string; Icon: typeof Icons.Package }[] = [
   { id: 'stock',     label: 'Stock',     Icon: Icons.Shield },
   { id: 'queue',     label: 'Queue',     Icon: Icons.Sparkles },
   { id: 'catalogue', label: 'Catalogue', Icon: Icons.BookOpen },
+  { id: 'potions',   label: 'Potions',   Icon: Icons.FlaskConical },
   { id: 'magic',     label: 'Magic',     Icon: Icons.Wand },
   { id: 'vis',       label: 'Vis',       Icon: Icons.Sparkles },
 ];
+
+const HERB_LABELS: Record<string, string> = {
+  bladeroot: 'BL', cerulean: 'CE', roseweald: 'RW',
+  marrowort: 'MW', vervain: 'VV', mana: 'MA', liao: 'LI', ilium: 'IL',
+};
+const HERB_COLORS: Record<string, string> = {
+  bladeroot: '#c06060', cerulean: '#6090c0', roseweald: '#c060a0',
+  marrowort: '#70b070', vervain: '#a070c0', mana: '#8080d0', liao: '#d0b060', ilium: '#c0c0c0',
+};
+
+function PotionsView() {
+  const [search, setSearch] = useState('');
+  const [expanded, setExpanded] = useState<string | null>(null);
+
+  const filtered = useMemo(() => {
+    const q = search.toLowerCase();
+    return q ? POTIONS_CATALOGUE.filter(p =>
+      p.name.toLowerCase().includes(q) ||
+      p.mechEffect.toLowerCase().includes(q) ||
+      p.rpEffect.toLowerCase().includes(q)
+    ) : POTIONS_CATALOGUE;
+  }, [search]);
+
+  return (
+    <div>
+      <div className="mb-4">
+        <input
+          className="input w-full max-w-sm"
+          placeholder="Search potions, effects…"
+          value={search}
+          onChange={e => setSearch(e.target.value)}
+        />
+      </div>
+      <p className="text-xs text-ink-100/40 mb-4">{filtered.length} potion{filtered.length !== 1 ? 's' : ''}</p>
+      <div className="space-y-2">
+        {filtered.map(p => {
+          const isOpen = expanded === p.name;
+          const herbs = Object.entries(p.materials).filter(([, v]) => v && v > 0);
+          return (
+            <div key={p.name} className="card overflow-hidden">
+              <button
+                className="w-full text-left px-4 py-3 flex items-start gap-3"
+                onClick={() => setExpanded(isOpen ? null : p.name)}
+              >
+                <div className="flex-1 min-w-0">
+                  <div className="flex items-center gap-2 flex-wrap">
+                    <span className="font-semibold text-ink-100 text-sm">{p.name}</span>
+                    <span className="text-[10px] text-ink-100/40 font-mono">{p.total} herbs</span>
+                    <div className="flex gap-1 flex-wrap">
+                      {herbs.map(([herb, qty]) => (
+                        <span
+                          key={herb}
+                          className="text-[10px] font-mono px-1.5 py-0.5 rounded"
+                          style={{ background: `${HERB_COLORS[herb]}22`, color: HERB_COLORS[herb], border: `1px solid ${HERB_COLORS[herb]}55` }}
+                        >
+                          {qty}× {HERB_LABELS[herb] ?? herb}
+                        </span>
+                      ))}
+                    </div>
+                  </div>
+                  <p className="text-xs text-ink-100/55 mt-0.5 line-clamp-1">{p.mechEffect}</p>
+                </div>
+                <Icons.ChevronDown size={14} className="flex-shrink-0 mt-1 text-ink-100/40 transition-transform" style={{ transform: isOpen ? 'rotate(180deg)' : undefined }} />
+              </button>
+              {isOpen && (
+                <div className="px-4 pb-4 space-y-2 border-t border-gold-500/10 pt-3">
+                  <div>
+                    <div className="text-[10px] uppercase tracking-widest text-ink-100/40 mb-1">Mechanical Effect</div>
+                    <p className="text-sm text-ink-100/80">{p.mechEffect}</p>
+                  </div>
+                  <div>
+                    <div className="text-[10px] uppercase tracking-widest text-ink-100/40 mb-1">Roleplaying Effect</div>
+                    <p className="text-sm text-ink-100/60 italic">{p.rpEffect}</p>
+                  </div>
+                </div>
+              )}
+            </div>
+          );
+        })}
+      </div>
+    </div>
+  );
+}
+
 
 export function InventoryTab() {
   const { data, isAdmin, setInventory: onSetInventory, setInventoryPrice: onSetInventoryPrice, logInventory: onLogInventory, upsertMagicItemStock: onUpsertStock, deleteMagicItemStock: onDeleteStock, upsertCraftingQueueItem: onUpsertQueue, deleteCraftingQueueItem: onDeleteQueue } = useLance();
@@ -168,6 +254,7 @@ export function InventoryTab() {
           onAddToQueue={item => { setQueueModal({ open: true, prefill: item }); setSubView('queue'); }}
         />
       )}
+      {subView === 'potions' && <PotionsView />}
       {subView === 'magic' && <MagicView />}
       {subView === 'vis' && <VisView />}
 

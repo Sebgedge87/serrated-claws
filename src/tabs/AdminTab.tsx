@@ -313,7 +313,7 @@ function SettingsSection({ settings, onSave }: { settings: LanceSettings | null;
 
           <div>
             <label className="block text-xs uppercase tracking-widest text-ink-100/50 font-semibold mb-1.5">
-              {cfg.groupTermPlural === 'Houses' ? 'Lance' : cfg.groupTermPlural === 'Legions' ? 'Legion' : cfg.groupTerm} Name
+              Group Name
             </label>
             <input className="input" value={form.name} onChange={e => setForm(f => ({ ...f, name: e.target.value }))} placeholder="Empire LARP" />
           </div>

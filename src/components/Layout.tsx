@@ -64,7 +64,7 @@ export function Layout() {
     { id: 'overview', label: 'Overview',                      Icon: Icons.House },
     { id: 'houses',   label: lanceNation.groupTermPlural,     Icon: Icons.Shield },
     { id: 'covens',   label: 'Covens',                        Icon: Icons.Sparkles },
-    { id: 'treasury', label: 'Treasury',                      Icon: Icons.Coins },
+    { id: 'treasury', label: 'Quartermaster',                  Icon: Icons.Coins },
     ...(isAdmin ? [{ id: 'admin' as TabId, label: 'Admin',   Icon: Icons.Shield }] : []),
   ];
 
@@ -124,7 +124,7 @@ export function Layout() {
     const thrones = inv['Throne']?.current_qty ?? 0;
     const totalRings = rings + crowns * 20 + thrones * 160;
     lines.push('');
-    lines.push(['TREASURY', 'Rings', 'Crowns', 'Thrones', 'Total (rings)'].map(q).join(','));
+    lines.push(['QUARTERMASTER', 'Rings', 'Crowns', 'Thrones', 'Total (rings)'].map(q).join(','));
     lines.push(['' , rings, crowns, thrones, totalRings].map(q).join(','));
 
     const blob = new Blob([lines.join('\n')], { type: 'text/csv' });
@@ -419,6 +419,7 @@ export function Layout() {
                 data={lance.data}
                 filteredMembers={lance.data.members}
                 isAdmin={isAdmin}
+                nation={lance.settings?.nation}
                 onNavigate={id => {
                   // Map legacy IDs that no longer exist as top-level tabs
                   const house = lance.data.houses.find(h => h.id === id);
@@ -530,7 +531,12 @@ export function Layout() {
           <CreateCharacterScreen
             userId={user.id}
             lanceId={lances.currentLanceId ?? ""}
-            onCreated={() => lances.reloadMemberships()}
+            onCreated={member => {
+              lances.reloadMemberships();
+              setShowCreateCharacter(false);
+              setSelectedMember(member);
+              setActiveTab('overview');
+            }}
             onClose={() => setShowCreateCharacter(false)}
           />
         </div>

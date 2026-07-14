@@ -200,7 +200,6 @@ function Masthead({
   canEdit,
   isAdmin,
   wikiUrl,
-  memberships,
   onUpsertMember,
 }: {
   member: Member;
@@ -273,20 +272,6 @@ function Masthead({
               <input className="input font-display font-semibold" value={form.name ?? ''} onChange={e => set('name', e.target.value)} />
             </div>
             <div>
-              <label className="eyebrow block mb-1">Player Name</label>
-              <CustomSelect
-                value={form.player_name ?? ''}
-                onChange={v => set('player_name', v || null)}
-                options={(memberships ?? [])
-                  .map(m => {
-                    const name = m.profile?.display_name || m.profile?.email || null;
-                    return name ? { value: name, label: name } : null;
-                  })
-                  .filter((o): o is { value: string; label: string } => o !== null)}
-                placeholder="— Select player —"
-              />
-            </div>
-            <div>
               <label className="eyebrow block mb-1">PID</label>
               <input className="input num" value={form.pid ?? ''} onChange={e => set('pid', e.target.value || null)} />
             </div>
@@ -294,19 +279,23 @@ function Masthead({
               <label className="eyebrow block mb-1">Rank</label>
               <input className="input" value={form.rank ?? ''} onChange={e => set('rank', e.target.value || null)} />
             </div>
-            <div>
-              <label className="eyebrow block mb-1">Claw</label>
-              <CustomSelect
-                value={form.function ?? ''}
-                onChange={v => set('function', v || null)}
-                options={data.functions.map(f => ({ value: f.id, label: f.name }))}
-                placeholder="None"
-              />
-            </div>
-            <div>
-              <label className="eyebrow block mb-1">Military Role</label>
-              <input className="input" placeholder="Shield Wall, Battle Mage…" value={form.military_function ?? ''} onChange={e => set('military_function', e.target.value || null)} />
-            </div>
+            {data.functions.length > 0 && (
+              <div>
+                <label className="eyebrow block mb-1">Claw</label>
+                <CustomSelect
+                  value={form.function ?? ''}
+                  onChange={v => set('function', v || null)}
+                  options={data.functions.map(f => ({ value: f.id, label: f.name }))}
+                  placeholder="None"
+                />
+              </div>
+            )}
+            {data.functions.length > 0 && (
+              <div>
+                <label className="eyebrow block mb-1">Military Role</label>
+                <input className="input" placeholder="Shield Wall, Battle Mage…" value={form.military_function ?? ''} onChange={e => set('military_function', e.target.value || null)} />
+              </div>
+            )}
             <div>
               <label className="eyebrow block mb-1">HP</label>
               <input type="number" min={0} className="input" value={form.hp ?? ''} onChange={e => set('hp', e.target.value !== '' ? Number(e.target.value) : null)} />
@@ -441,8 +430,7 @@ function Masthead({
           className="grid grid-cols-2 sm:grid-cols-4 gap-x-6 gap-y-4 pt-4 border-t"
           style={{ borderColor: 'var(--line-soft)' }}
         >
-          <Field label="Player" value={member.player_name ?? '—'} />
-          <Field label="Claw" value={clawName ?? '—'} />
+          {data.functions.length > 0 && <Field label="Claw" value={clawName ?? '—'} />}
           <Field label="Coven" value={covenName ?? '—'} />
           <Field label="Resource" value={member.resource ?? '—'} />
         </div>
