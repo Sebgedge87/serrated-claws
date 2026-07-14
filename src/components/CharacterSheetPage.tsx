@@ -703,9 +703,10 @@ function VitalsStrip({
             )}
           </div>
           <div className="num text-sm font-bold">
-            <span style={{ color: 'var(--gold)' }}>{xpSpent}</span>
+            <span style={{ color: xpRemaining < 0 ? 'var(--danger)' : 'var(--gold)' }}>{xpRemaining}</span>
             <span className="text-ink-100/40"> / {totalXp}</span>
           </div>
+          <div className="text-[10px] text-ink-100/40 mt-0.5">{xpSpent} spent</div>
           <div
             className="mt-1.5 h-[3px] rounded-full overflow-hidden"
             style={{ background: 'rgba(203,171,104,0.15)' }}
