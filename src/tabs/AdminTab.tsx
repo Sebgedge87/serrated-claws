@@ -21,7 +21,7 @@ const A = '#d4b46d';
 export const ROLE_COLORS: Record<UserRole, string> = { super_admin: '#f0a040', admin: '#d4b46d', support: '#a78bfa', member: '#7eb0d4', viewer: '#9ca3af' };
 
 export function AdminTab({ currentUserId, inviteCode, onRegenerateInviteCode, onDeleteMember, onViewMember, canManageFunction }: Props) {
-  const { data, memberships, settings, isAdmin: _isAdmin, upsertSettings: onUpsertSettings, resetInventoryQty: onResetInventoryQty, clearInventoryLog: onClearInventoryLog, upsertEvent: onUpsertEvent, deleteEvent: onDeleteEvent, clearAttending: onClearAttending, resetAllPlayerData: onResetAllPlayerData } = useLance();
+  const { data, memberships, settings, isAdmin: _isAdmin, upsertSettings: onUpsertSettings, resetInventoryQty: onResetInventoryQty, clearInventoryLog: onClearInventoryLog, upsertEvent: onUpsertEvent, deleteEvent: onDeleteEvent, clearAttending: onClearAttending, resetAllPlayerData: onResetAllPlayerData, upsertProfile: onUpsertProfile } = useLance();
   const currentRole = memberships.find(m => m.profile_id === currentUserId)?.role ?? 'admin';
   const isSuperAdmin = currentRole === 'super_admin';
 
@@ -50,6 +50,7 @@ export function AdminTab({ currentUserId, inviteCode, onRegenerateInviteCode, on
       <EventsSection events={data.events} data={data} onUpsert={onUpsertEvent} onDelete={onDeleteEvent} onClearAttending={onClearAttending} />
 
       {/* 3. Roles & Access */}
+      {isSuperAdmin && <RolesSection memberships={memberships} currentUserId={currentUserId} onUpsertProfile={onUpsertProfile} />}
 
       {/* 4. Unassigned members */}
       <UnassignedSection data={data} isAdmin onDelete={onDeleteMember} onViewMember={onViewMember} />
@@ -381,7 +382,76 @@ function InviteCodeSection({ inviteCode, currentRole, onRegenerateInviteCode }: 
   );
 }
 
-// ── Roles ─────────────────────────────────────────────────────────────────────
+// ── Roles & Access ────────────────────────────────────────────────────────────
+
+const ROLE_OPTIONS: { value: UserRole; label: string; description: string }[] = [
+  { value: 'super_admin', label: 'Super Admin', description: 'Full access including danger zone' },
+  { value: 'admin',       label: 'Admin',       description: 'Manage members, events, settings' },
+  { value: 'member',      label: 'Member',      description: 'View and edit own character' },
+  { value: 'viewer',      label: 'Viewer',      description: 'Read-only access' },
+];
+
+function RolesSection({ memberships, currentUserId, onUpsertProfile }: {
+  memberships: LanceMembership[];
+  currentUserId: string;
+  onUpsertProfile: (id: string, updates: { role?: UserRole }) => Promise<void>;
+}) {
+  const [busy, setBusy] = useState<string | null>(null);
+
+  async function changeRole(profileId: string, role: UserRole) {
+    setBusy(profileId);
+    try { await onUpsertProfile(profileId, { role }); } finally { setBusy(null); }
+  }
+
+  return (
+    <section>
+      <SectionHeading icon={<Icons.Shield size={16} />} title="Roles & Access" />
+      <div className="card overflow-hidden">
+        <table className="w-full">
+          <thead className="bg-gold-500/10">
+            <tr>
+              <th className="px-4 py-3 text-left text-[11px] uppercase tracking-widest text-ink-100/60">User</th>
+              <th className="px-4 py-3 text-left text-[11px] uppercase tracking-widest text-ink-100/60">Role</th>
+            </tr>
+          </thead>
+          <tbody>
+            {memberships.map((m, i) => {
+              const profile = m.profile as { id: string; email?: string; display_name?: string } | null;
+              const label = profile?.display_name || profile?.email || m.profile_id;
+              const isMe = m.profile_id === currentUserId;
+              const color = ROLE_COLORS[m.role];
+              return (
+                <tr key={m.profile_id} className={i > 0 ? 'border-t border-gold-500/10' : ''}>
+                  <td className="px-4 py-3">
+                    <div className="text-sm text-ink-100 font-medium">{label}{isMe && <span className="ml-2 text-[10px] text-ink-100/40">(you)</span>}</div>
+                    {profile?.email && profile.display_name && <div className="text-xs text-ink-100/40">{profile.email}</div>}
+                  </td>
+                  <td className="px-4 py-3">
+                    {isMe ? (
+                      <span className="text-xs px-2 py-1 rounded-full font-semibold" style={{ background: `${color}22`, color, border: `1px solid ${color}55` }}>{m.role.replace('_', ' ')}</span>
+                    ) : (
+                      <select
+                        value={m.role}
+                        disabled={!!busy}
+                        onChange={e => changeRole(m.profile_id, e.target.value as UserRole)}
+                        className="text-sm rounded px-2 py-1 border border-ink-100/15 bg-ink-800 text-ink-100 disabled:opacity-50"
+                        style={{ color }}
+                      >
+                        {ROLE_OPTIONS.map(r => (
+                          <option key={r.value} value={r.value}>{r.label}</option>
+                        ))}
+                      </select>
+                    )}
+                  </td>
+                </tr>
+              );
+            })}
+          </tbody>
+        </table>
+      </div>
+    </section>
+  );
+}
 
 function ExportSection({ data, memberships }: { data: LanceData; memberships: LanceMembership[] }) {
   const [busy, setBusy] = useState(false);
