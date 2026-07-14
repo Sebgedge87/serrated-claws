@@ -425,6 +425,7 @@ export function Layout() {
                   // Map legacy IDs that no longer exist as top-level tabs
                   const house = lance.data.houses.find(h => h.id === id);
                   if (house) { setActiveTab('houses'); setActiveHouse(house); return; }
+                  if (id === 'roster') { setActiveTab('houses'); setActiveHouse(null); return; }
                   if (id === 'inventory') { setActiveTab('treasury'); setTreasuryView('stock'); setActiveHouse(null); return; }
                   if (id === 'businesses') { setActiveTab('treasury'); setTreasuryView('ventures'); setActiveHouse(null); return; }
                   setActiveTab(id as TabId);

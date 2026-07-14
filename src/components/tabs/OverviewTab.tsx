@@ -36,9 +36,10 @@ function getResourceColor(name: string): string {
 
 export function OverviewTab({ data, filteredMembers, isAdmin, nation, onNavigate }: Props) {
   const cfg = nationConfig(nation);
-  const totalMembers = data.members.length;
-  const coven = data.members.filter(m => m.coven).length;
-  const nobles = filteredMembers.filter(m => m.is_noble);
+  const activeMembers = data.members.filter(m => m.status === 'active');
+  const totalMembers = activeMembers.length;
+  const coven = activeMembers.filter(m => m.coven).length;
+  const nobles = activeMembers.filter(m => m.is_noble);
 
   // Resources aggregated
   const resourceCounts = new Map<string, number>();
