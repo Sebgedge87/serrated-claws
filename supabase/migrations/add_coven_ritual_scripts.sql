@@ -1,6 +1,6 @@
 create table if not exists public.coven_ritual_scripts (
   id uuid primary key default gen_random_uuid(),
-  coven_id uuid not null references public.covens(id) on delete cascade,
+  coven_id text not null references public.covens(id) on delete cascade,
   ritual_name text not null,
   script text not null default '',
   updated_at timestamptz default now(),
