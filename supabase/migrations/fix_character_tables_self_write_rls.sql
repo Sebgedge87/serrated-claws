@@ -3,6 +3,7 @@
 -- even when the membership link isn't set.
 
 -- Helper: is the current user the owner of a member record?
+drop function if exists public.owns_member(uuid);
 create or replace function public.owns_member(target_member_id uuid)
 returns boolean language sql security definer stable set search_path = public as $$
   select exists (
