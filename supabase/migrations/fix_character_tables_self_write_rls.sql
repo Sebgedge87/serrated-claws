@@ -30,6 +30,7 @@ create policy char_skills_self_write on public.character_skills for all
 
 -- character_rituals
 drop policy if exists "Authenticated can manage character_rituals" on public.character_rituals;
+drop policy if exists char_rituals_self_write on public.character_rituals;
 create policy char_rituals_self_write on public.character_rituals for all
   using (
     public.owns_member(member_id)
